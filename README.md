@@ -11,7 +11,7 @@ An AI-based chatbot for the Made with Nestlé website that can handle user queri
   - Azure OpenAI
   - Puppeteer
 - **Database**:
-  - Azure Cognitive Search
+  - Azure AI Search
   - Azure Cosmos DB
 
 ### Frontend
