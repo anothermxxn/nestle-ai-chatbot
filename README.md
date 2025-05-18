@@ -5,16 +5,21 @@ An AI-based chatbot for the Made with Nestlé website that can handle user queri
 ## Tech Stack
 
 ### Backend
-- FastAPI (Python)
-- Azure OpenAI
-- Azure Cognitive Search
+- **Language**: Python 3.11, Node.js 20
+- **Framework**: FastAPI
+- **Service**: 
+  - Azure OpenAI
+  - Puppeteer
+- **Database**:
+  - Azure Cognitive Search
+  - Azure Cosmos DB
 
 ### Frontend
-- Vite + ReactJS
+- **Language**: JavaScript
+- **Framework**: Vite + React
 
-## Prerequisites
-- Python 3.11
-- Node.js 20+
+### Cloud Infrastructure
+- **Platform**: Azure
 
 ## Project Structure
 ```
