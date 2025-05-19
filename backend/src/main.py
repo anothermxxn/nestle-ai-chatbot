@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="Nestle AI Chatbot",
-    description="AI-powered chatbot for the Made with Nestle website",
+    description="AI-based chatbot for the Made with Nestle website",
     version="1.0.0"
 )
 
@@ -18,4 +18,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"status": "healthy", "message": "Nestle AI Chatbot API is running"} 
+    return {
+        "status": "healthy", 
+        "message": "Nestle AI Chatbot API is running"
+    } 
