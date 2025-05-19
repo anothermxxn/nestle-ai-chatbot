@@ -57,3 +57,21 @@ async def scrape_images(url: str) -> List[str]:
         await browser.close()
         return image_urls
 
+async def scrape_links(url: str) -> List[str]:
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=False)
+        page = await browser.new_page()
+        await page.goto(url)
+        await page.wait_for_load_state('networkidle')
+        
+        # Select all <a> elements
+        a_elements = await page.query_selector_all('a')
+        links = set()
+        for a in a_elements:
+            href = await a.get_attribute('href')
+            if href and href.strip():
+                links.add(href.strip())
+                
+        await browser.close()
+        return list(links)
+
