@@ -11,11 +11,12 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Node
+# Cache
 node_modules
 dist
 dist-ssr
 *.local
+__pycache__
 
 # Editor directories and files
 .vscode/*
