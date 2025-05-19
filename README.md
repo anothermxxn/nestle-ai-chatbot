@@ -9,7 +9,7 @@ An AI-based chatbot for the Made with Nestlé website that can handle user queri
 - **Framework**: FastAPI
 - **Service**: 
   - Azure OpenAI
-  - Puppeteer
+  - Playwright
 - **Database**:
   - Azure AI Search
   - Azure Cosmos DB
