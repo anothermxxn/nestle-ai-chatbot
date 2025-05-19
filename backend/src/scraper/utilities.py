@@ -1,11 +1,57 @@
 import asyncio
+import functools
+import logging
 from playwright.async_api import async_playwright
-from typing import List, Dict
+from typing import List, Dict, Callable, Any, Coroutine
 
+logging.basicConfig(
+    filename="../../../logs/scraper.log",
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+def async_retry(max_attempts: int = 3, delay: int = 5):
+    """
+    Decorator for retrying an async function on exception.
+    
+    Args:
+        max_attempts (int): Maximum number of attempts.
+        delay (int): Delay in seconds between attempts.
+    """
+    def decorator(func: Callable[..., Coroutine[Any, Any, Any]]):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            last_exc = None
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    logger.info(f"Attempt {attempt} for {func.__name__}")
+                    return await func(*args, **kwargs)
+                except Exception as exc:
+                    last_exc = exc
+                    logger.warning(f"Attempt {attempt} failed for {func.__name__}: {exc}")
+                    if attempt < max_attempts:
+                        logger.info(f"Retrying in {delay} seconds...")
+                        await asyncio.sleep(delay)
+                    else:
+                        logger.error(f"All {max_attempts} attempts failed for {func.__name__}.")
+                        raise last_exc
+        return wrapper
+    return decorator
+
+@async_retry()
 async def scrape_text(url: str) -> List[Dict[str, str]]:
+    """
+    Scrape and group visible text content by headings from a web page.
+    
+    Args:
+        url (str): The URL of the page to scrape.
+    Returns:
+        List[Dict[str, str]]: List of sections with 'heading' and 'content'.
+    """
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
         page = await browser.new_page()
+        logger.info(f"Navigating to {url}")
         await page.goto(url)
         await page.wait_for_load_state('networkidle')
 
@@ -19,7 +65,7 @@ async def scrape_text(url: str) -> List[Dict[str, str]]:
             if tag in [f'h{i}' for i in range(1, 7)]:
                 text = (await el.inner_text()).strip()
                 if text:
-                    headings.append((idx, tag, text))   
+                    headings.append((idx, tag, text))
         # Group content under each heading
         sections = []
         for i, (start_idx, tag, heading_text) in enumerate(headings):
@@ -30,19 +76,31 @@ async def scrape_text(url: str) -> List[Dict[str, str]]:
                     text = (await el.inner_text()).strip()
                     if text:
                         content_lines.append(text)
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Error extracting text from element: {e}")
                     continue
             content = '\n'.join(content_lines).strip()
             if heading_text and content:
                 sections.append({"heading": heading_text, "content": content})
                 
         await browser.close()
+        logger.info(f"Scraped {len(sections)} text sections from {url}")
         return sections
 
+@async_retry()
 async def scrape_images(url: str) -> List[str]:
+    """
+    Scrape all image URLs from a web page.
+    
+    Args:
+        url (str): The URL of the page to scrape.
+    Returns:
+        List[str]: List of image URLs.
+    """
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
         page = await browser.new_page()
+        logger.info(f"Navigating to {url}")
         await page.goto(url)
         await page.wait_for_load_state('networkidle')
         
@@ -55,12 +113,23 @@ async def scrape_images(url: str) -> List[str]:
                 image_urls.append(src)
                 
         await browser.close()
+        logger.info(f"Scraped {len(image_urls)} images from {url}")
         return image_urls
 
+@async_retry()
 async def scrape_links(url: str) -> List[str]:
+    """
+    Scrape all unique links from a web page.
+    
+    Args:
+        url (str): The URL of the page to scrape.
+    Returns:
+        List[str]: List of unique hrefs.
+    """
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
         page = await browser.new_page()
+        logger.info(f"Navigating to {url}")
         await page.goto(url)
         await page.wait_for_load_state('networkidle')
         
@@ -73,13 +142,23 @@ async def scrape_links(url: str) -> List[str]:
                 links.add(href.strip())
                 
         await browser.close()
+        logger.info(f"Scraped {len(links)} links from {url}")
         return list(links)
 
-# TODO: Need to test
+@async_retry()
 async def scrape_tables(url: str) -> List[Dict[str, List]]:
+    """
+    Scrape all tables from a web page, extracting headers and rows.
+    
+    Args:
+        url (str): The URL of the page to scrape.
+    Returns:
+        List[Dict[str, List]]: List of tables, each with 'headers' and 'rows'.
+    """
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
         page = await browser.new_page()
+        logger.info(f"Navigating to {url}")
         await page.goto(url)
         await page.wait_for_load_state('networkidle')
         
@@ -109,7 +188,9 @@ async def scrape_tables(url: str) -> List[Dict[str, List]]:
                     rows.append(row_data)
             if headers or rows:
                 result.append({'headers': headers, 'rows': rows})
+                
         await browser.close()
+        logger.info(f"Scraped {len(result)} tables from {url}")
         return result
 
 # if __name__ == "__main__":
