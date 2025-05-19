@@ -75,3 +75,62 @@ async def scrape_links(url: str) -> List[str]:
         await browser.close()
         return list(links)
 
+# TODO: Need to test
+async def scrape_tables(url: str) -> List[Dict[str, List]]:
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=False)
+        page = await browser.new_page()
+        await page.goto(url)
+        await page.wait_for_load_state('networkidle')
+        
+        tables = await page.query_selector_all('table')
+        result = []
+        for table in tables:
+            headers = []
+            rows = []
+            # Try to get headers from <th> or first <tr>
+            header_row = await table.query_selector('tr')
+            if header_row:
+                ths = await header_row.query_selector_all('th')
+                if ths:
+                    headers = [ (await th.inner_text()).strip() for th in ths ]
+                else:
+                    tds = await header_row.query_selector_all('td')
+                    headers = [ (await td.inner_text()).strip() for td in tds ]
+            # Get all rows (skip header row)
+            all_rows = await table.query_selector_all('tr')
+            for i, row in enumerate(all_rows):
+                # Skip header row
+                if i == 0:
+                    continue
+                cells = await row.query_selector_all('td')
+                row_data = [ (await cell.inner_text()).strip() for cell in cells ]
+                if row_data:
+                    rows.append(row_data)
+            if headers or rows:
+                result.append({'headers': headers, 'rows': rows})
+        await browser.close()
+        return result
+
+# if __name__ == "__main__":
+#     url = "https://www.nestle.com/investors/overview"
+
+    # text = asyncio.run(scrape_text(url))
+    # for section in text:
+    #     print(f"\n=== {section['heading']} ===\n{section['content'][:500]}")
+
+    # images = asyncio.run(scrape_images(url))
+    # for img_url in images[:10]:
+    #     print(img_url)
+
+    # links = asyncio.run(scrape_links(url))
+    # for link in links[:10]:
+    #     print(link)
+
+    # tables = asyncio.run(scrape_tables(url))
+    # for table in tables:
+    #     print("\nTable:")
+    #     print("Headers:", table['headers'])
+    #     for row in table['rows'][:5]:
+    #         print("Row:", row)
+ 
