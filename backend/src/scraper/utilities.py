@@ -1,12 +1,16 @@
 import asyncio
 import functools
 import logging
+from datetime import datetime
 from playwright.async_api import async_playwright
 from typing import List, Dict, Callable, Any, Coroutine
 
+log_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 logging.basicConfig(
-    filename="../../../logs/scraper.log",
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    filename=f"../../../logs/scraper_{log_time}.log",
+    level=logging.INFO,
+    filemode="a",
+    format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -46,23 +50,23 @@ async def scrape_text(url: str) -> List[Dict[str, str]]:
     Args:
         url (str): The URL of the page to scrape.
     Returns:
-        List[Dict[str, str]]: List of sections with 'heading' and 'content'.
+        List[Dict[str, str]]: List of sections with "heading" and "content".
     """
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
         page = await browser.new_page()
         logger.info(f"Navigating to {url}")
         await page.goto(url)
-        await page.wait_for_load_state('networkidle')
+        await page.wait_for_load_state("networkidle")
 
         # Get all elements in the body
-        all_elements = await page.query_selector_all('body *')
+        all_elements = await page.query_selector_all("body *")
         # Get all headings and their indices
         headings = []
         for idx, el in enumerate(all_elements):
-            tag = await el.get_property('tagName')
+            tag = await el.get_property("tagName")
             tag = (await tag.json_value()).lower()
-            if tag in [f'h{i}' for i in range(1, 7)]:
+            if tag in [f"h{i}" for i in range(1, 7)]:
                 text = (await el.inner_text()).strip()
                 if text:
                     headings.append((idx, tag, text))
@@ -79,7 +83,7 @@ async def scrape_text(url: str) -> List[Dict[str, str]]:
                 except Exception as e:
                     logger.debug(f"Error extracting text from element: {e}")
                     continue
-            content = '\n'.join(content_lines).strip()
+            content = "\n".join(content_lines).strip()
             if heading_text and content:
                 sections.append({"heading": heading_text, "content": content})
                 
@@ -102,13 +106,13 @@ async def scrape_images(url: str) -> List[str]:
         page = await browser.new_page()
         logger.info(f"Navigating to {url}")
         await page.goto(url)
-        await page.wait_for_load_state('networkidle')
+        await page.wait_for_load_state("networkidle")
         
         # Select all <img> elements
-        img_elements = await page.query_selector_all('img')
+        img_elements = await page.query_selector_all("img")
         image_urls = []
         for img in img_elements:
-            src = await img.get_attribute('src')
+            src = await img.get_attribute("src")
             if src:
                 image_urls.append(src)
                 
@@ -131,13 +135,13 @@ async def scrape_links(url: str) -> List[str]:
         page = await browser.new_page()
         logger.info(f"Navigating to {url}")
         await page.goto(url)
-        await page.wait_for_load_state('networkidle')
+        await page.wait_for_load_state("networkidle")
         
         # Select all <a> elements
-        a_elements = await page.query_selector_all('a')
+        a_elements = await page.query_selector_all("a")
         links = set()
         for a in a_elements:
-            href = await a.get_attribute('href')
+            href = await a.get_attribute("href")
             if href and href.strip():
                 links.add(href.strip())
                 
@@ -153,65 +157,66 @@ async def scrape_tables(url: str) -> List[Dict[str, List]]:
     Args:
         url (str): The URL of the page to scrape.
     Returns:
-        List[Dict[str, List]]: List of tables, each with 'headers' and 'rows'.
+        List[Dict[str, List]]: List of tables, each with "headers" and "rows".
     """
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
         page = await browser.new_page()
         logger.info(f"Navigating to {url}")
         await page.goto(url)
-        await page.wait_for_load_state('networkidle')
+        await page.wait_for_load_state("networkidle")
         
-        tables = await page.query_selector_all('table')
+        tables = await page.query_selector_all("table")
         result = []
         for table in tables:
             headers = []
             rows = []
             # Try to get headers from <th> or first <tr>
-            header_row = await table.query_selector('tr')
+            header_row = await table.query_selector("tr")
             if header_row:
-                ths = await header_row.query_selector_all('th')
+                ths = await header_row.query_selector_all("th")
                 if ths:
                     headers = [ (await th.inner_text()).strip() for th in ths ]
                 else:
-                    tds = await header_row.query_selector_all('td')
+                    tds = await header_row.query_selector_all("td")
                     headers = [ (await td.inner_text()).strip() for td in tds ]
             # Get all rows (skip header row)
-            all_rows = await table.query_selector_all('tr')
+            all_rows = await table.query_selector_all("tr")
             for i, row in enumerate(all_rows):
                 # Skip header row
                 if i == 0:
                     continue
-                cells = await row.query_selector_all('td')
+                cells = await row.query_selector_all("td")
                 row_data = [ (await cell.inner_text()).strip() for cell in cells ]
                 if row_data:
                     rows.append(row_data)
             if headers or rows:
-                result.append({'headers': headers, 'rows': rows})
+                result.append({"headers": headers, "rows": rows})
                 
         await browser.close()
         logger.info(f"Scraped {len(result)} tables from {url}")
         return result
 
 # if __name__ == "__main__":
-#     url = "https://www.nestle.com/investors/overview"
+#     url = "https://www.madewithnestle.ca/"
 
-    # text = asyncio.run(scrape_text(url))
-    # for section in text:
-    #     print(f"\n=== {section['heading']} ===\n{section['content'][:500]}")
+#     text = asyncio.run(scrape_text(url))
+#     for section in text:
+#         print(f"\n=== {section['heading']} ===\n{section['content'][:500]}")
 
-    # images = asyncio.run(scrape_images(url))
-    # for img_url in images[:10]:
-    #     print(img_url)
+#     images = asyncio.run(scrape_images(url))
+#     for img_url in images[:10]:
+#         print(img_url)
 
-    # links = asyncio.run(scrape_links(url))
-    # for link in links[:10]:
-    #     print(link)
+#     links = asyncio.run(scrape_links(url))
+#     for link in links[:10]:
+#         print(link)
 
-    # tables = asyncio.run(scrape_tables(url))
-    # for table in tables:
-    #     print("\nTable:")
-    #     print("Headers:", table['headers'])
-    #     for row in table['rows'][:5]:
-    #         print("Row:", row)
- 
+#     tables = asyncio.run(scrape_tables(url))
+#     for table in tables:
+#         print("\nTable:")
+#         print("Headers:", table["headers"])
+#         for row in table["rows"][:5]:
+#             print("Row:", row)
+    
+#     logging.shutdown()

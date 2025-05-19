@@ -36,6 +36,7 @@ nestle-ai-chatbot/
 │   ├── tests/
 │   └── public/
 ├── data/
+├── logs/
 ├── README.md
 └── .gitignore
 ```
