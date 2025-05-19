@@ -11,7 +11,6 @@ async def scrape_text(url: str) -> List[Dict[str, str]]:
 
         # Get all elements in the body
         all_elements = await page.query_selector_all('body *')
-        
         # Get all headings and their indices
         headings = []
         for idx, el in enumerate(all_elements):
@@ -20,8 +19,7 @@ async def scrape_text(url: str) -> List[Dict[str, str]]:
             if tag in [f'h{i}' for i in range(1, 7)]:
                 text = (await el.inner_text()).strip()
                 if text:
-                    headings.append((idx, tag, text))
-                    
+                    headings.append((idx, tag, text))   
         # Group content under each heading
         sections = []
         for i, (start_idx, tag, heading_text) in enumerate(headings):
@@ -40,3 +38,22 @@ async def scrape_text(url: str) -> List[Dict[str, str]]:
                 
         await browser.close()
         return sections
+
+async def scrape_images(url: str) -> List[str]:
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=False)
+        page = await browser.new_page()
+        await page.goto(url)
+        await page.wait_for_load_state('networkidle')
+        
+        # Select all <img> elements
+        img_elements = await page.query_selector_all('img')
+        image_urls = []
+        for img in img_elements:
+            src = await img.get_attribute('src')
+            if src:
+                image_urls.append(src)
+                
+        await browser.close()
+        return image_urls
+
