@@ -29,7 +29,7 @@ class BrowserManager:
         self.page = await self.browser.new_page()
         return self.browser, self.page
 
-    async def __aexit__(self):
+    async def __aexit__(self, exc_type, exc, tb):
         if self.page:
             await self.page.close()
         if self.browser:
@@ -67,26 +67,35 @@ def async_retry(max_attempts: int = 3, delay: int = 5):
     return decorator
 
 @async_retry()
-async def scrape_text(url: str, page: Optional[Page] = None) -> List[Dict[str, str]]:
+async def scrape_content(url: str, page: Optional[Page] = None) -> List[Dict[str, Any]]:
     """
-    Scrape and group visible text content by headings from a web page.
+    Scrape text, images, links, and tables grouped by heading/theme from a web page.
     
     Args:
         url (str): The URL of the page to scrape.
-        page (Page, optional): Playwright Page instance to use.
+        page (Page, optional): Playwright Page instance to use. If None, a new browser/page will be created.
+    
     Returns:
-        List[Dict[str, str]]: List of sections with "heading" and "content".
+        List[Dict[str, Any]]: List of sections, each with keys:
+            - 'heading': The section heading (str)
+            - 'content': The grouped text content under the heading (str)
+            - 'images': List of image URLs (List[str])
+            - 'links': List of link hrefs (List[str])
+            - 'tables': List of tables, each as a dict with 'headers' and 'rows'
     """
+    close_page = False
+    
     if page is None:
+        close_page = True
         async with BrowserManager() as (_, page):
-            return await scrape_text(url, page)
+            return await scrape_content(url, page)
+        
     logger.info(f"Navigating to {url}")
     await page.goto(url)
     await page.wait_for_load_state("networkidle")
-
-    # Get all elements in the body
+    
     all_elements = await page.query_selector_all("body *")
-    # Get all headings and their indices
+
     headings = []
     for idx, el in enumerate(all_elements):
         tag = await el.get_property("tagName")
@@ -95,152 +104,74 @@ async def scrape_text(url: str, page: Optional[Page] = None) -> List[Dict[str, s
             text = (await el.inner_text()).strip()
             if text:
                 headings.append((idx, tag, text))
-    # Group content under each heading
+                
     sections = []
     for i, (start_idx, tag, heading_text) in enumerate(headings):
         end_idx = headings[i+1][0] if i+1 < len(headings) else len(all_elements)
         content_lines = []
+        images = []
+        links = []
+        tables = []
+        
         for el in all_elements[start_idx+1:end_idx]:
+            el_tag = await el.get_property("tagName")
+            el_tag = (await el_tag.json_value()).lower()
+            
             try:
-                text = (await el.inner_text()).strip()
-                if text:
-                    content_lines.append(text)
+                # Text
+                if el_tag not in [f"h{i}" for i in range(1, 7)] and el_tag not in ["img", "a", "table"]:
+                    text = (await el.inner_text()).strip()
+                    if text:
+                        content_lines.append(text)
+                # Images
+                if el_tag == "img":
+                    src = await el.get_attribute("src")
+                    if src:
+                        images.append(src)
+                # Links
+                if el_tag == "a":
+                    href = await el.get_attribute("href")
+                    if href:
+                        links.append(href)
+                # Tables
+                if el_tag == "table":
+                    header_row = await el.query_selector("tr")
+                    table_headers = []
+                    table_rows = []
+                    
+                    if header_row:
+                        ths = await header_row.query_selector_all("th")
+                        if ths:
+                            table_headers = [ (await th.inner_text()).strip() for th in ths ]
+                        else:
+                            tds = await header_row.query_selector_all("td")
+                            table_headers = [ (await td.inner_text()).strip() for td in tds ]
+                    
+                    all_rows = await el.query_selector_all("tr")
+                    for j, row in enumerate(all_rows):
+                        if j == 0:
+                            continue
+                        cells = await row.query_selector_all("td")
+                        row_data = [ (await cell.inner_text()).strip() for cell in cells ]
+                        if row_data:
+                            table_rows.append(row_data)
+                            
+                    if table_headers or table_rows:
+                        tables.append({"headers": table_headers, "rows": table_rows})
             except Exception as e:
-                logger.debug(f"Error extracting text from element: {e}")
+                logger.debug(f"Error extracting element: {e}")
                 continue
-        content = "\n".join(content_lines).strip()
-        if heading_text and content:
-            sections.append({"heading": heading_text, "content": content})
-                
-    logger.info(f"Scraped {len(sections)} text sections from {url}")
+               
+        section = {
+            "heading": heading_text,
+            "content": "\n".join(content_lines).strip(),
+            "images": images,
+            "links": links,
+            "tables": tables
+        }
+        sections.append(section)
+        
+    logger.info(f"Scraped {len(sections)} sections from {url}")
+    if close_page:
+        await page.close()
     return sections
-
-@async_retry()
-async def scrape_images(url: str, page: Optional[Page] = None) -> List[str]:
-    """
-    Scrape all image URLs from a web page.
-    
-    Args:
-        url (str): The URL of the page to scrape.
-        page (Page, optional): Playwright Page instance to use.
-    Returns:
-        List[str]: List of image URLs.
-    """
-    if page is None:
-        async with BrowserManager() as (_, page):
-            return await scrape_images(url, page)
-    logger.info(f"Navigating to {url}")
-    await page.goto(url)
-    await page.wait_for_load_state("networkidle")
-    
-    # Select all <img> elements
-    img_elements = await page.query_selector_all("img")
-    image_urls = []
-    for img in img_elements:
-        src = await img.get_attribute("src")
-        if src:
-            image_urls.append(src)
-                
-    logger.info(f"Scraped {len(image_urls)} images from {url}")
-    return image_urls
-
-@async_retry()
-async def scrape_links(url: str, page: Optional[Page] = None) -> List[str]:
-    """
-    Scrape all unique links from a web page.
-    
-    Args:
-        url (str): The URL of the page to scrape.
-        page (Page, optional): Playwright Page instance to use.
-    Returns:
-        List[str]: List of unique hrefs.
-    """
-    if page is None:
-        async with BrowserManager() as (_, page):
-            return await scrape_links(url, page)
-    logger.info(f"Navigating to {url}")
-    await page.goto(url)
-    await page.wait_for_load_state("networkidle")
-    
-    # Select all <a> elements
-    a_elements = await page.query_selector_all("a")
-    links = set()
-    for a in a_elements:
-        href = await a.get_attribute("href")
-        if href and href.strip():
-            links.add(href.strip())
-                
-    logger.info(f"Scraped {len(links)} links from {url}")
-    return list(links)
-
-@async_retry()
-async def scrape_tables(url: str, page: Optional[Page] = None) -> List[Dict[str, List]]:
-    """
-    Scrape all tables from a web page, extracting headers and rows.
-    
-    Args:
-        url (str): The URL of the page to scrape.
-        page (Page, optional): Playwright Page instance to use.
-    Returns:
-        List[Dict[str, List]]: List of tables, each with "headers" and "rows".
-    """
-    if page is None:
-        async with BrowserManager() as (_, page):
-            return await scrape_tables(url, page)
-    logger.info(f"Navigating to {url}")
-    await page.goto(url)
-    await page.wait_for_load_state("networkidle")
-    
-    tables = await page.query_selector_all("table")
-    result = []
-    for table in tables:
-        headers = []
-        rows = []
-        # Try to get headers from <th> or first <tr>
-        header_row = await table.query_selector("tr")
-        if header_row:
-            ths = await header_row.query_selector_all("th")
-            if ths:
-                headers = [ (await th.inner_text()).strip() for th in ths ]
-            else:
-                tds = await header_row.query_selector_all("td")
-                headers = [ (await td.inner_text()).strip() for td in tds ]
-        # Get all rows (skip header row)
-        all_rows = await table.query_selector_all("tr")
-        for i, row in enumerate(all_rows):
-            # Skip header row
-            if i == 0:
-                continue
-            cells = await row.query_selector_all("td")
-            row_data = [ (await cell.inner_text()).strip() for cell in cells ]
-            if row_data:
-                rows.append(row_data)
-        if headers or rows:
-            result.append({"headers": headers, "rows": rows})
-                
-    logger.info(f"Scraped {len(result)} tables from {url}")
-    return result
-
-# if __name__ == "__main__":
-#     url = "https://www.madewithnestle.ca/"
-
-#     text = asyncio.run(scrape_text(url))
-#     for section in text:
-#         print(f"\n=== {section['heading']} ===\n{section['content'][:500]}")
-
-#     images = asyncio.run(scrape_images(url))
-#     for img_url in images[:10]:
-#         print(img_url)
-
-#     links = asyncio.run(scrape_links(url))
-#     for link in links[:10]:
-#         print(link)
-
-#     tables = asyncio.run(scrape_tables(url))
-#     for table in tables:
-#         print("\nTable:")
-#         print("Headers:", table["headers"])
-#         for row in table["rows"][:5]:
-#             print("Row:", row)
-    
-#     logging.shutdown()
