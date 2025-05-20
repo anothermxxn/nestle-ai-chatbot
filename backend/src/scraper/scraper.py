@@ -8,7 +8,7 @@ domain = "www.madewithnestle.ca"
 
 def url_to_filename(url: str) -> str:
     """
-    Convert a URL to a safe filename using only the last part of the path.
+    Convert a URL to a safe filename using the path after the domain.
     
     Args:
         url (str): The URL to convert.
@@ -19,12 +19,37 @@ def url_to_filename(url: str) -> str:
     parsed = urlparse(url)
     path = parsed.path.rstrip('/')
     
-    last_part = path.split('/')[-1] if path else ''
-    if not last_part:
-        last_part = 'index'
+    if not path:
+        return "index"
     
-    name = re.sub(r'[^a-zA-Z0-9._-]', '_', last_part)
+    # Remove leading slash and convert remaining slashes to underscores
+    path = path.lstrip('/')
+    name = re.sub(r'[^a-zA-Z0-9._/-]', '_', path)
+    name = name.replace('/', '_')
+    
     return name
+
+def get_unique_filename(filename: str) -> str:
+    """
+    Generate a unique filename by adding a numeric suffix if the file already exists.
+    
+    Args:
+        filename (str): The original filename without extension.
+    
+    Returns:
+        str: A unique filename that doesn't exist in the base_path.
+    """
+    counter = 1
+    name, ext = os.path.splitext(filename)
+    base_path = "../../../data/raw"
+    final_path = os.path.join(base_path, filename)
+    
+    while os.path.exists(final_path):
+        new_filename = f"{name}_{counter}{ext}"
+        final_path = os.path.join(base_path, new_filename)
+        counter += 1
+        
+    return final_path
 
 def save_content_to_file(sections, url: str):
     """
@@ -34,8 +59,8 @@ def save_content_to_file(sections, url: str):
         sections (List[Dict]): List of grouped content sections.
         url (str): The URL the content was scraped from.
     """
-    filename = url_to_filename(url) + ".txt"
-    output_path = os.path.join("../../../data/raw", filename)
+    base_filename = url_to_filename(url) + ".txt"
+    output_path = get_unique_filename(base_filename)
     
     with open(output_path, "w", encoding="utf-8") as f:
         for section in sections:
@@ -114,5 +139,4 @@ async def save_all_content_to_file(start_url: str, max_pages: int = 500):
     print(f"Scraping complete. {len(visited)} pages saved.")
 
 if __name__ == "__main__":
-    # Example usage with persistent context
     asyncio.run(save_all_content_to_file("https://www.madewithnestle.ca/sitemap")) 
