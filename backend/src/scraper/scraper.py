@@ -35,7 +35,7 @@ def save_content_to_file(sections, url: str):
         url (str): The URL the content was scraped from.
     """
     filename = url_to_filename(url) + ".txt"
-    output_path = os.path.join("../../../data/raw", category, filename)
+    output_path = os.path.join("../../../data/raw", filename)
     
     with open(output_path, "w", encoding="utf-8") as f:
         for section in sections:
