@@ -1,11 +1,10 @@
 import os
 import re
 import asyncio
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 from utilities import scrape_content
 
-# Manually set the category for the scraped content
-category = "brands"
+domain = "www.madewithnestle.ca"
 
 def url_to_filename(url: str) -> str:
     """
@@ -61,15 +60,59 @@ def save_content_to_file(sections, url: str):
             
     print(f"Scraped content saved to {output_path}")
 
-async def scrape_and_save(url: str):
+def process_links(links, base_url, visited):
     """
-    Scrape grouped text, images, links, and tables from the URL and save to a single themed text file.
+    Normalize, deduplicate, and filter links to only include those on the same domain and not yet visited.
     
     Args:
-        url (str): The URL to scrape.
+        links (Iterable[str]): The links to process (can be relative or absolute).
+        base_url (str): The base URL to resolve relative links.
+        visited (set): Set of URLs that have already been visited.
+    
+    Returns:
+        set: Set of normalized, deduplicated, and filtered absolute URLs on the same domain.
     """
-    sections = await scrape_content(url)
-    save_content_to_file(sections, url)
+    processed = set()
+    
+    for link in links:
+        abs_link = urljoin(base_url, link)
+        parsed = urlparse(abs_link)
+        if parsed.netloc == domain and abs_link not in visited:
+            processed.add(abs_link)
+            
+    return processed
+
+async def save_all_content_to_file(start_url: str, max_pages: int = 500):
+    """
+    Scrape the start URL and all subpages linked from it (same domain), saving each to a file.
+    
+    Args:
+        start_url (str): The starting URL to scrape.
+        max_pages (int): Maximum number of pages to scrape.
+    """
+    visited = set()
+    to_visit = [start_url]
+    count = 0
+    
+    while to_visit and count < max_pages:
+        current_url = to_visit.pop(0)
+        if current_url in visited:
+            continue
+        print(f"Scraping: {current_url}")
+        sections = await scrape_content(current_url)
+        save_content_to_file(sections, current_url)
+        visited.add(current_url)
+        count += 1
+        
+        # Collect links from the current page
+        page_links = set()
+        for section in sections:
+            page_links.update(section.get("links", []))
+        new_links = process_links(page_links, current_url, visited)
+        to_visit.extend(new_links - set(to_visit))
+        
+    print(f"Scraping complete. {len(visited)} pages saved.")
 
 if __name__ == "__main__":
-    asyncio.run(scrape_and_save("https://www.madewithnestle.ca/aero")) 
+    # Example usage with persistent context
+    asyncio.run(save_all_content_to_file("https://www.madewithnestle.ca/sitemap")) 
