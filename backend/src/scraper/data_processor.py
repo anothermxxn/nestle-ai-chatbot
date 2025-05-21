@@ -111,9 +111,26 @@ def process_markdown_file(file_path: str, url: str) -> List[Dict]:
     chunks = []
     
     for doc_idx, doc in enumerate(markdown_docs):
-        # Get section title from first line if it's a header
+        # Look for headers in the content
         lines = doc.page_content.split('\n')
-        title = lines[0] if lines[0].startswith('#') else "Section"
+        title = None
+        
+        # Try to find a header line
+        for line in lines:
+            if line.startswith('#'):
+                title = line.lstrip('#').strip()
+                break
+        
+        # If no header found, use first sentence as title
+        if not title:
+            # Find first complete sentence
+            content_text = ' '.join(lines).strip()
+            sentence_end = content_text.find('.')
+            if sentence_end > 0 and sentence_end < 100:  # Reasonable title length
+                title = content_text[:sentence_end].strip()
+            else:
+                # Fallback to first 50 chars if no sentence found
+                title = content_text[:50].strip() + "..."
         
         # Split into smaller chunks if needed
         if len(doc.page_content) > 1000:
@@ -124,7 +141,7 @@ def process_markdown_file(file_path: str, url: str) -> List[Dict]:
         for chunk_idx, chunk in enumerate(section_chunks):
             chunks.append({
                 "url": url,
-                "section_title": title.lstrip('#').strip(),
+                "section_title": title,
                 "doc_index": doc_idx,
                 "chunk_index": chunk_idx,
                 "total_chunks": len(section_chunks),
