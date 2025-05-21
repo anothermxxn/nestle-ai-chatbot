@@ -4,6 +4,10 @@ import logging
 from datetime import datetime
 from playwright.async_api import async_playwright, Browser, Page
 from typing import List, Dict, Callable, Any, Coroutine, Optional
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+from crawl4ai.content_filter_strategy import PruningContentFilter, BM25ContentFilter
+from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
+
 
 log_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 logging.basicConfig(
@@ -175,3 +179,28 @@ async def scrape_content(url: str, page: Optional[Page] = None) -> List[Dict[str
     if close_page:
         await page.close()
     return sections
+
+async def scrape_content_crawl4ai(url: str):
+    """
+    Scrape content from a web page using Crawl4AI.
+    
+    Args:
+        url (str): The URL of the page to scrape.
+    
+    """
+    browser_config = BrowserConfig(
+        headless=True,  
+        verbose=True,
+    )
+    run_config = CrawlerRunConfig(
+        markdown_generator=DefaultMarkdownGenerator(
+            content_filter=PruningContentFilter(threshold=0.48, threshold_type="fixed", min_word_threshold=0)
+        ),
+    )
+    
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        result = await crawler.arun(
+            url=url,
+            config=run_config
+        )
+        return result
