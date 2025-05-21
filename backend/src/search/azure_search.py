@@ -4,10 +4,10 @@ from datetime import datetime
 from azure.search.documents import SearchClient
 from azure.core.credentials import AzureKeyCredential
 
-from config import (
-    AZURE_SEARCH_ADMIN_KEY,
+from .config import (
     AZURE_SEARCH_ENDPOINT,
-    AZURE_SEARCH_INDEX_NAME,
+    AZURE_SEARCH_ADMIN_KEY,
+    AZURE_SEARCH_INDEX_NAME
 )
 
 # Configure logging
@@ -109,7 +109,8 @@ class AzureSearchClient:
         query: str,
         vector: Optional[List[float]] = None,
         filter_expr: Optional[str] = None,
-        top: int = 10
+        top: int = 10,
+        skip: int = 0
     ) -> List[Dict]:
         """
         Search the index using vector search with optional filters.
@@ -119,6 +120,7 @@ class AzureSearchClient:
             vector (Optional[List[float]]): Vector embedding for vector search.
             filter_expr (Optional[str]): OData filter expression.
             top (int): Number of results to return.
+            skip (int): Number of results to skip for pagination.
             
         Returns:
             List[Dict]: List of search results.
@@ -126,8 +128,10 @@ class AzureSearchClient:
         try:
             # Build search options
             search_options = {
-                "select": "url,section_title,content,source_file",
-                "top": top
+                "select": "id,url,section_title,content,source_file",
+                "top": top,
+                "skip": skip,
+                "include_total_count": True
             }
             
             if vector:
@@ -146,7 +150,7 @@ class AzureSearchClient:
                 **search_options
             )
             
-            # Convert results to list
+            # Convert results to list and ensure all fields are present
             return [dict(result) for result in results]
                 
         except Exception as e:
