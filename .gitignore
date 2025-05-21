@@ -18,6 +18,9 @@ dist-ssr
 *.local
 __pycache__
 
+# Local data
+data/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
