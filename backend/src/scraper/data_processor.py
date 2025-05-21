@@ -1,8 +1,9 @@
 import os
 import json
-from typing import Dict, List
+from typing import Dict, List, Set, Tuple
 from datetime import datetime
 from langchain.text_splitter import MarkdownTextSplitter, RecursiveCharacterTextSplitter
+from collections import defaultdict
 
 def validate_markdown_file(file_path: str) -> bool:
     """
@@ -196,6 +197,83 @@ def process_all_content() -> Dict:
     
     return results
 
+def get_content_hash(content: str) -> str:
+    """
+    Get a simple hash of the content for comparison.
+    Removes whitespace and converts to lowercase for better matching.
+    """
+    return hash(content.lower().replace(" ", ""))
+
+def remove_content_duplicates() -> Dict:
+    """
+    Find and remove files with duplicate content, keeping only one copy.
+    
+    Returns:
+        Dict: Report of duplicate files and actions taken
+    """
+    content_dir = "../../../data/raw"
+    if not os.path.exists(content_dir):
+        return {"error": "Content directory not found"}
+        
+    # Track content hashes and their files
+    content_map = defaultdict(list)  # content hash -> list of files
+    
+    # First pass: collect all files and their content hashes
+    print("Scanning files...")
+    for filename in os.listdir(content_dir):
+        if not filename.endswith('.md'):
+            continue
+            
+        file_path = os.path.join(content_dir, filename)
+        try:
+            # Read and hash content
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+                content_hash = hash(content.lower().replace(" ", ""))
+                content_map[content_hash].append(file_path)
+                
+        except Exception as e:
+            print(f"Error processing {filename}: {e}")
+            continue
+    
+    # Remove duplicates, keeping the first file in each group
+    removed_files = []
+    for content_hash, files in content_map.items():
+        if len(files) > 1:
+            # Keep the first file, remove others
+            for duplicate in files[1:]:
+                try:
+                    os.remove(duplicate)
+                    removed_files.append(duplicate)
+                    print(f"Removed duplicate: {duplicate}")
+                except Exception as e:
+                    print(f"Error removing {duplicate}: {e}")
+    
+    # Prepare report
+    report = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "initial_file_count": sum(1 for f in os.listdir(content_dir) if f.endswith('.md')) + len(removed_files),
+        "duplicates_removed": len(removed_files),
+        "remaining_files": sum(1 for f in os.listdir(content_dir) if f.endswith('.md')),
+        "removed_files": removed_files
+    }
+    
+    # Save report
+    report_path = os.path.join("../../../data/processed", "duplicate_removal_report.json")
+    with open(report_path, 'w', encoding='utf-8') as f:
+        json.dump(report, f, indent=2, ensure_ascii=False)
+        
+    return report
+
 if __name__ == "__main__":
+    # First remove duplicates
+    print("Checking and removing duplicate files...")
+    report = remove_content_duplicates()
+    print(f"\nRemoved {report['duplicates_removed']} duplicate files.")
+    print(f"Original count: {report['initial_file_count']}")
+    print(f"Remaining files: {report['remaining_files']}")
+    
+    # Then process the cleaned content
+    print("\nProcessing content...")
     results = process_all_content()
     print(f"Processed {results['total_files']} files into {results['total_chunks']} chunks") 
