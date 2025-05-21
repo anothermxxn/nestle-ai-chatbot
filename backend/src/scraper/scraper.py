@@ -1,6 +1,7 @@
 import os
 import re
 import asyncio
+from typing import Any, Dict, List, Set
 from urllib.parse import urlparse, urljoin
 from utilities import scrape_content, scrape_content_crawl4ai
 
@@ -12,36 +13,41 @@ def url_to_filename(url: str) -> str:
         url (str): The URL to convert.
     
     Returns:
-        str: The safe filename.
+        str: A safe filename derived from the URL path.
     """
+    # Parse URL and get path.
     parsed = urlparse(url)
-    path = parsed.path.rstrip('/')
+    path = parsed.path.rstrip("/")
     
+    # Use "index" for root path.
     if not path:
         return "index"
     
-    # Remove leading slash and convert remaining slashes to underscores
-    path = path.lstrip('/')
-    name = re.sub(r'[^a-zA-Z0-9._/-]', '_', path)
-    name = name.replace('/', '_')
+    # Clean path to create safe filename.
+    path = path.lstrip("/")
+    name = re.sub(r"[^a-zA-Z0-9._/-]", "_", path)
+    name = name.replace("/", "_")
     
     return name
+
 
 def get_unique_filename(path: str, filename: str) -> str:
     """
     Generate a unique filename by adding a numeric suffix if the file already exists.
     
     Args:
-        path (str): The path to the file.
+        path (str): The directory path where the file will be saved.
         filename (str): The original filename.
     
     Returns:
-        str: A unique filename that doesn't exist in the base_path.
+        str: A unique filename that doesn't exist in the given path.
     """
-    counter = 1
+    # Split filename and extension.
     name, ext = os.path.splitext(filename)
     final_path = os.path.join(path, filename)
     
+    # Add numeric suffix until unique filename is found.
+    counter = 1
     while os.path.exists(final_path):
         new_filename = f"{name}_{counter}{ext}"
         final_path = os.path.join(path, new_filename)
@@ -49,79 +55,95 @@ def get_unique_filename(path: str, filename: str) -> str:
         
     return final_path
 
-def save_content_to_file(sections, url: str):
+
+def save_content_to_file(sections: List[Dict], url: str):
     """
-    Save grouped content (text, images, links, tables) to a single themed text file for the given URL.
+    Save grouped content (text, images, links, tables) to a single themed text file.
     
     Args:
         sections (List[Dict]): List of grouped content sections.
         url (str): The URL the content was scraped from.
     """
+    # Generate output path.
     base_filename = url_to_filename(url) + ".txt"
     base_path = "../../../data/raw"
     output_path = get_unique_filename(base_path, base_filename)
     
+    # Write content to file.
     with open(output_path, "w", encoding="utf-8") as f:
         for section in sections:
             f.write(f"=== {section['heading']} ===\n")
+            
             if section["content"]:
                 f.write(section["content"] + "\n")
+            
             if section["images"]:
                 f.write("[Images]\n")
                 for img in section["images"]:
                     f.write(f"{img}\n")
+            
             if section["links"]:
                 f.write("[Links]\n")
                 for link in section["links"]:
                     f.write(f"{link}\n")
+            
             if section["tables"]:
                 for idx, table in enumerate(section["tables"]):
                     f.write(f"[Table {idx+1}]\n")
-                    f.write("Headers: " + ", ".join(table['headers']) + "\n")
-                    for row in table['rows']:
+                    f.write("Headers: " + ", ".join(table["headers"]) + "\n")
+                    for row in table["rows"]:
                         f.write(", ".join(row) + "\n")
+            
             f.write("\n")
             
     print(f"Scraped content saved to {output_path}")
 
-def save_crawl4ai_content_to_file(content, url: str):
+
+def save_crawl4ai_content_to_file(content: Any, url: str):
     """
-    Save Crawl4AI content to a file.
+    Save Crawl4AI content to a markdown file.
     
     Args:
-        content (Crawl4AIContent): The content to save.
+        content (Any): The Crawl4AI content result.
         url (str): The URL the content was scraped from.
     """
+    # Generate output path.
     base_filename = url_to_filename(url) + ".md"
     base_path = "../../../data/crawl4ai"
     output_path = get_unique_filename(base_path, base_filename)
-
+    
+    # Write markdown content to file.
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(content.markdown.fit_markdown)
-
+    
     print(f"Crawl4AI content saved to {output_path}")
 
-def process_links(links, base_url, visited):
+
+def process_links(links: List[str], base_url: str, visited: Set[str]) -> Set[str]:
     """
     Normalize, deduplicate, and filter links to only include those on the same domain and not yet visited.
     
     Args:
-        links (Iterable[str]): The links to process (can be relative or absolute).
+        links (List[str]): The links to process (can be relative or absolute).
         base_url (str): The base URL to resolve relative links.
-        visited (set): Set of URLs that have already been visited.
+        visited (Set[str]): Set of URLs that have already been visited.
     
     Returns:
-        set: Set of normalized, deduplicated, and filtered absolute URLs on the same domain.
+        Set[str]: Set of normalized, deduplicated, and filtered absolute URLs.
     """
     processed = set()
     
     for link in links:
+        # Convert relative links to absolute.
         abs_link = urljoin(base_url, link)
         parsed = urlparse(abs_link)
+        
+        # Keep only unvisited links from the same domain.
         if parsed.netloc == "www.madewithnestle.ca" and abs_link not in visited:
             processed.add(abs_link)
             
     return processed
+
 
 async def save_all_content_to_file(start_url: str, max_pages: int = 500):
     """
@@ -139,8 +161,10 @@ async def save_all_content_to_file(start_url: str, max_pages: int = 500):
         current_url = to_visit.pop(0)
         if current_url in visited:
             continue
+            
         print(f"Scraping: {current_url}")
         
+        # Scrape content using both methods.
         sections = await scrape_content(current_url)
         save_content_to_file(sections, current_url)
         
@@ -150,7 +174,7 @@ async def save_all_content_to_file(start_url: str, max_pages: int = 500):
         visited.add(current_url)
         count += 1
         
-        # Collect links from the current page
+        # Collect and process links from the current page.
         page_links = set()
         for section in sections:
             page_links.update(section.get("links", []))
@@ -158,6 +182,7 @@ async def save_all_content_to_file(start_url: str, max_pages: int = 500):
         to_visit.extend(new_links - set(to_visit))
         
     print(f"Scraping complete. {len(visited)} pages saved.")
+
 
 if __name__ == "__main__":
     asyncio.run(save_all_content_to_file("https://www.madewithnestle.ca")) 

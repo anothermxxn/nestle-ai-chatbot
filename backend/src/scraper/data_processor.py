@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List
 from datetime import datetime
 from langchain.text_splitter import MarkdownTextSplitter, RecursiveCharacterTextSplitter
 from collections import defaultdict
@@ -55,14 +55,13 @@ def create_content_index() -> Dict:
         file_info = {
             "filename": filename,
             "path": file_path,
-            "url": filename[:-3].replace('_', '/'),  # Convert filename back to URL format
+            "url": filename[:-3].replace('_', '/'),
             "last_modified": datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat()
         }
         index["files"].append(file_info)
         
     index["total_files"] = len(index["files"])
     
-    # Save index
     output_dir = "../../../data/processed"
     os.makedirs(output_dir, exist_ok=True)
     
@@ -201,6 +200,12 @@ def get_content_hash(content: str) -> str:
     """
     Get a simple hash of the content for comparison.
     Removes whitespace and converts to lowercase for better matching.
+    
+    Args:
+        content (str): The text content to hash.
+    
+    Returns:
+        str: A hash of the normalized content.
     """
     return hash(content.lower().replace(" ", ""))
 
@@ -216,9 +221,9 @@ def remove_content_duplicates() -> Dict:
         return {"error": "Content directory not found"}
         
     # Track content hashes and their files
-    content_map = defaultdict(list)  # content hash -> list of files
+    content_map = defaultdict(list)
     
-    # First pass: collect all files and their content hashes
+    # Collect all files and their content hashes
     print("Scanning files...")
     for filename in os.listdir(content_dir):
         if not filename.endswith('.md'):
@@ -226,7 +231,6 @@ def remove_content_duplicates() -> Dict:
             
         file_path = os.path.join(content_dir, filename)
         try:
-            # Read and hash content
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read().strip()
                 content_hash = hash(content.lower().replace(" ", ""))
@@ -240,7 +244,6 @@ def remove_content_duplicates() -> Dict:
     removed_files = []
     for content_hash, files in content_map.items():
         if len(files) > 1:
-            # Keep the first file, remove others
             for duplicate in files[1:]:
                 try:
                     os.remove(duplicate)
@@ -249,7 +252,6 @@ def remove_content_duplicates() -> Dict:
                 except Exception as e:
                     print(f"Error removing {duplicate}: {e}")
     
-    # Prepare report
     report = {
         "timestamp": datetime.utcnow().isoformat(),
         "initial_file_count": sum(1 for f in os.listdir(content_dir) if f.endswith('.md')) + len(removed_files),
@@ -258,7 +260,6 @@ def remove_content_duplicates() -> Dict:
         "removed_files": removed_files
     }
     
-    # Save report
     report_path = os.path.join("../../../data/processed", "duplicate_removal_report.json")
     with open(report_path, 'w', encoding='utf-8') as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
@@ -266,14 +267,14 @@ def remove_content_duplicates() -> Dict:
     return report
 
 if __name__ == "__main__":
-    # First remove duplicates
+    # Remove duplicates
     print("Checking and removing duplicate files...")
     report = remove_content_duplicates()
     print(f"\nRemoved {report['duplicates_removed']} duplicate files.")
     print(f"Original count: {report['initial_file_count']}")
     print(f"Remaining files: {report['remaining_files']}")
     
-    # Then process the cleaned content
+    # Process the cleaned content
     print("\nProcessing content...")
     results = process_all_content()
     print(f"Processed {results['total_files']} files into {results['total_chunks']} chunks") 
