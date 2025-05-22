@@ -3,7 +3,7 @@ import re
 import asyncio
 from typing import Any, Dict, List, Set
 from urllib.parse import urlparse, urljoin
-from utilities import scrape_content, scrape_content_crawl4ai
+from scraper_utilities import scrape_content, scrape_content_crawl4ai
 
 def url_to_filename(url: str) -> str:
     """
