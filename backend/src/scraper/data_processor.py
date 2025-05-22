@@ -1,10 +1,54 @@
 import os
 import json
+import re
+import urllib.parse
 from typing import Dict, List
 from datetime import datetime
 from langchain.text_splitter import MarkdownTextSplitter, RecursiveCharacterTextSplitter
 from collections import defaultdict
 from url_parser import parse_url
+
+def sanitize_url(url: str) -> str:
+    """
+    Sanitize URL for safe storage and retrieval.
+    
+    Args:
+        url (str): Raw URL
+        
+    Returns:
+        str: Sanitized URL safe for storage
+    """
+    # Decode URL-encoded characters
+    decoded = urllib.parse.unquote(url)
+    
+    # Remove any protocol prefix
+    decoded = re.sub(r'^https?://', '', decoded)
+    
+    # Remove special characters and spaces
+    sanitized = re.sub(r'[^a-zA-Z0-9\-_/]', '_', decoded)
+    
+    # Replace multiple underscores with single one
+    sanitized = re.sub(r'_+', '_', sanitized)
+    
+    # Remove leading/trailing underscores
+    sanitized = sanitized.strip('_')
+    
+    return sanitized
+
+def generate_safe_id(url: str, doc_index: int, chunk_index: int) -> str:
+    """
+    Generate a safe document ID from URL and indices.
+    
+    Args:
+        url (str): Document URL
+        doc_index (int): Document index
+        chunk_index (int): Chunk index
+        
+    Returns:
+        str: Safe document ID
+    """
+    safe_url = sanitize_url(url)
+    return f"{safe_url}_{doc_index}_{chunk_index}"
 
 def validate_markdown_file(file_path: str) -> bool:
     """
@@ -116,9 +160,7 @@ def process_markdown_file(file_path: str, url: str) -> List[Dict]:
         keyword in content.lower() 
         for keyword in ["ingredients", "preparation", "method", "directions", "recipe", "cooking"]
     ):
-        # If labeled as recipe but doesn't have recipe-related content
         url_info["content_type"] = "other"
-        # Remove "recipe" from keywords if present
         url_info["keywords"] = [k for k in url_info["keywords"] if k != "recipe"]
     
     # First split on markdown headers to preserve document structure
@@ -134,6 +176,7 @@ def process_markdown_file(file_path: str, url: str) -> List[Dict]:
     )
     
     chunks = []
+    safe_url = sanitize_url(url)
     
     for doc_idx, doc in enumerate(markdown_docs):
         # Look for headers in the content
@@ -148,13 +191,11 @@ def process_markdown_file(file_path: str, url: str) -> List[Dict]:
         
         # If no header found, use first sentence as title
         if not title:
-            # Find first complete sentence
             content_text = " ".join(lines).strip()
             sentence_end = content_text.find(".")
-            if sentence_end > 0 and sentence_end < 100:  # Reasonable title length
+            if sentence_end > 0 and sentence_end < 100:
                 title = content_text[:sentence_end].strip()
             else:
-                # Fallback to first 50 chars if no sentence found
                 title = content_text[:50].strip() + "..."
         
         # Split into smaller chunks if needed
@@ -165,18 +206,17 @@ def process_markdown_file(file_path: str, url: str) -> List[Dict]:
             
         for chunk_idx, chunk in enumerate(section_chunks):
             chunks.append({
-                "url": url,
+                "id": generate_safe_id(url, doc_idx, chunk_idx),
+                "url": safe_url,
                 "content_type": url_info["content_type"],
                 "brand": url_info["brand"],
                 "page_title": url_info["normalized_title"],
                 "section_title": title,
                 "keywords": url_info["keywords"],
-                "hierarchical_path": url_info["hierarchical_path"],
                 "doc_index": doc_idx,
                 "chunk_index": chunk_idx,
                 "total_chunks": len(section_chunks),
                 "content": chunk.strip(),
-                "source_file": file_path,
                 "processed_at": datetime.utcnow().isoformat()
             })
     
@@ -217,14 +257,14 @@ def process_all_content() -> Dict:
             
             # Update statistics
             if chunks:
-                first_chunk = chunks[0]  # All chunks from same file have same metadata
+                first_chunk = chunks[0]
                 results["content_types"][first_chunk["content_type"]] += 1
                 if first_chunk["brand"]:
                     results["brands"][first_chunk["brand"]] += 1
             
             file_info = {
                 "filename": filename,
-                "url": url,
+                "url": sanitize_url(url),
                 "chunks": len(chunks),
                 "content_type": chunks[0]["content_type"] if chunks else "unknown",
                 "brand": chunks[0]["brand"] if chunks else None,
@@ -238,7 +278,7 @@ def process_all_content() -> Dict:
         except Exception as e:
             results["files"].append({
                 "filename": filename,
-                "url": url,
+                "url": sanitize_url(url),
                 "status": "error",
                 "error": str(e)
             })

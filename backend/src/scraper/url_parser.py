@@ -264,12 +264,6 @@ def parse_url(url: str, content: Optional[str] = None) -> Dict:
         content_type = determine_content_type(path_parts, content)
         brand = extract_brand(path_parts)
         
-        # Build hierarchical path
-        hierarchical_path = {
-            f"level_{i+1}": decode_url_part(part)
-            for i, part in enumerate(path_parts)
-        }
-        
         # Generate normalized title from the last meaningful path part
         title_source = path_parts[-1] if path_parts else ""
         if title_source.isdigit() and len(path_parts) > 1:
@@ -283,7 +277,6 @@ def parse_url(url: str, content: Optional[str] = None) -> Dict:
             "content_type": content_type,
             "brand": brand,
             "normalized_title": normalized_title,
-            "hierarchical_path": hierarchical_path,
             "keywords": keywords,
             "original_url": url
         }
@@ -294,7 +287,6 @@ def parse_url(url: str, content: Optional[str] = None) -> Dict:
             "content_type": "other",
             "brand": None,
             "normalized_title": "",
-            "hierarchical_path": {},
             "keywords": [],
             "original_url": url
         } 
