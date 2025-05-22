@@ -1,188 +1,126 @@
 import os
-import re
 import asyncio
-from typing import Any, Dict, List, Set
-from urllib.parse import urlparse, urljoin
-from scraper_utilities import scrape_content, scrape_content_crawl4ai
+import argparse
+import logging
+from link_collector import LinkCollector
+from content_processor import ContentProcessor
 
-def url_to_filename(url: str) -> str:
-    """
-    Convert a URL to a safe filename using the path after the domain.
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+async def collect_links(base_url: str, output_file: str, max_pages: int = 1000):
+    """Collect links from the website and save to file.
     
     Args:
-        url (str): The URL to convert.
-    
-    Returns:
-        str: A safe filename derived from the URL path.
+        base_url (str): Starting URL to collect links from
+        output_file (str): Path to save collected links
+        max_pages (int): Maximum number of pages to process
     """
-    # Parse URL and get path.
-    parsed = urlparse(url)
-    path = parsed.path.rstrip("/")
-    
-    # Use "index" for root path.
-    if not path:
-        return "index"
-    
-    # Clean path to create safe filename.
-    path = path.lstrip("/")
-    name = re.sub(r"[^a-zA-Z0-9._/-]", "_", path)
-    name = name.replace("/", "_")
-    
-    return name
+    collector = LinkCollector(base_url=base_url, output_file=output_file)
+    await collector.collect_links(max_pages=max_pages)
 
-
-def get_unique_filename(path: str, filename: str) -> str:
-    """
-    Generate a unique filename by adding a numeric suffix if the file already exists.
+async def process_content(links_file: str, output_dir: str):
+    """Process collected links with crawl4ai and generate markdown files.
     
     Args:
-        path (str): The directory path where the file will be saved.
-        filename (str): The original filename.
-    
-    Returns:
-        str: A unique filename that doesn't exist in the given path.
+        links_file (str): Path to JSON file containing collected links
+        output_dir (str): Directory to save markdown files
     """
-    # Split filename and extension.
-    name, ext = os.path.splitext(filename)
-    final_path = os.path.join(path, filename)
-    
-    # Add numeric suffix until unique filename is found.
-    counter = 1
-    while os.path.exists(final_path):
-        new_filename = f"{name}_{counter}{ext}"
-        final_path = os.path.join(path, new_filename)
-        counter += 1
-        
-    return final_path
+    processor = ContentProcessor(links_file=links_file, output_dir=output_dir)
+    await processor.process_content()
 
-
-def save_content_to_file(sections: List[Dict], url: str):
-    """
-    Save grouped content (text, images, links, tables) to a single themed text file.
+async def run_scraper(
+    base_url: str,
+    links_file: str,
+    output_dir: str,
+    max_pages: int = 1000,
+    phase: str = "all"
+):
+    """Run the scraper in the specified phase.
     
     Args:
-        sections (List[Dict]): List of grouped content sections.
-        url (str): The URL the content was scraped from.
+        base_url (str): Starting URL to collect links from
+        links_file (str): Path to save/load links JSON file
+        output_dir (str): Directory to save markdown files
+        max_pages (int): Maximum number of pages to collect links from
+        phase (str): Which phase to run ("collect", "process", or "all")
     """
-    # Generate output path.
-    base_filename = url_to_filename(url) + ".txt"
-    base_path = "../../../data/raw"
-    output_path = get_unique_filename(base_path, base_filename)
+    # if phase in ["collect", "all"]:
+    #     logger.info("Starting link collection phase")
+    #     await collect_links(
+    #         base_url=base_url,
+    #         output_file=links_file,
+    #         max_pages=max_pages
+    #     )
     
-    # Write content to file.
-    with open(output_path, "w", encoding="utf-8") as f:
-        for section in sections:
-            f.write(f"=== {section['heading']} ===\n")
-            
-            if section["content"]:
-                f.write(section["content"] + "\n")
-            
-            if section["images"]:
-                f.write("[Images]\n")
-                for img in section["images"]:
-                    f.write(f"{img}\n")
-            
-            if section["links"]:
-                f.write("[Links]\n")
-                for link in section["links"]:
-                    f.write(f"{link}\n")
-            
-            if section["tables"]:
-                for idx, table in enumerate(section["tables"]):
-                    f.write(f"[Table {idx+1}]\n")
-                    f.write("Headers: " + ", ".join(table["headers"]) + "\n")
-                    for row in table["rows"]:
-                        f.write(", ".join(row) + "\n")
-            
-            f.write("\n")
-            
-    print(f"Scraped content saved to {output_path}")
+    # if phase in ["process", "all"]:
+    logger.info("Starting content processing phase")
+    await process_content(
+        links_file=links_file,
+        output_dir=output_dir,
+    )
 
-
-def save_crawl4ai_content_to_file(content: Any, url: str):
-    """
-    Save Crawl4AI content to a markdown file.
+def main():
+    """Main entry point with command line argument parsing."""
+    parser = argparse.ArgumentParser(description="Nestle AI Chatbot Scraper")
     
-    Args:
-        content (Any): The Crawl4AI content result.
-        url (str): The URL the content was scraped from.
-    """
-    # Generate output path.
-    base_filename = url_to_filename(url) + ".md"
-    base_path = "../../../data/crawl4ai"
-    output_path = get_unique_filename(base_path, base_filename)
+    parser.add_argument(
+        "--base-url",
+        default="https://www.madewithnestle.ca",
+        help="Starting URL to collect links from"
+    )
     
-    # Write markdown content to file.
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(content.markdown.fit_markdown)
+    parser.add_argument(
+        "--links-file",
+        default="../../../data/collected_links.json",
+        help="Path to save/load links JSON file"
+    )
     
-    print(f"Crawl4AI content saved to {output_path}")
-
-
-def process_links(links: List[str], base_url: str, visited: Set[str]) -> Set[str]:
-    """
-    Normalize, deduplicate, and filter links to only include those on the same domain and not yet visited.
+    parser.add_argument(
+        "--output-dir",
+        default="../../../data/raw",
+        help="Directory to save markdown files"
+    )
     
-    Args:
-        links (List[str]): The links to process (can be relative or absolute).
-        base_url (str): The base URL to resolve relative links.
-        visited (Set[str]): Set of URLs that have already been visited.
+    parser.add_argument(
+        "--max-pages",
+        type=int,
+        default=1000,
+        help="Maximum number of pages to collect links from"
+    )
     
-    Returns:
-        Set[str]: Set of normalized, deduplicated, and filtered absolute URLs.
-    """
-    processed = set()
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=5,
+        help="Number of URLs to process concurrently"
+    )
     
-    for link in links:
-        # Convert relative links to absolute.
-        abs_link = urljoin(base_url, link)
-        parsed = urlparse(abs_link)
-        
-        # Keep only unvisited links from the same domain.
-        if parsed.netloc == "www.madewithnestle.ca" and abs_link not in visited:
-            processed.add(abs_link)
-            
-    return processed
-
-
-async def save_all_content_to_file(start_url: str, max_pages: int = 500):
-    """
-    Scrape the start URL and all subpages linked from it (same domain), saving each to a file.
+    parser.add_argument(
+        "--phase",
+        choices=["collect", "process", "all"],
+        default="all",
+        help="Which phase to run"
+    )
     
-    Args:
-        start_url (str): The starting URL to scrape.
-        max_pages (int): Maximum number of pages to scrape.
-    """
-    visited = set()
-    to_visit = [start_url]
-    count = 0
+    args = parser.parse_args()
     
-    while to_visit and count < max_pages:
-        current_url = to_visit.pop(0)
-        if current_url in visited:
-            continue
-            
-        print(f"Scraping: {current_url}")
-        
-        # Scrape content using both methods.
-        sections = await scrape_content(current_url)
-        save_content_to_file(sections, current_url)
-        
-        result = await scrape_content_crawl4ai(current_url)
-        save_crawl4ai_content_to_file(result, current_url)
-        
-        visited.add(current_url)
-        count += 1
-        
-        # Collect and process links from the current page.
-        page_links = set()
-        for section in sections:
-            page_links.update(section.get("links", []))
-        new_links = process_links(page_links, current_url, visited)
-        to_visit.extend(new_links - set(to_visit))
-        
-    print(f"Scraping complete. {len(visited)} pages saved.")
-
+    # Create output directories
+    os.makedirs(os.path.dirname(args.links_file), exist_ok=True)
+    os.makedirs(args.output_dir, exist_ok=True)
+    
+    # Run scraper
+    asyncio.run(run_scraper(
+        base_url=args.base_url,
+        links_file=args.links_file,
+        output_dir=args.output_dir,
+        max_pages=args.max_pages,
+        phase=args.phase
+    ))
 
 if __name__ == "__main__":
-    asyncio.run(save_all_content_to_file("https://www.madewithnestle.ca")) 
+    main() 
