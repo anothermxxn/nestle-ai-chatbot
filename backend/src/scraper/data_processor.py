@@ -108,6 +108,19 @@ def process_markdown_file(file_path: str, url: str) -> List[Dict]:
     # Parse URL for metadata
     url_info = parse_url(url, content)
     
+    # Override content type for special cases
+    if url.startswith("#") or url.startswith("javascript:"):
+        url_info["content_type"] = "navigation"
+        url_info["keywords"] = ["navigation"]
+    elif "recipe" in url_info["content_type"] and not any(
+        keyword in content.lower() 
+        for keyword in ["ingredients", "preparation", "method", "directions", "recipe", "cooking"]
+    ):
+        # If labeled as recipe but doesn't have recipe-related content
+        url_info["content_type"] = "other"
+        # Remove "recipe" from keywords if present
+        url_info["keywords"] = [k for k in url_info["keywords"] if k != "recipe"]
+    
     # First split on markdown headers to preserve document structure
     markdown_splitter = MarkdownTextSplitter(chunk_size=2000, chunk_overlap=200)
     markdown_docs = markdown_splitter.create_documents([content])
