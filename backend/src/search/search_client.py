@@ -9,6 +9,7 @@ from config import (
     AZURE_SEARCH_ADMIN_KEY,
     AZURE_SEARCH_INDEX_NAME
 )
+from relevance_scorer import VectorSearchRanker
 
 # Configure logging
 logging.basicConfig(
@@ -24,10 +25,15 @@ logger = logging.getLogger(__name__)
 
 
 class AzureSearchClient:
-    """Client for searching documents in Azure Cognitive Search."""
+    """Client for searching documents in Azure Cognitive Search with enhanced vector ranking."""
     
-    def __init__(self):
-        """Initialize the Azure Search client."""
+    def __init__(self, enable_enhanced_ranking: bool = True):
+        """
+        Initialize the Azure Search client.
+        
+        Args:
+            enable_enhanced_ranking (bool): Whether to enable enhanced relevance ranking on top of vector search
+        """
         self.endpoint = AZURE_SEARCH_ENDPOINT
         self.credential = AzureKeyCredential(AZURE_SEARCH_ADMIN_KEY)
         self.client = SearchClient(
@@ -35,6 +41,13 @@ class AzureSearchClient:
             index_name=AZURE_SEARCH_INDEX_NAME,
             credential=self.credential
         )
+        
+        # Initialize enhanced ranker if enabled
+        self.enable_enhanced_ranking = enable_enhanced_ranking
+        if enable_enhanced_ranking:
+            self.ranker = VectorSearchRanker()
+        else:
+            self.ranker = None
 
     def _prepare_document(self, document: Dict) -> Dict:
             """
@@ -139,10 +152,13 @@ class AzureSearchClient:
         keywords: Optional[List[str]] = None,
         top: int = 10,
         skip: int = 0,
-        exhaustive: bool = True
+        exhaustive: bool = True,
+        enable_ranking: bool = True,
+        custom_boosts: Optional[Dict[str, float]] = None,
+        custom_weights: Optional[Dict[str, float]] = None
     ) -> List[Dict]:
         """
-        Search the index using hybrid search (keyword + vector) with optional filters.
+        Search the index using hybrid search (keyword + vector) with optional enhanced ranking.
         
         Args:
             query (str): The search query for keyword search.
@@ -157,6 +173,9 @@ class AzureSearchClient:
             skip (int): Number of results to skip for pagination.
             exhaustive (bool): Whether to perform exhaustive vector search.
                 When True, searches all vectors. When False, uses approximate search.
+            enable_ranking (bool): Whether to apply enhanced relevance ranking on top of vector scores.
+            custom_boosts (Optional[Dict[str, float]]): Custom boost factors for ranking.
+            custom_weights (Optional[Dict[str, float]]): Custom weight adjustments for ranking.
             
         Returns:
             List[Dict]: List of search results with the following fields:
@@ -170,11 +189,15 @@ class AzureSearchClient:
                 - keywords: List of keywords
                 - chunk_index: Chunk index within document
                 - total_chunks: Total number of chunks in document
+                - @search.score: Original Azure Search score (vector + BM25)
+                - relevance_score: Enhanced relevance score (if ranking enabled)
+                - original_vector_score: Normalized vector similarity score (if ranking enabled)
+                - score_breakdown: Detailed scoring breakdown (if ranking enabled)
         """
         try:
             # Build search options
             search_options = {
-                "select": "id,url,page_title,section_title,content,content_type,brand,keywords,doc_index,chunk_index,total_chunks",
+                "select": "id,url,page_title,section_title,content,content_type,brand,keywords,doc_index,chunk_index,total_chunks,processed_at",
                 "top": top,
                 "skip": skip,
                 "include_total_count": True,
@@ -207,6 +230,7 @@ class AzureSearchClient:
                         text=text_query,
                         k_nearest_neighbors=top,
                         fields="content_vector,page_title_vector,section_title_vector",
+                        exhaustive=exhaustive,
                     )
                 )
             
@@ -220,6 +244,7 @@ class AzureSearchClient:
                                 "vector": vector,
                                 "k_nearest_neighbors": top,
                                 "fields": f"{field}_vector",
+                                "exhaustive": exhaustive,
                             }
                         )
             
@@ -233,7 +258,19 @@ class AzureSearchClient:
             )
             
             # Convert results to list of dictionaries
-            return [dict(result) for result in results]
+            search_results = [dict(result) for result in results]
+            
+            # Apply enhanced ranking if enabled
+            if enable_ranking and self.enable_enhanced_ranking and self.ranker:
+                search_query = query or text_query or ""
+                search_results = self.ranker.rank_results(
+                    query=search_query,
+                    results=search_results,
+                    custom_boosts=custom_boosts,
+                    custom_weights=custom_weights
+                )
+            
+            return search_results
             
         except Exception as e:
             logger.error(f"Search failed: {str(e)}")
