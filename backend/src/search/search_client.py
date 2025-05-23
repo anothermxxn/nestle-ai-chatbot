@@ -132,7 +132,7 @@ class AzureSearchClient:
                     overall_success = False
                 else:
                     logger.info(f"Batch {batch_num}: All {len(successful)} documents uploaded successfully")
-            
+                        
             # Final summary
             logger.info(f"Upload complete: {total_successful} successful, {total_failed} failed")
             return overall_success
