@@ -81,6 +81,49 @@ def generate_safe_id(url: str, doc_index: int, chunk_index: int) -> str:
     safe_url = sanitize_url(url)
     return f"{safe_url}_{doc_index}_{chunk_index}"
 
+def is_error_page(title: str, content: str) -> bool:
+    """
+    Check if a page is an error page (404, 500, etc.).
+    
+    Args:
+        title (str): Page title
+        content (str): Page content
+        
+    Returns:
+        bool: True if page is an error page
+    """
+    title_lower = title.lower() if title else ""
+    content_lower = content.lower()
+    
+    # 404 error indicators
+    error_indicators = [
+        "404",
+        "page not found",
+        "page you were looking for",
+        "not found",
+        "page doesn't exist",
+        "page has been removed",
+        "broken link",
+        "missing page",
+        "error 404",
+        "file not found",
+        "red mugger strikes",  # Specific to Nestle's 404 page
+        "stole the page you were looking for"
+    ]
+    
+    # Check if any error indicators are present
+    for indicator in error_indicators:
+        if indicator in title_lower or indicator in content_lower:
+            return True
+    
+    # Check for HTTP error codes
+    error_codes = ["400", "401", "403", "404", "500", "502", "503"]
+    for code in error_codes:
+        if code in title_lower:
+            return True
+    
+    return False
+
 def is_boilerplate_section(title: str, content: str) -> bool:
     """
     Check if a section is likely boilerplate content (cookies, privacy, etc.).
@@ -97,6 +140,10 @@ def is_boilerplate_section(title: str, content: str) -> bool:
         
     # Check if content is too short
     if len(content.strip()) < MIN_CONTENT_LENGTH:
+        return True
+    
+    # Check if this is an error page
+    if is_error_page(title, content):
         return True
     
     # Check title against exclusion patterns
@@ -310,6 +357,11 @@ def process_markdown_file(file_path: str, url: str, common_content_hashes: Set[s
     
     # Parse URL for metadata
     url_info = parse_url(url, content)
+    
+    # Check if entire page is an error page - skip if so
+    if is_error_page(url_info["normalized_title"], content):
+        print(f"Skipping error page: {url}")
+        return []
     
     # Override content type for special cases
     if url.startswith("#") or url.startswith("javascript:"):
