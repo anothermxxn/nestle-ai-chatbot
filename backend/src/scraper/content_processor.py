@@ -2,8 +2,8 @@ import os
 import json
 import logging
 from datetime import datetime
-from typing import Dict, List, Set
-from urllib.parse import urlparse, urljoin
+from typing import Dict, List
+from urllib.parse import urlparse
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 from crawl4ai.content_filter_strategy import PruningContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
@@ -28,107 +28,50 @@ class ContentProcessor:
         self.links_file = links_file
         self.output_dir = output_dir
         self.processed_urls: Dict[str, Dict] = {}
-        self.to_process: Set[str] = set()  # URLs waiting to be processed
-        self.base_domain = ""  # Will be set when loading URLs
+        self.base_domain = ""
         
         # Create output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
     
-    def _is_valid_url(self, url: str) -> bool:
-        """Check if URL belongs to base domain and is not a media file or filter URL."""
-        try:
-            parsed = urlparse(url)
-            return (
-                parsed.netloc == self.base_domain
-                and parsed.scheme in ("http", "https")
-                and "recipe_tags_filter" not in url
-                and not any(ext in url.lower() for ext in [".jpg", ".jpeg", ".png", ".gif", ".pdf"])
-            )
-        except Exception:
-            return False
-    
     def _load_urls(self) -> List[str]:
-        """Load URLs from file and remove exact duplicates."""
+        """Load URLs from the collected_links.json file."""
         with open(self.links_file, "r", encoding="utf-8") as f:
             data = json.load(f)
-            # Filter out recipe_tags_filter URLs first
-            urls = [url for url in data["pages"].keys() if "recipe_tags_filter" not in url]
+            urls = list(data["pages"].keys())
             
             # Set base domain from first URL
             if urls:
                 self.base_domain = urlparse(urls[0]).netloc
         
-        # Remove exact duplicates while preserving order
-        unique_urls = []
-        seen = set()
-        
-        for url in urls:
-            if url not in seen:
-                seen.add(url)
-                unique_urls.append(url)
-                self.to_process.add(url)
-            else:
-                logger.info(f"Found exact duplicate URL: {url}")
-        
-        logger.info(f"Loaded {len(unique_urls)} unique URLs from {len(urls)} total URLs")
-        return unique_urls
-    
-    async def _extract_links(self, page_content: str, base_url: str) -> Set[str]:
-        """Extract links from page content."""
-        links = set()
-        
-        # Use a simple regex to find links (crawl4ai's content is markdown)
-        import re
-        href_pattern = re.compile(r'\[([^\]]+)\]\(([^)]+)\)')
-        matches = href_pattern.findall(page_content)
-        
-        for _, href in matches:
-            try:
-                absolute_url = urljoin(base_url, href)
-                if self._is_valid_url(absolute_url):
-                    if absolute_url not in self.to_process and absolute_url not in self.processed_urls:
-                        self.to_process.add(absolute_url)
-                        links.add(absolute_url)
-            except Exception as e:
-                logger.debug(f"Error processing link {href}: {e}")
-        
-        return links
+        logger.info(f"Loaded {len(urls)} URLs to process from {self.links_file}")
+        return urls
     
     def _get_output_path(self, url: str) -> str:
-        """Generate output file path for a URL.
-        
-        Example:
-            URL: https://www.madewithnestle.ca/recipe/cardamom-donuts-vanilla-bean-ice-cream/1
-            Filename: recipe_cardamom-donuts-vanilla-bean-ice-cream_1.md
-        """
+        """Generate output file path for a URL."""
         try:
             # Remove domain part
             path = url.split(self.base_domain)[-1].strip("/")
             
-            # Split path into parts
+            # Split path into parts and join with underscores
             parts = [part for part in path.split("/") if part]
-            
-            # Join parts with underscores
             filename = "_".join(parts)
             
             # Handle empty or invalid paths
             if not filename:
-                # Fallback to safe version of full URL
                 filename = url.replace("://", "_").replace("/", "_").replace(".", "_")
             
             return os.path.join(self.output_dir, f"{filename}.md")
             
         except Exception as e:
             logger.error(f"Error creating filename for {url}: {e}")
-            # Fallback to safe version of full URL
             safe_name = url.replace("://", "_").replace("/", "_").replace(".", "_")
             return os.path.join(self.output_dir, f"{safe_name}.md")
     
     async def process_content(self, max_retries: int = 3):
-        """Process URLs sequentially, following links to subpages."""
+        """Process all collected URLs to generate markdown content."""
         urls = self._load_urls()
         
-        logger.info(f"Starting content processing with {len(self.to_process)} initial URLs")
+        logger.info(f"Starting content processing for {len(urls)} URLs")
         
         # Configure crawl4ai
         browser_config = BrowserConfig(
@@ -148,14 +91,8 @@ class ContentProcessor:
         )
         
         async with AsyncWebCrawler(config=browser_config) as crawler:
-            while self.to_process:
-                url = self.to_process.pop()
-                
-                # Skip if already processed
-                if url in self.processed_urls and self.processed_urls[url]["success"]:
-                    continue
-                
-                logger.info(f"Processing {url}")
+            for i, url in enumerate(urls, 1):
+                logger.info(f"Processing {i}/{len(urls)}: {url}")
                 output_path = self._get_output_path(url)
                 
                 try:
@@ -176,12 +113,16 @@ class ContentProcessor:
                                     "processed_at": datetime.utcnow().isoformat()
                                 }
                                 
-                                # Extract and add new links to process
-                                new_links = await self._extract_links(content, url)
-                                if new_links:
-                                    logger.info(f"Found {len(new_links)} new links in {url}")
-                                
+                                logger.info(f"Successfully processed: {url}")
                                 break
+                            else:
+                                logger.warning(f"Failed to crawl {url}: {result.error_message}")
+                                if attempt == max_retries - 1:
+                                    self.processed_urls[url] = {
+                                        "success": False,
+                                        "error": result.error_message or "Unknown crawling error",
+                                        "processed_at": datetime.utcnow().isoformat()
+                                    }
                             
                         except Exception as e:
                             logger.error(f"Error processing {url} (attempt {attempt + 1}): {str(e)}")
@@ -203,15 +144,17 @@ class ContentProcessor:
         # Save processing results
         self._save_results()
         
-        logger.info("Content processing complete")
-        logger.info(f"Processed {len(self.processed_urls)} URLs in total")
+        successful = sum(1 for v in self.processed_urls.values() if v["success"])
+        logger.info(f"Content processing complete: {successful}/{len(urls)} URLs processed successfully")
     
     def _save_results(self):
         """Save processing results to JSON file."""
+        successful = sum(1 for v in self.processed_urls.values() if v["success"])
         results = {
             "metadata": {
                 "total_urls": len(self.processed_urls),
-                "successful": sum(1 for v in self.processed_urls.values() if v["success"]),
+                "successful": successful,
+                "failed": len(self.processed_urls) - successful,
                 "timestamp": datetime.utcnow().isoformat()
             },
             "results": self.processed_urls

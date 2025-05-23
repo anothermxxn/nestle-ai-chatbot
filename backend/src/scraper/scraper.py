@@ -12,7 +12,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-async def collect_links(base_url: str, output_file: str, max_pages: int = 1000):
+async def collect_links(base_url: str, output_file: str, max_pages: int = 10000):
     """Collect links from the website and save to file.
     
     Args:
@@ -37,7 +37,7 @@ async def run_scraper(
     base_url: str,
     links_file: str,
     output_dir: str,
-    max_pages: int = 1000,
+    max_pages: int = 10000,
     phase: str = "all"
 ):
     """Run the scraper in the specified phase.
@@ -70,7 +70,7 @@ def main():
     
     parser.add_argument(
         "--base-url",
-        default="https://www.madewithnestle.ca",
+        default="https://www.madewithnestle.ca/sitemap",
         help="Starting URL to collect links from"
     )
     
@@ -89,7 +89,7 @@ def main():
     parser.add_argument(
         "--max-pages",
         type=int,
-        default=1000,
+        default=10000,
         help="Maximum number of pages to collect links from"
     )
     

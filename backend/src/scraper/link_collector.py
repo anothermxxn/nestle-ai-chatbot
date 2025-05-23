@@ -69,6 +69,9 @@ class LinkCollector:
                 parsed.netloc == self.base_domain
                 and parsed.scheme in ("http", "https")
                 and not any(ext in url.lower() for ext in [".jpg", ".jpeg", ".png", ".gif", ".pdf"])
+                and "recipe_tags_filter" not in url.lower()
+                and "recipe_brand_reference" not in url.lower()
+                and "recipe_total_time" not in url.lower()
             )
         except Exception:
             return False
@@ -127,25 +130,27 @@ class LinkCollector:
             
             try:
                 while self.to_visit and len(self.visited) < max_pages:
-                    # Process up to concurrency pages at once
-                    current_batch = list(self.to_visit)[:concurrency]
-                    self.to_visit -= set(current_batch)
+                    # Get next batch of unvisited URLs
+                    current_batch = set()
+                    for url in self.to_visit:
+                        if url not in self.visited and len(current_batch) < concurrency:
+                            current_batch.add(url)
+                    
+                    # Break if no unvisited URLs left
+                    if not current_batch:
+                        break
+                    
+                    # Remove batch URLs from to_visit set
+                    self.to_visit -= current_batch
                     
                     tasks = []
                     for url, page in zip(current_batch, pages):
-                        if url in self.visited:
-                            continue
-                        
                         logger.info(f"Collecting links from: {url}")
                         tasks.append(self._process_page(url, page))
                     
                     if tasks:
                         await asyncio.gather(*tasks)
                     
-                    # Break if no more URLs to process
-                    if not self.to_visit:
-                        break
-                
             finally:
                 # Close all pages
                 for page in pages:
@@ -158,6 +163,9 @@ class LinkCollector:
     
     async def _process_page(self, url: str, page: Page):
         """Process a single page to extract links and metadata."""
+        if url in self.visited:
+            return
+            
         try:
             await page.goto(url, wait_until="networkidle")
             
@@ -173,7 +181,10 @@ class LinkCollector:
             
             # Update tracking sets
             self.visited.add(url)
-            self.to_visit.update(links - self.visited)
+            
+            # Only add unvisited links to to_visit set
+            unvisited_links = links - self.visited
+            self.to_visit.update(unvisited_links)
             
         except Exception as e:
             logger.error(f"Error processing {url}: {e}")
