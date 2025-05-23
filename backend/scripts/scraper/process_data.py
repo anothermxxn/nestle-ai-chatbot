@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-"""
-Data Processing Script for Nestle AI Chatbot
-
-This script processes the scraped markdown files into chunks suitable for vector storage.
-It removes boilerplate content and prepares data for the search index.
-"""
-
 import os
 import sys
 import argparse
@@ -17,7 +9,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 from scraper.data_processor import (
     process_all_content,
     remove_content_duplicates,
-    create_content_index
 )
 
 # Configure logging
@@ -27,10 +18,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def run_duplicate_removal():
+def get_default_paths():
+    """Get default data directory paths."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.join(script_dir, "..", "..", "..")
+    return {
+        "raw_dir": os.path.normpath(os.path.join(project_root, "data", "raw")),
+        "processed_dir": os.path.normpath(os.path.join(project_root, "data", "processed"))
+    }
+
+def run_duplicate_removal(raw_dir: str):
     """Remove duplicate content files."""
     logger.info("Checking and removing duplicate files...")
-    report = remove_content_duplicates()
+    report = remove_content_duplicates(raw_dir)
     
     if "error" in report:
         logger.error(f"Error removing duplicates: {report['error']}")
@@ -44,10 +44,10 @@ def run_duplicate_removal():
     
     return True
 
-def run_content_processing():
+def run_content_processing(raw_dir: str, processed_dir: str):
     """Process all content into chunks."""
     logger.info("Processing content into chunks...")
-    results = process_all_content()
+    results = process_all_content(raw_dir, processed_dir)
     
     logger.info(f"Processing completed:")
     logger.info(f"  - Files processed: {results['total_files']}")
@@ -57,26 +57,30 @@ def run_content_processing():
     
     return True
 
-def run_content_indexing():
-    """Create content index."""
-    logger.info("Creating content index...")
-    index = create_content_index()
-    
-    logger.info(f"Content index created:")
-    logger.info(f"  - Total files: {index['total_files']}")
-    logger.info(f"  - Timestamp: {index['timestamp']}")
-    
-    return True
-
 def main():
     """Main entry point with command line argument parsing."""
     parser = argparse.ArgumentParser(description="Nestle AI Chatbot Data Processor")
     
+    # Get default paths
+    default_paths = get_default_paths()
+    
     parser.add_argument(
         "--step",
-        choices=["duplicates", "process", "index", "all"],
+        choices=["duplicates", "process", "all"],
         default="all",
         help="Which processing step to run"
+    )
+    
+    parser.add_argument(
+        "--raw-dir",
+        default=default_paths["raw_dir"],
+        help="Path to directory containing raw markdown files"
+    )
+    
+    parser.add_argument(
+        "--processed-dir", 
+        default=default_paths["processed_dir"],
+        help="Path to directory for processed output files"
     )
     
     parser.add_argument(
@@ -91,27 +95,31 @@ def main():
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
     
+    # Validate paths
+    if not os.path.exists(args.raw_dir):
+        logger.error(f"Raw data directory not found: {args.raw_dir}")
+        sys.exit(1)
+    
+    # Create processed directory if it doesn't exist
+    os.makedirs(args.processed_dir, exist_ok=True)
+    
+    logger.info(f"Raw data directory: {args.raw_dir}")
+    logger.info(f"Processed data directory: {args.processed_dir}")
+    
     # Run specified steps
     success = True
     
     if args.step in ["duplicates", "all"]:
-        logger.info("=" * 50)
+        logger.info("\n" + "=" * 50)
         logger.info("STEP 1: REMOVING DUPLICATES")
         logger.info("=" * 50)
-        success &= run_duplicate_removal()
+        success &= run_duplicate_removal(args.raw_dir)
     
     if args.step in ["process", "all"]:
         logger.info("\n" + "=" * 50)
-        logger.info("STEP 2: PROCESSING CONTENT")
+        logger.info("STEP 2: CONTENT PROCESSING")
         logger.info("=" * 50)
-        success &= run_content_processing()
-    
-    if args.step in ["index", "all"]:
-        logger.info("\n" + "=" * 50)
-        logger.info("STEP 3: CREATING INDEX")
-        logger.info("=" * 50)
-        success &= run_content_indexing()
-    
+        success &= run_content_processing(args.raw_dir, args.processed_dir)
     if success:
         logger.info("\n🎉 All processing steps completed successfully!")
     else:

@@ -5,7 +5,6 @@ from .scraper import collect_links, process_content, run_scraper
 from .data_processor import (
     process_all_content,
     remove_content_duplicates,
-    create_content_index,
     process_markdown_file,
     sanitize_url,
     generate_safe_id
@@ -33,7 +32,6 @@ __all__ = [
     # Data processing
     "process_all_content",
     "remove_content_duplicates",
-    "create_content_index",
     "process_markdown_file",
     "sanitize_url",
     "generate_safe_id"
