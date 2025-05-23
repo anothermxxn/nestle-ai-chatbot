@@ -4,12 +4,23 @@ from typing import Dict, List, Optional
 from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizableTextQuery
 from azure.core.credentials import AzureKeyCredential
-from config import (
-    AZURE_SEARCH_ENDPOINT,
-    AZURE_SEARCH_ADMIN_KEY,
-    AZURE_SEARCH_INDEX_NAME
-)
-from relevance_scorer import VectorSearchRanker
+
+# Handle imports for both relative and absolute contexts
+try:
+    from .config import (
+        AZURE_SEARCH_ENDPOINT,
+        AZURE_SEARCH_ADMIN_KEY,
+        AZURE_SEARCH_INDEX_NAME
+    )
+    from .relevance_scorer import VectorSearchRanker
+except ImportError:
+    # Fallback for absolute import context
+    from config import (
+        AZURE_SEARCH_ENDPOINT,
+        AZURE_SEARCH_ADMIN_KEY,
+        AZURE_SEARCH_INDEX_NAME
+    )
+    from relevance_scorer import VectorSearchRanker
 
 # Configure logging
 logging.basicConfig(

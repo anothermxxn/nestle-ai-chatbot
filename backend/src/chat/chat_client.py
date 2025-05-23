@@ -6,7 +6,7 @@ from openai import AzureOpenAI
 from dotenv import load_dotenv
 from .session_manager import SessionManager
 
-# Add the search module to the path
+# Add search module to path
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "search"))
 from search_client import AzureSearchClient
 

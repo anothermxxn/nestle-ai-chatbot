@@ -1,10 +1,14 @@
 import asyncio
 import json
 import os
+import sys
 from typing import List, Dict
 from openai import AzureOpenAI
 from dotenv import load_dotenv
-from search_client import AzureSearchClient
+
+# Add src to the path for imports
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
+from search.search_client import AzureSearchClient
 
 # Load environment variables
 load_dotenv()

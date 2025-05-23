@@ -1,7 +1,12 @@
 import os
+import sys
 import requests
 import logging
 from dotenv import load_dotenv
+
+# Add src to the path for imports
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
+from search.config import INDEX_SETTINGS
 
 # Load environment variables
 load_dotenv()
@@ -37,9 +42,8 @@ def create_index(index_settings):
         raise
 
 def main():
-    from config import INDEX_SETTINGS
     try:
-        result = create_index(INDEX_SETTINGS)
+        create_index(INDEX_SETTINGS)
         logger.info("Index creation completed")
     except Exception as e:
         logger.error(f"Failed to create index: {str(e)}")

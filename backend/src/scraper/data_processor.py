@@ -13,7 +13,6 @@ from nltk.util import ngrams
 
 from .url_parser import parse_url
 
-
 # Download required NLTK data if not already present
 try:
     nltk.data.find("tokenizers/punkt")
