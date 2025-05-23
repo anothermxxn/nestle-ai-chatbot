@@ -1,12 +1,10 @@
 import asyncio
 import json
 import os
-from pathlib import Path
 from typing import List, Dict
-import numpy as np
 from openai import AzureOpenAI
-from azure_search import AzureSearchClient
 from dotenv import load_dotenv
+from search import AzureSearchClient
 
 # Load environment variables
 load_dotenv()

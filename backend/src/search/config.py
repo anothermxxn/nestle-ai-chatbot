@@ -59,7 +59,6 @@ INDEX_SETTINGS = {
             "searchable": True,
             "retrievable": True,
             "dimensions": 1536,
-            "vectorSearchConfiguration": "default"
         },
         {
             "name": "page_title",
@@ -77,7 +76,6 @@ INDEX_SETTINGS = {
             "searchable": True,
             "retrievable": True,
             "dimensions": 1536,
-            "vectorSearchConfiguration": "default"
         },
         {
             "name": "section_title",
@@ -94,7 +92,6 @@ INDEX_SETTINGS = {
             "searchable": True,
             "retrievable": True,
             "dimensions": 1536,
-            "vectorSearchConfiguration": "default"
         },
         
         # Classification Fields
