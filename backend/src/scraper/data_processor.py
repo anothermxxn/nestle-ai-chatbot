@@ -6,7 +6,7 @@ from typing import Dict, List, Set, Tuple
 from datetime import datetime
 from langchain.text_splitter import MarkdownTextSplitter, RecursiveCharacterTextSplitter
 from collections import defaultdict
-from url_parser import parse_url
+from .url_parser import parse_url
 
 # Common boilerplate content patterns to exclude
 EXCLUDE_SECTION_PATTERNS = [
@@ -626,15 +626,4 @@ def remove_content_duplicates() -> Dict:
             except Exception as e:
                 print(f"Error removing {file['filename']}: {str(e)}")
                 
-    return results
-
-if __name__ == "__main__":
-    # Remove duplicates
-    print("Checking and removing duplicate files...")
-    report = remove_content_duplicates()
-    print(f"\nRemoved {len(report['duplicates'])} duplicate files.")
-    
-    # Process the cleaned content
-    print("\nProcessing content...")
-    results = process_all_content()
-    print(f"Processed {results['total_files']} files into {results['total_chunks']} chunks") 
+    return results 
