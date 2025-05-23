@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 from typing import Dict, List, Optional, Union
 from azure.search.documents import SearchClient
@@ -34,6 +35,98 @@ class AzureSearchClient:
             index_name=AZURE_SEARCH_INDEX_NAME,
             credential=self.credential
         )
+
+    def _prepare_document(self, document: Dict) -> Dict:
+            """
+            Prepare document for indexing by:
+            1. Adding a unique id field
+            2. Converting processed_at to Azure Search format
+            
+            Args:
+                document (Dict): Document to prepare.
+                
+            Returns:
+                Dict: Prepared document.
+            """
+            doc = document.copy()
+            
+            # Generate unique id from url, doc_index, and chunk_index
+            doc["id"] = f"{doc['url']}_{doc['doc_index']}_{doc['chunk_index']}".replace("/", "_")
+            
+            if "processed_at" in doc:
+                # Convert ISO format to Azure Search format
+                try:
+                    # Parse the ISO datetime string
+                    dt = datetime.fromisoformat(doc["processed_at"])
+                    # Format for Azure Search
+                    doc["processed_at"] = dt.strftime("%Y-%m-%dT%H:%M:%S") + "+00:00"
+                except Exception as e:
+                    logger.error(f"Error formatting processed_at: {str(e)}")
+                    raise
+            
+            return doc
+        
+    async def index_documents(self, documents: List[Dict]) -> bool:
+        """
+        Index a batch of documents.
+        
+        Args:
+            documents (List[Dict]): List of documents to index.
+            
+        Returns:
+            bool: True if all documents were indexed successfully, False otherwise.
+        """
+        try:
+            if not documents:
+                logger.warning("No documents to index")
+                return True
+                
+            # Process in batches of 100 (Azure Search recommended batch size)
+            batch_size = 100
+            total_documents = len(documents)
+            total_batches = (total_documents + batch_size - 1) // batch_size
+            overall_success = True
+            total_successful = 0
+            total_failed = 0
+            
+            logger.info(f"Starting upload of {total_documents} documents in {total_batches} batches")
+            
+            for i in range(0, total_documents, batch_size):
+                batch_num = i // batch_size + 1
+                batch = documents[i:i + batch_size]
+                
+                logger.info(f"Processing batch {batch_num}/{total_batches} ({len(batch)} documents)")
+                
+                # Prepare documents
+                prepared_batch = [self._prepare_document(doc) for doc in batch]
+                
+                # Upload the batch
+                results = self.client.upload_documents(documents=prepared_batch)
+                
+                # Check results
+                successful = [r for r in results if r.succeeded]
+                failed = [r for r in results if not r.succeeded]
+                
+                total_successful += len(successful)
+                total_failed += len(failed)
+                
+                if failed:
+                    logger.error(f"Batch {batch_num}: {len(failed)} documents failed to upload")
+                    for result in failed[:3]:  # Log first 3 failures
+                        logger.error(f"Failed: {result.key} - {result.error_message}")
+                    if len(failed) > 3:
+                        logger.error(f"... and {len(failed) - 3} more failures")
+                    overall_success = False
+                else:
+                    logger.info(f"Batch {batch_num}: All {len(successful)} documents uploaded successfully")
+            
+            # Final summary
+            logger.info(f"Upload complete: {total_successful} successful, {total_failed} failed")
+            return overall_success
+                
+        except Exception as e:
+            logger.error(f"Failed to index documents: {str(e)}")
+            return False
 
     async def search(
         self,

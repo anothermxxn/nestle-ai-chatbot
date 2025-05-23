@@ -4,7 +4,7 @@ import os
 from typing import List, Dict
 from openai import AzureOpenAI
 from dotenv import load_dotenv
-from search import AzureSearchClient
+from search_client import AzureSearchClient
 
 # Load environment variables
 load_dotenv()
@@ -109,23 +109,16 @@ async def main():
         print("No documents were prepared successfully")
         return
     
-    # Initialize search client
+    # Initialize search client and upload all documents
     client = AzureSearchClient()
+    print(f"\nUploading {len(prepared_chunks)} documents...")
     
-    # Upload chunks in batches
-    batch_size = 100
-    total_chunks = len(prepared_chunks)
-    print(f"\nUploading {total_chunks} documents in batches of {batch_size}...")
+    success = await client.index_documents(prepared_chunks)
     
-    for i in range(0, total_chunks, batch_size):
-        batch = prepared_chunks[i:i + batch_size]
-        success = await client.index_documents(batch)
-        if success:
-            print(f"Uploaded batch {i//batch_size + 1}/{(total_chunks + batch_size - 1)//batch_size}")
-        else:
-            print(f"Failed to upload batch {i//batch_size + 1}")
-    
-    print("\nUpload complete!")
+    if success:
+        print("All documents uploaded successfully!")
+    else:
+        print("Some documents failed to upload. Check logs for details.")
 
 if __name__ == "__main__":
     asyncio.run(main()) 

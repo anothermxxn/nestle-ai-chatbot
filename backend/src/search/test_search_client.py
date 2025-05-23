@@ -2,7 +2,7 @@ import asyncio
 import logging
 import numpy as np
 from typing import Dict, List
-from search import AzureSearchClient
+from search_client import AzureSearchClient
 
 # Configure logging
 logging.basicConfig(
