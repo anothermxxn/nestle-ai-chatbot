@@ -2,11 +2,42 @@ import os
 import json
 import re
 import urllib.parse
-from typing import Dict, List
+from typing import Dict, List, Set, Tuple
 from datetime import datetime
 from langchain.text_splitter import MarkdownTextSplitter, RecursiveCharacterTextSplitter
 from collections import defaultdict
 from url_parser import parse_url
+
+# Common boilerplate content patterns to exclude
+EXCLUDE_SECTION_PATTERNS = [
+    r"information we collect about you",
+    r"performance cookies",
+    r"cookie policy",
+    r"privacy policy",
+    r"terms of service",
+    r"terms and conditions",
+    r"cookie settings",
+    r"manage cookies",
+    r"privacy notice",
+    r"data protection",
+    r"gdpr",
+    r"legal notice",
+    r"copyright notice",
+    r"all rights reserved",
+    r"newsletter signup",
+    r"follow us",
+    r"social media",
+    r"share this",
+    r"contact us",
+    r"customer service",
+    r"site map",
+    r"help center",
+    r"accessibility",
+    r"modern slavery statement"
+]
+
+# Minimum content length to consider (filter out very short sections)
+MIN_CONTENT_LENGTH = 50
 
 def sanitize_url(url: str) -> str:
     """
@@ -49,6 +80,132 @@ def generate_safe_id(url: str, doc_index: int, chunk_index: int) -> str:
     """
     safe_url = sanitize_url(url)
     return f"{safe_url}_{doc_index}_{chunk_index}"
+
+def is_boilerplate_section(title: str, content: str) -> bool:
+    """
+    Check if a section is likely boilerplate content (cookies, privacy, etc.).
+    
+    Args:
+        title (str): Section title
+        content (str): Section content
+        
+    Returns:
+        bool: True if section should be excluded
+    """
+    if not title and not content:
+        return True
+        
+    # Check if content is too short
+    if len(content.strip()) < MIN_CONTENT_LENGTH:
+        return True
+    
+    # Check title against exclusion patterns
+    title_lower = title.lower() if title else ""
+    content_lower = content.lower()
+    
+    for pattern in EXCLUDE_SECTION_PATTERNS:
+        if re.search(pattern, title_lower) or re.search(pattern, content_lower):
+            return True
+    
+    # More careful detection for web cookies vs food cookies
+    web_cookie_indicators = [
+        "tracking", "analytics", "advertising", "gdpr", "consent", 
+        "privacy policy", "data protection", "personal information",
+        "third party", "performance cookies", "functional cookies",
+        "targeting cookies", "essential cookies", "browser",
+        "website", "collect information", "your preferences",
+        "opt out", "manage cookies", "cookie settings"
+    ]
+    
+    food_cookie_indicators = [
+        "recipe", "ingredients", "chocolate", "baking", "oven",
+        "flour", "sugar", "butter", "vanilla", "cream",
+        "crispy", "chewy", "sweet", "dessert", "treat"
+    ]
+    
+    # If "cookie" appears, check context to determine if it's web or food related
+    if "cookie" in content_lower:
+        web_score = sum(1 for indicator in web_cookie_indicators if indicator in content_lower)
+        food_score = sum(1 for indicator in food_cookie_indicators if indicator in content_lower)
+        
+        # Only filter as web cookie content if:
+        # 1. Multiple web indicators present AND
+        # 2. No food indicators OR web indicators significantly outweigh food indicators
+        if web_score >= 2 and (food_score == 0 or web_score > food_score * 2):
+            return True
+    
+    # Check for navigation-only content
+    nav_patterns = [
+        r"^(home|about|contact|products|services|blog)$",
+        r"^\s*>\s*",  # Breadcrumb navigation
+        r"^[<>←→\s]+$"  # Navigation arrows/symbols
+    ]
+    
+    for pattern in nav_patterns:
+        if re.match(pattern, content.strip(), re.IGNORECASE):
+            return True
+    
+    return False
+
+def detect_common_content(content_dir: str) -> Set[str]:
+    """
+    Detect content that appears across multiple pages (likely boilerplate).
+    
+    Args:
+        content_dir (str): Directory containing markdown files
+        
+    Returns:
+        Set[str]: Set of content hashes that appear frequently
+    """
+    content_frequency = defaultdict(int)
+    total_files = 0
+    
+    print("Analyzing content for common sections...")
+    
+    for filename in os.listdir(content_dir):
+        if not filename.endswith(".md"):
+            continue
+            
+        file_path = os.path.join(content_dir, filename)
+        try:
+            content = read_markdown_file(file_path)
+            
+            # Split into sections and hash each one
+            sections = re.split(r'\n#{1,6}\s+', content)
+            for section in sections:
+                section = section.strip()
+                if len(section) > MIN_CONTENT_LENGTH:
+                    # Create a normalized hash of the section
+                    normalized = re.sub(r'\s+', ' ', section.lower())
+                    section_hash = hash(normalized)
+                    content_frequency[section_hash] += 1
+            
+            total_files += 1
+            
+        except Exception as e:
+            print(f"Error analyzing {filename}: {str(e)}")
+    
+    # Consider content "common" if it appears in more than 30% of files
+    threshold = max(2, total_files * 0.3)
+    common_content = {h for h, freq in content_frequency.items() if freq >= threshold}
+    
+    print(f"Found {len(common_content)} common content sections appearing in {threshold}+ files")
+    return common_content
+
+def is_common_content(content: str, common_hashes: Set[str]) -> bool:
+    """
+    Check if content matches common/boilerplate content.
+    
+    Args:
+        content (str): Content to check
+        common_hashes (Set[str]): Set of common content hashes
+        
+    Returns:
+        bool: True if content is common boilerplate
+    """
+    normalized = re.sub(r'\s+', ' ', content.lower().strip())
+    content_hash = hash(normalized)
+    return content_hash in common_hashes
 
 def validate_markdown_file(file_path: str) -> bool:
     """
@@ -136,13 +293,15 @@ def read_markdown_file(file_path: str) -> str:
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read().strip()
 
-def process_markdown_file(file_path: str, url: str) -> List[Dict]:
+def process_markdown_file(file_path: str, url: str, common_content_hashes: Set[str]) -> List[Dict]:
     """
     Process a markdown file into chunks using LangChain's text splitters.
+    Filters out boilerplate content.
     
     Args:
         file_path (str): Path to the markdown file
         url (str): Original URL of the content
+        common_content_hashes (Set[str]): Set of common content hashes to exclude
         
     Returns:
         List[Dict]: List of chunks with metadata
@@ -177,6 +336,7 @@ def process_markdown_file(file_path: str, url: str) -> List[Dict]:
     
     chunks = []
     safe_url = sanitize_url(url)
+    filtered_sections = 0
     
     for doc_idx, doc in enumerate(markdown_docs):
         # Look for headers in the content
@@ -198,6 +358,16 @@ def process_markdown_file(file_path: str, url: str) -> List[Dict]:
             else:
                 title = content_text[:50].strip() + "..."
         
+        # Check if this section should be filtered out
+        if is_boilerplate_section(title, doc.page_content):
+            filtered_sections += 1
+            continue
+            
+        # Check if this is common content across many pages
+        if is_common_content(doc.page_content, common_content_hashes):
+            filtered_sections += 1
+            continue
+        
         # Split into smaller chunks if needed
         if len(doc.page_content) > 1000:
             section_chunks = text_splitter.split_text(doc.page_content)
@@ -205,6 +375,10 @@ def process_markdown_file(file_path: str, url: str) -> List[Dict]:
             section_chunks = [doc.page_content]
             
         for chunk_idx, chunk in enumerate(section_chunks):
+            # Final check - skip if chunk is too short or looks like boilerplate
+            if len(chunk.strip()) < MIN_CONTENT_LENGTH:
+                continue
+                
             chunks.append({
                 "id": generate_safe_id(url, doc_idx, chunk_idx),
                 "url": safe_url,
@@ -220,11 +394,15 @@ def process_markdown_file(file_path: str, url: str) -> List[Dict]:
                 "processed_at": datetime.utcnow().isoformat()
             })
     
+    if filtered_sections > 0:
+        print(f"Filtered {filtered_sections} boilerplate sections from {url}")
+    
     return chunks
 
 def process_all_content() -> Dict:
     """
     Process all markdown files and prepare them for vector storage.
+    Filters out common boilerplate content.
     
     Returns:
         Dict: Processing results and statistics
@@ -233,16 +411,22 @@ def process_all_content() -> Dict:
     processed_dir = "../../../data/processed"
     os.makedirs(processed_dir, exist_ok=True)
     
+    # First pass: detect common content across all files
+    common_content_hashes = detect_common_content(content_dir)
+    
     results = {
         "timestamp": datetime.utcnow().isoformat(),
         "total_files": 0,
         "total_chunks": 0,
+        "filtered_sections": 0,
         "content_types": defaultdict(int),
         "brands": defaultdict(int),
         "files": []
     }
     
     all_chunks = []
+    
+    print("Processing files and filtering boilerplate content...")
     
     for filename in os.listdir(content_dir):
         if not filename.endswith(".md"):
@@ -252,7 +436,7 @@ def process_all_content() -> Dict:
         url = filename[:-3].replace("_", "/")
         
         try:
-            chunks = process_markdown_file(file_path, url)
+            chunks = process_markdown_file(file_path, url, common_content_hashes)
             all_chunks.extend(chunks)
             
             # Update statistics
@@ -296,6 +480,9 @@ def process_all_content() -> Dict:
     results_file = os.path.join(processed_dir, "processing_results.json")
     with open(results_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
+    
+    print(f"Filtering complete. Processed {results['total_files']} files into {results['total_chunks']} chunks")
+    print(f"Excluded common boilerplate content found across multiple pages")
     
     return results
 
