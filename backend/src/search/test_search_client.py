@@ -171,10 +171,10 @@ async def test_filtered_search():
 async def run_test_scenarios():
     """Run all test scenarios."""
     test_scenarios = [
-        # ("Keyword Search", test_keyword_search),
-        # ("Vector Search", test_vector_search),
-        # ("Text-based Vector Search", test_text_vector_search),
-        # ("Hybrid Search", test_hybrid_search),
+        ("Keyword Search", test_keyword_search),
+        ("Vector Search", test_vector_search),
+        ("Text-based Vector Search", test_text_vector_search),
+        ("Hybrid Search", test_hybrid_search),
         ("Filtered Search", test_filtered_search)
     ]
     

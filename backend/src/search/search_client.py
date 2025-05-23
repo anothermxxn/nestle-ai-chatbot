@@ -1,8 +1,8 @@
 from datetime import datetime
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 from azure.search.documents import SearchClient
-# from azure.search.documents.models import VectorizableTextQuery
+from azure.search.documents.models import VectorizableTextQuery
 from azure.core.credentials import AzureKeyCredential
 from config import (
     AZURE_SEARCH_ENDPOINT,
@@ -200,15 +200,15 @@ class AzureSearchClient:
             vector_queries = []
             
             # Add text-based vector queries
-            # if text_query:
-            #     vector_queries.append(
-                    # VectorizableTextQuery(
-                    #     kind="text",
-                    #     text=text_query,
-                    #     k_nearest_neighbors=top,
-                    #     fields="content_vector,page_title_vector,section_title_vector",
-                    # )
-                # )
+            if text_query:
+                vector_queries.append(
+                    VectorizableTextQuery(
+                        kind="text",
+                        text=text_query,
+                        k_nearest_neighbors=top,
+                        fields="content_vector,page_title_vector,section_title_vector",
+                    )
+                )
             
             # Add raw vector queries
             if vectors:
@@ -221,12 +221,6 @@ class AzureSearchClient:
                                 "k_nearest_neighbors": top,
                                 "fields": f"{field}_vector",
                             }
-                            # VectorQuery(
-                            #     kind="vector",
-                            #     vector=vector,
-                            #     k_nearest_neighbors=top,
-                            #     fields=f"{field}_vector",
-                            # )
                         )
             
             if vector_queries:

@@ -10,8 +10,8 @@ langchain-core==0.3.60
 
 # Azure services
 python-dotenv==1.1.0
-azure-search-documents==11.4.0
-azure-core==1.30.0
+azure-search-documents==11.5.2
+azure-core==1.31.0
 
 # Utilities
 httpx==0.28.1
