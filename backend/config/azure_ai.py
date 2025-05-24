@@ -16,6 +16,22 @@ AZURE_OPENAI_CONFIG = {
     "deployment": AZURE_OPENAI_DEPLOYMENT,
 }
 
+# Azure Embedding configuration
+AZURE_EMBEDDING_ENDPOINT = os.getenv("AZURE_EMBEDDING_ENDPOINT")
+AZURE_EMBEDDING_API_KEY = os.getenv("AZURE_EMBEDDING_API_KEY")
+AZURE_EMBEDDING_API_VERSION = os.getenv("AZURE_EMBEDDING_API_VERSION")
+AZURE_EMBEDDING_MODEL_NAME = os.getenv("AZURE_EMBEDDING_MODEL_NAME")
+AZURE_EMBEDDING_DEPLOYMENT = os.getenv("AZURE_EMBEDDING_DEPLOYMENT")
+
+AZURE_EMBEDDING_CONFIG = {
+    "endpoint": AZURE_EMBEDDING_ENDPOINT,
+    "full_endpoint": AZURE_EMBEDDING_ENDPOINT,
+    "api_key": AZURE_EMBEDDING_API_KEY,
+    "api_version": AZURE_EMBEDDING_API_VERSION,
+    "model_name": AZURE_EMBEDDING_MODEL_NAME,
+    "deployment": AZURE_EMBEDDING_DEPLOYMENT,
+}
+
 # Chat settings
 CHAT_CONFIG = {
     "default_temperature": 0.3,
@@ -68,6 +84,22 @@ def validate_azure_openai_config() -> bool:
     for field in required_fields:
         if not AZURE_OPENAI_CONFIG.get(field):
             print(f"Missing required Azure OpenAI configuration: {field}")
+            return False
+    
+    return True
+
+def validate_azure_embedding_config() -> bool:
+    """
+    Validate Azure Embedding configuration.
+    
+    Returns:
+        bool: True if configuration is valid, False otherwise
+    """
+    required_fields = ["endpoint", "api_key", "deployment", "model_name"]
+    
+    for field in required_fields:
+        if not AZURE_EMBEDDING_CONFIG.get(field):
+            print(f"Missing required Azure Embedding configuration: {field}")
             return False
     
     return True

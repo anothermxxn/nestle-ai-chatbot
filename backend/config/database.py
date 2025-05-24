@@ -28,6 +28,8 @@ COSMOS_CONFIG = {
     "consistency_level": "Session"
 }
 
+BATCH_SIZE = 100
+
 # Azure AI Search index configuration
 SEARCH_INDEX_SETTINGS = {
     "name": AZURE_SEARCH_INDEX_NAME,
@@ -70,6 +72,7 @@ SEARCH_INDEX_SETTINGS = {
             "searchable": True,
             "retrievable": True,
             "dimensions": 1536,
+            "vectorSearchProfile": "default"
         },
         {
             "name": "page_title",
@@ -87,6 +90,7 @@ SEARCH_INDEX_SETTINGS = {
             "searchable": True,
             "retrievable": True,
             "dimensions": 1536,
+            "vectorSearchProfile": "default"
         },
         {
             "name": "section_title",
@@ -103,6 +107,7 @@ SEARCH_INDEX_SETTINGS = {
             "searchable": True,
             "retrievable": True,
             "dimensions": 1536,
+            "vectorSearchProfile": "default"
         },
         
         # Classification Fields
@@ -163,6 +168,33 @@ SEARCH_INDEX_SETTINGS = {
             "retrievable": True
         }
     ],
+    "vectorSearch": {
+        "compressions": [
+            {
+                "name": "default",
+                "kind": "binaryQuantization",
+            }
+        ],
+        "algorithms": [
+            {
+                "name": "default",
+                "kind": "hnsw",
+                "hnswParameters": {
+                    "m": 4,
+                    "efConstruction": 400,
+                    "efSearch": 500,
+                    "metric": "cosine"
+                }
+            }
+        ],
+        "profiles": [
+            {
+                "name": "default",
+                "compression": "default",
+                "algorithm": "default"
+            }
+        ]
+    }
 }
 
 # Graph Database Schemas

@@ -13,11 +13,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from config import (
     DEFAULT_VECTOR_CHUNKS_FILE,
-    AZURE_OPENAI_CONFIG,
-    AZURE_OPENAI_ENDPOINT,
-    AZURE_OPENAI_API_KEY,
-    AZURE_OPENAI_API_VERSION,
-    AZURE_OPENAI_DEPLOYMENT,
+    AZURE_EMBEDDING_ENDPOINT,
+    AZURE_EMBEDDING_API_KEY,
+    AZURE_EMBEDDING_API_VERSION,
+    AZURE_EMBEDDING_DEPLOYMENT,
     BATCH_SIZE
 )
 
@@ -26,17 +25,16 @@ from search.search_client import AzureSearchClient
 # Load environment variables
 load_dotenv()
 
-# Initialize Azure OpenAI client using config
+# Initialize Azure OpenAI client using embedding config
 client = AzureOpenAI(
-    api_key=AZURE_OPENAI_API_KEY,
-    azure_endpoint=AZURE_OPENAI_ENDPOINT,
-    api_version=AZURE_OPENAI_API_VERSION,
-    azure_deployment=AZURE_OPENAI_DEPLOYMENT
+    api_key=AZURE_EMBEDDING_API_KEY,
+    azure_endpoint=AZURE_EMBEDDING_ENDPOINT,
+    api_version=AZURE_EMBEDDING_API_VERSION
 )
 
 def get_embeddings(texts: List[str]) -> List[List[float]]:
     """
-    Get embeddings for a list of texts using Azure OpenAI.
+    Get embeddings for a list of texts using Azure Embedding service.
     
     Args:
         texts (List[str]): List of texts to get embeddings for
@@ -46,7 +44,7 @@ def get_embeddings(texts: List[str]) -> List[List[float]]:
     """
     try:
         response = client.embeddings.create(
-            model=AZURE_OPENAI_DEPLOYMENT,
+            model=AZURE_EMBEDDING_DEPLOYMENT,
             input=texts
         )
         return [embedding.embedding for embedding in response.data]

@@ -13,7 +13,7 @@ from .brands import (
     get_all_brand_variations
 )
 
-from .database import (
+from .database import (    
     # Graph Database (Azure Cosmos DB)
     COSMOS_CONFIG,
     CONTAINER_CONFIGS,
@@ -35,8 +35,8 @@ from .database import (
     AZURE_SEARCH_INDEX_NAME,
     AZURE_SEARCH_API_VERSION,
     
-    # Validation Functions
     validate_config,
+    BATCH_SIZE
 )
 
 from .topics import (
@@ -112,12 +112,21 @@ from .azure_ai import (
     AZURE_OPENAI_API_VERSION,
     AZURE_OPENAI_DEPLOYMENT,
     
+    # Azure Embedding configuration
+    AZURE_EMBEDDING_CONFIG,
+    AZURE_EMBEDDING_ENDPOINT,
+    AZURE_EMBEDDING_API_KEY,
+    AZURE_EMBEDDING_API_VERSION,
+    AZURE_EMBEDDING_MODEL_NAME,
+    AZURE_EMBEDDING_DEPLOYMENT,
+    
     # Chat configuration
     CHAT_CONFIG,
     CHAT_PROMPTS,
     
     # Validation functions
     validate_azure_openai_config,
+    validate_azure_embedding_config,
     get_chat_client_config,
 )
 
@@ -152,6 +161,7 @@ __all__ = [
     "AZURE_SEARCH_INDEX_NAME",
     "AZURE_SEARCH_API_VERSION",
     "validate_config",
+    "BATCH_SIZE",
     
     # Topics - New structure
     "TOPIC_CATEGORIES",
@@ -206,8 +216,16 @@ __all__ = [
     "AZURE_OPENAI_API_KEY", 
     "AZURE_OPENAI_API_VERSION",
     "AZURE_OPENAI_DEPLOYMENT",
+    "AZURE_EMBEDDING_CONFIG",
+    "AZURE_EMBEDDING_ENDPOINT",
+    "AZURE_EMBEDDING_BASE_ENDPOINT",
+    "AZURE_EMBEDDING_API_KEY",
+    "AZURE_EMBEDDING_API_VERSION",
+    "AZURE_EMBEDDING_MODEL_NAME",
+    "AZURE_EMBEDDING_DEPLOYMENT",
     "CHAT_CONFIG",
     "CHAT_PROMPTS",
     "validate_azure_openai_config",
+    "validate_azure_embedding_config",
     "get_chat_client_config",
 ] 
