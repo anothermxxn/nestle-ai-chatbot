@@ -15,7 +15,6 @@ from config import (
 
 from scraper.data_processor import (
     process_all_content,
-    remove_content_duplicates,
 )
 
 # Configure logging
@@ -31,23 +30,6 @@ def get_default_paths():
         "raw_dir": RAW_DATA_DIR,
         "processed_dir": PROCESSED_DATA_DIR
     }
-
-def run_duplicate_removal(raw_dir: str):
-    """Remove duplicate content files."""
-    logger.info("Checking and removing duplicate files...")
-    report = remove_content_duplicates(raw_dir)
-    
-    if "error" in report:
-        logger.error(f"Error removing duplicates: {report['error']}")
-        return False
-    
-    duplicates_count = len(report.get('duplicates', {}))
-    logger.info(f"Removed {duplicates_count} sets of duplicate files")
-    
-    for kept_url, info in report.get('duplicates', {}).items():
-        logger.info(f"Kept: {info['kept']}, Removed: {info['removed']}")
-    
-    return True
 
 def run_content_processing(raw_dir: str, processed_dir: str):
     """Process all content into chunks."""
@@ -68,13 +50,6 @@ def main():
     
     # Get default paths
     default_paths = get_default_paths()
-    
-    parser.add_argument(
-        "--step",
-        choices=["duplicates", "process", "all"],
-        default="all",
-        help="Which processing step to run"
-    )
     
     parser.add_argument(
         "--raw-dir",
@@ -111,24 +86,17 @@ def main():
     logger.info(f"Raw data directory: {args.raw_dir}")
     logger.info(f"Processed data directory: {args.processed_dir}")
     
-    # Run specified steps
-    success = True
+    # Run content processing only
+    logger.info("\n" + "=" * 50)
+    logger.info("CONTENT PROCESSING")
+    logger.info("=" * 50)
     
-    if args.step in ["duplicates", "all"]:
-        logger.info("\n" + "=" * 50)
-        logger.info("STEP 1: REMOVING DUPLICATES")
-        logger.info("=" * 50)
-        success &= run_duplicate_removal(args.raw_dir)
+    success = run_content_processing(args.raw_dir, args.processed_dir)
     
-    if args.step in ["process", "all"]:
-        logger.info("\n" + "=" * 50)
-        logger.info("STEP 2: CONTENT PROCESSING")
-        logger.info("=" * 50)
-        success &= run_content_processing(args.raw_dir, args.processed_dir)
     if success:
-        logger.info("\n🎉 All processing steps completed successfully!")
+        logger.info("\n🎉 Content processing completed successfully!")
     else:
-        logger.error("\n❌ Some processing steps failed. Check logs for details.")
+        logger.error("\n❌ Content processing failed. Check logs for details.")
         sys.exit(1)
 
 if __name__ == "__main__":

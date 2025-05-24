@@ -73,7 +73,6 @@ class ContentProcessor:
         
         logger.info(f"Starting content processing for {len(urls)} URLs")
         
-        # Configure crawl4ai
         browser_config = BrowserConfig(
             headless=True,
             verbose=True
@@ -83,8 +82,8 @@ class ContentProcessor:
             cache_mode=CacheMode.ENABLED,
             markdown_generator=DefaultMarkdownGenerator(
                 content_filter=PruningContentFilter(
-                    threshold=0.48,
-                    threshold_type="fixed",
+                    threshold=0.48, 
+                    threshold_type="fixed", 
                     min_word_threshold=0
                 )
             )
@@ -100,23 +99,52 @@ class ContentProcessor:
                         try:
                             result = await crawler.arun(url=url, config=run_config)
                             
+                            # TODO: I dont understand why the fit_markdown is only working when I call the generator manually
+                            result.markdown_v2 = run_config.markdown_generator.generate_markdown(result.cleaned_html)
+
                             if result.success:
-                                content = result.markdown.fit_markdown
+                                content = result.markdown_v2.fit_markdown
+
+                            # if result.success:
+                            #     content = result.markdown.fit_markdown
                                 
                                 # Save content
                                 with open(output_path, "w", encoding="utf-8") as f:
                                     f.write(content)
                                 
+                                self.processed_urls[url] = {
+                                    "success": True,
+                                    "output_path": output_path,
+                                    "processed_at": datetime.utcnow().isoformat()
+                                }
+                                
                                 logger.info(f"Successfully processed: {url}")
                                 break
                             else:
                                 logger.warning(f"Failed to crawl {url}: {result.error_message}")
+                                if attempt == max_retries - 1:
+                                    self.processed_urls[url] = {
+                                        "success": False,
+                                        "error": result.error_message or "Unknown crawling error",
+                                        "processed_at": datetime.utcnow().isoformat()
+                                    }
                             
                         except Exception as e:
                             logger.error(f"Error processing {url} (attempt {attempt + 1}): {str(e)}")
+                            if attempt == max_retries - 1:
+                                self.processed_urls[url] = {
+                                    "success": False,
+                                    "error": str(e),
+                                    "processed_at": datetime.utcnow().isoformat()
+                                }
                 
                 except Exception as e:
                     logger.error(f"Unhandled error processing {url}: {str(e)}")
+                    self.processed_urls[url] = {
+                        "success": False,
+                        "error": str(e),
+                        "processed_at": datetime.utcnow().isoformat()
+                    }
         
         # Save processing results
         self._save_results()

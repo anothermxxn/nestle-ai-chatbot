@@ -95,38 +95,24 @@ FOOD_DOMAINS = [
 ]
 
 EXCLUDE_SECTION_PATTERNS = [
-    r"information we collect about you",
-    r"performance cookies",
-    r"cookie policy",
-    r"privacy policy",
-    r"terms of service",
-    r"terms and conditions",
-    r"cookie settings",
-    r"manage cookies",
-    r"privacy notice",
-    r"data protection",
-    r"gdpr",
-    r"legal notice",
-    r"copyright notice",
-    r"all rights reserved",
-    r"newsletter signup",
-    r"follow us",
-    r"social media",
-    r"share this",
-    r"share on facebook",
-    r"share on twitter", 
-    r"share on pinterest",
-    r"facebook.*twitter.*pinterest",
-    r"skip to main content",
-    r"contact us",
-    r"customer service",
-    r"site map",
-    r"help center",
-    r"accessibility",
-    r"modern slavery statement"
+    r"^cookie policy$",
+    r"^privacy policy$", 
+    r"^terms of service$",
+    r"^terms and conditions$",
+    r"^gdpr compliance$",
+    r"^data protection policy$",
+    r"^copyright notice$",
+    r"^manage consent preferences$",
+    r"^cookie consent tool$",
+    r"^information we collect",
+    r"^strictly necessary cookies$",
+    r"^performance cookies$",
+    r"^social media cookies$",
+    r"^targeting cookies$",
+    r"^functional cookies$"
 ]
 
-MIN_CONTENT_LENGTH = 50
+MIN_CONTENT_LENGTH = 15
 
 FOOD_INDICATORS = [
     "chocolate", "cream", "ice", "coffee", "recipe", "baking", "cooking",
@@ -141,40 +127,51 @@ GENERIC_TERMS = ["new", "great", "good", "best", "more", "other", "all", "some"]
 STOP_WORDS = {"the", "and", "or", "in", "on", "at", "to", "for", "of", "with", "a", "an"}
 
 WEB_COOKIE_INDICATORS = [
-    "tracking", "analytics", "advertising", "gdpr", "consent", 
-    "privacy policy", "data protection", "personal information",
-    "third party", "performance cookies", "functional cookies",
-    "targeting cookies", "essential cookies", "browser",
-    "website", "collect information", "your preferences",
-    "opt out", "manage cookies", "cookie settings"
+    "tracking cookies", "analytics cookies", "advertising cookies", 
+    "gdpr compliance", "cookie consent", "privacy policy",
+    "data protection", "personal data", "collect personal information",
+    "third party cookies", "performance cookies", "functional cookies",
+    "targeting cookies", "essential cookies", "browser cookies",
+    "website cookies", "cookie preferences", "cookie settings",
+    "opt out of cookies", "manage cookie preferences",
+    "strictly necessary cookies", "manage consent preferences", "consent tool",
+    "cookie consent tool", "always active", "cookie notice", "cookie banner",
+    "cookie policy", "social media cookies", "decline accept",
+    "consent preferences", "cookie details", "cookie information",
+    "cookies are necessary", "cannot be switched off", "personally identifiable",
+    "cookie compliance", "data collection", "information we collect",
+    "tracking your browser", "profile of your interests", "sharing tools",
+    "these cookies", "allow these cookies", "block or alert",
+    "privacy preferences", "cookie types", "website functionality"
 ]
 
 FOOD_COOKIE_INDICATORS = [
-    "recipe", "ingredients", "chocolate", "baking", "oven",
-    "flour", "sugar", "butter", "vanilla", "cream",
-    "crispy", "chewy", "sweet", "dessert", "treat"
+    "recipe", "ingredients", "chocolate chip", "baking", "oven temperature",
+    "flour", "sugar", "butter", "vanilla extract", "cream",
+    "crispy cookies", "chewy cookies", "sweet treats", "dessert recipe", 
+    "cookie dough", "bake cookies", "homemade cookies", "cookie recipe",
+    "chocolate cookies", "oatmeal cookies", "sugar cookies", "cookie jar"
 ]
+
+CONSENT_MANAGEMENT_PATTERNS = [
+    "manage consent", "consent preferences", "consent tool", "cookie consent",
+    "strictly necessary", "always active", "cannot be switched off",
+    "privacy preferences", "decline accept", "cookie details",
+    "information we collect", "personal data", "tracking your browser",
+    "allow these cookies", "cookies details", "performance cookies",
+    "targeting cookies", "functional cookies", "social media cookies"
+]
+
+PRIVACY_CONTENT_INDICATORS = [
+    "gdpr compliance", "data protection", "cookie banner", "cookie notice",
+    "third party cookies", "essential cookies", "analytics cookies"
+] 
 
 SOCIAL_MEDIA_INDICATORS = [
     "facebook", "twitter", "pinterest", "email", "yummly", "instagram", "linkedin"
 ]
 
-ERROR_INDICATORS = [
-    "404 error",
-    "page not found",
-    "page doesn't exist",
-    "page has been removed",
-    "red mugger strikes",
-    "stole the page you were looking for"
-]
-
-ERROR_CODES = ["400", "401", "403", "404", "500", "502", "503"]
-
-NAV_PATTERNS = [
-    r"^(home|about|contact|products|services|blog)$",
-    r"^\s*>\s*",  # Breadcrumb navigation
-    r"^[<>←→\s]+$"  # Navigation arrows/symbols
-]
+ERROR_INDICATORS = ["404 |"]
 
 # Processing settings
 DEFAULT_CHUNK_SIZE = 500
@@ -182,7 +179,6 @@ DEFAULT_CHUNK_OVERLAP = 50
 MARKDOWN_CHUNK_SIZE = 800
 MARKDOWN_CHUNK_OVERLAP = 80
 MAX_KEYWORDS_PER_CHUNK = 10
-BATCH_SIZE = 100
 
 # Scraping settings
 MAX_PAGES_DEFAULT = 1000
@@ -192,4 +188,4 @@ SCRAPER_CONCURRENCY = 5
 # N-gram extraction settings
 NGRAM_RANGE = (2, 3)
 MAX_NGRAMS = 10
-MAX_PHRASE_LENGTH = 4 
+MAX_PHRASE_LENGTH = 4
