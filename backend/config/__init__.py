@@ -22,7 +22,6 @@ from .database import (
     
     # Vector Database (Azure AI Search)
     SEARCH_CONFIG,
-    EMBEDDING_CONFIG,
     SEARCH_INDEX_SETTINGS,
     
     # Environment Variables
@@ -50,6 +49,64 @@ from .topics import (
     # Enhanced functions
     get_topic_category,
     detect_topics_from_text,
+)
+
+from .scraper import (
+    # Compound terms
+    FOOD_COMPOUND_TERMS,
+    BRAND_COMPOUND_TERMS,
+    ALL_COMPOUND_TERMS,
+    
+    # Content filtering
+    EXCLUDE_SECTION_PATTERNS,
+    MIN_CONTENT_LENGTH,
+    FOOD_INDICATORS,
+    GENERIC_TERMS,
+    STOP_WORDS,
+    
+    # Classification indicators
+    WEB_COOKIE_INDICATORS,
+    FOOD_COOKIE_INDICATORS,
+    SOCIAL_MEDIA_INDICATORS,
+    FOOD_DOMAINS,
+    ERROR_INDICATORS,
+    ERROR_CODES,
+    NAV_PATTERNS,
+    
+    # Processing settings
+    DEFAULT_CHUNK_SIZE,
+    DEFAULT_CHUNK_OVERLAP,
+    MARKDOWN_CHUNK_SIZE,
+    MARKDOWN_CHUNK_OVERLAP,
+    MAX_KEYWORDS_PER_CHUNK,
+    BATCH_SIZE,
+    
+    # Scraping settings
+    MAX_PAGES_DEFAULT,
+    MAX_PAGES_LARGE,
+    SCRAPER_CONCURRENCY,
+    
+    # N-gram settings
+    NGRAM_RANGE,
+    MAX_NGRAMS,
+    MAX_PHRASE_LENGTH,
+)
+
+from .azure_ai import (
+    # Azure OpenAI configuration
+    AZURE_OPENAI_CONFIG,
+    AZURE_OPENAI_ENDPOINT,
+    AZURE_OPENAI_API_KEY,
+    AZURE_OPENAI_API_VERSION,
+    AZURE_OPENAI_DEPLOYMENT,
+    
+    # Chat configuration
+    CHAT_CONFIG,
+    CHAT_PROMPTS,
+    
+    # Validation functions
+    validate_azure_openai_config,
+    get_chat_client_config,
 )
 
 __all__ = [
@@ -93,4 +150,44 @@ __all__ = [
     # Topics - Enhanced functions
     "get_topic_category",
     "detect_topics_from_text",
+    
+    # Scraper configuration
+    "FOOD_COMPOUND_TERMS",
+    "BRAND_COMPOUND_TERMS", 
+    "ALL_COMPOUND_TERMS",
+    "EXCLUDE_SECTION_PATTERNS",
+    "MIN_CONTENT_LENGTH",
+    "FOOD_INDICATORS",
+    "GENERIC_TERMS",
+    "STOP_WORDS",
+    "WEB_COOKIE_INDICATORS",
+    "FOOD_COOKIE_INDICATORS",
+    "SOCIAL_MEDIA_INDICATORS",
+    "FOOD_DOMAINS",
+    "ERROR_INDICATORS",
+    "ERROR_CODES",
+    "NAV_PATTERNS",
+    "DEFAULT_CHUNK_SIZE",
+    "DEFAULT_CHUNK_OVERLAP",
+    "MARKDOWN_CHUNK_SIZE",
+    "MARKDOWN_CHUNK_OVERLAP",
+    "MAX_KEYWORDS_PER_CHUNK",
+    "BATCH_SIZE",
+    "MAX_PAGES_DEFAULT",
+    "MAX_PAGES_LARGE",
+    "SCRAPER_CONCURRENCY",
+    "NGRAM_RANGE",
+    "MAX_NGRAMS",
+    "MAX_PHRASE_LENGTH",
+    
+    # Azure AI configuration
+    "AZURE_OPENAI_CONFIG",
+    "AZURE_OPENAI_ENDPOINT",
+    "AZURE_OPENAI_API_KEY", 
+    "AZURE_OPENAI_API_VERSION",
+    "AZURE_OPENAI_DEPLOYMENT",
+    "CHAT_CONFIG",
+    "CHAT_PROMPTS",
+    "validate_azure_openai_config",
+    "get_chat_client_config",
 ] 
