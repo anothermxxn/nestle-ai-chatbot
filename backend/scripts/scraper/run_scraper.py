@@ -15,6 +15,16 @@ import logging
 # Add src to the path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
+# Import config
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+from config import (
+    DEFAULT_BASE_URL,
+    DEFAULT_LINKS_FILE,
+    RAW_DATA_DIR,
+    MAX_PAGES_DEFAULT,
+    SCRAPER_CONCURRENCY
+)
+
 from scraper.link_collector import LinkCollector
 from scraper.content_processor import ContentProcessor
 
@@ -25,7 +35,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-async def collect_links(base_url: str, output_file: str, max_pages: int = 10000):
+async def collect_links(base_url: str, output_file: str, max_pages: int = MAX_PAGES_DEFAULT):
     """Collect links from the website and save to file.
     
     Args:
@@ -50,7 +60,7 @@ async def run_scraper(
     base_url: str,
     links_file: str,
     output_dir: str,
-    max_pages: int = 10000,
+    max_pages: int = MAX_PAGES_DEFAULT,
     phase: str = "all"
 ):
     """Run the scraper in the specified phase.
@@ -83,34 +93,34 @@ def main():
     
     parser.add_argument(
         "--base-url",
-        default="https://www.madewithnestle.ca",
-        help="Starting URL to collect links from"
+        default=DEFAULT_BASE_URL,
+        help=f"Starting URL to collect links from (default: {DEFAULT_BASE_URL})"
     )
     
     parser.add_argument(
         "--links-file",
-        default="../../../data/collected_links.json",
-        help="Path to save/load links JSON file"
+        default=DEFAULT_LINKS_FILE,
+        help=f"Path to save/load links JSON file (default: {DEFAULT_LINKS_FILE})"
     )
     
     parser.add_argument(
         "--output-dir",
-        default="../../../data/raw",
-        help="Directory to save markdown files"
+        default=RAW_DATA_DIR,
+        help=f"Directory to save markdown files (default: {RAW_DATA_DIR})"
     )
     
     parser.add_argument(
         "--max-pages",
         type=int,
-        default=10000,
-        help="Maximum number of pages to collect links from"
+        default=MAX_PAGES_DEFAULT,
+        help=f"Maximum number of pages to collect links from (default: {MAX_PAGES_DEFAULT})"
     )
     
     parser.add_argument(
         "--batch-size",
         type=int,
-        default=5,
-        help="Number of URLs to process concurrently"
+        default=SCRAPER_CONCURRENCY,
+        help=f"Number of URLs to process concurrently (default: {SCRAPER_CONCURRENCY})"
     )
     
     parser.add_argument(

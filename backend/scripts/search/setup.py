@@ -8,17 +8,30 @@ from dotenv import load_dotenv
 
 # Add src to the path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
+
+# Import config
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+from config import (
+    DEFAULT_VECTOR_CHUNKS_FILE,
+    AZURE_OPENAI_CONFIG,
+    AZURE_OPENAI_ENDPOINT,
+    AZURE_OPENAI_API_KEY,
+    AZURE_OPENAI_API_VERSION,
+    AZURE_OPENAI_DEPLOYMENT,
+    BATCH_SIZE
+)
+
 from search.search_client import AzureSearchClient
 
 # Load environment variables
 load_dotenv()
 
-# Initialize Azure OpenAI client
+# Initialize Azure OpenAI client using config
 client = AzureOpenAI(
-    api_key=(os.getenv("AZURE_EMBEDDING_API_KEY")),
-    azure_endpoint=os.getenv("AZURE_EMBEDDING_ENDPOINT"),
-    api_version=os.getenv("AZURE_EMBEDDING_API_VERSION"),
-    azure_deployment=os.getenv("AZURE_EMBEDDING_DEPLOYMENT")
+    api_key=AZURE_OPENAI_API_KEY,
+    azure_endpoint=AZURE_OPENAI_ENDPOINT,
+    api_version=AZURE_OPENAI_API_VERSION,
+    azure_deployment=AZURE_OPENAI_DEPLOYMENT
 )
 
 def get_embeddings(texts: List[str]) -> List[List[float]]:
@@ -33,7 +46,7 @@ def get_embeddings(texts: List[str]) -> List[List[float]]:
     """
     try:
         response = client.embeddings.create(
-            model=os.getenv("AZURE_EMBEDDING_DEPLOYMENT"),
+            model=AZURE_OPENAI_DEPLOYMENT,
             input=texts
         )
         return [embedding.embedding for embedding in response.data]
@@ -51,7 +64,7 @@ async def prepare_documents(chunks: List[Dict]) -> List[Dict]:
     Returns:
         List[Dict]: Chunks with vector embeddings
     """
-    batch_size = 20  # Azure OpenAI batch size limit
+    batch_size = BATCH_SIZE // 5  # Azure OpenAI embedding batch size should be smaller
     prepared_chunks = []
     
     for i in range(0, len(chunks), batch_size):
@@ -88,10 +101,10 @@ async def load_processed_chunks() -> List[Dict]:
     Returns:
         List[Dict]: List of content chunks.
     """
-    chunks_file = "../../../data/processed/vector_chunks.json"
+    chunks_file = DEFAULT_VECTOR_CHUNKS_FILE
     
     if not os.path.exists(chunks_file):
-        print("No processed chunks found. Please run the data processing first.")
+        print(f"No processed chunks found at {chunks_file}. Please run the data processing first.")
         return []
     
     with open(chunks_file, "r", encoding="utf-8") as f:
@@ -100,7 +113,7 @@ async def load_processed_chunks() -> List[Dict]:
 async def main():
     """Upload processed content chunks to Azure Cognitive Search."""
     # Load processed content chunks
-    print("\nLoading processed content chunks...")
+    print(f"\nLoading processed content chunks from {DEFAULT_VECTOR_CHUNKS_FILE}...")
     chunks = await load_processed_chunks()
     if not chunks:
         return

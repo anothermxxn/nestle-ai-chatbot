@@ -1,3 +1,21 @@
+import os
+
+def get_project_root():
+    """Get the project root directory."""
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.normpath(os.path.join(current_dir, "..", ".."))
+
+PROJECT_ROOT = get_project_root()
+DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+RAW_DATA_DIR = os.path.join(DATA_DIR, "raw")
+PROCESSED_DATA_DIR = os.path.join(DATA_DIR, "processed")
+LOGS_DIR = os.path.join(PROJECT_ROOT, "logs")
+
+DEFAULT_BASE_URL = "https://www.madewithnestle.ca"
+DEFAULT_LINKS_FILE = os.path.join(DATA_DIR, "collected_links.json")
+DEFAULT_VECTOR_CHUNKS_FILE = os.path.join(PROCESSED_DATA_DIR, "vector_chunks.json")
+DEFAULT_CONTENT_INDEX_FILE = os.path.join(PROCESSED_DATA_DIR, "content_index.json")
+
 FOOD_COMPOUND_TERMS = [
     # Ice cream and frozen desserts
     "ice cream", "ice creams", "soft serve", "hard pack", "gelato", "sorbet",

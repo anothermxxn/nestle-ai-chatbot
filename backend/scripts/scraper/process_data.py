@@ -6,6 +6,13 @@ import logging
 # Add src to the path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
+# Import config
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+from config import (
+    RAW_DATA_DIR,
+    PROCESSED_DATA_DIR
+)
+
 from scraper.data_processor import (
     process_all_content,
     remove_content_duplicates,
@@ -19,12 +26,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def get_default_paths():
-    """Get default data directory paths."""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.join(script_dir, "..", "..", "..")
+    """Get default data directory paths from config."""
     return {
-        "raw_dir": os.path.normpath(os.path.join(project_root, "data", "raw")),
-        "processed_dir": os.path.normpath(os.path.join(project_root, "data", "processed"))
+        "raw_dir": RAW_DATA_DIR,
+        "processed_dir": PROCESSED_DATA_DIR
     }
 
 def run_duplicate_removal(raw_dir: str):

@@ -1,33 +1,27 @@
 import logging
+import sys
+import os
 from typing import Dict, List, Optional
 from openai import AzureOpenAI
-from .session_manager import SessionManager
 
-# Import search client using proper relative imports
-try:
-    from ..search.search_client import AzureSearchClient
-except ImportError:
-    # Fallback for when running as script
-    import sys
-    import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), "..", "search"))
-    from search_client import AzureSearchClient
+# Add src to path for absolute imports
+src_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
 
-# Import centralized configuration
-try:
-    from ...config import (
-        AZURE_OPENAI_CONFIG,
-        CHAT_CONFIG,
-        CHAT_PROMPTS,
-        validate_azure_openai_config
-    )
-except ImportError:
-    from config import (
-        AZURE_OPENAI_CONFIG,
-        CHAT_CONFIG,
-        CHAT_PROMPTS,
-        validate_azure_openai_config
-    )
+# Add backend to path for config imports  
+backend_path = os.path.dirname(src_path)
+if backend_path not in sys.path:
+    sys.path.insert(0, backend_path)
+
+from chat.session_manager import SessionManager
+from search.search_client import AzureSearchClient
+from config import (
+    AZURE_OPENAI_CONFIG,
+    CHAT_CONFIG,
+    CHAT_PROMPTS,
+    validate_azure_openai_config
+)
 
 # Configure logging
 logging.basicConfig(

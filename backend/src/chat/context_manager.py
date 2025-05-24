@@ -1,17 +1,23 @@
 import logging
+import sys
+import os
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 
-# Import centralized configurations
-try:
-    from ...config.content_types import CONTENT_TYPE_KEYWORDS
-    from ...config.brands import get_all_brand_variations
-    from ...config.topics import detect_topics_from_text
-except ImportError:
-    from config.content_types import CONTENT_TYPE_KEYWORDS
-    from config.brands import get_all_brand_variations
-    from config.topics import detect_topics_from_text
+# Add src to path for absolute imports
+src_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
+
+# Add backend to path for config imports  
+backend_path = os.path.dirname(src_path)
+if backend_path not in sys.path:
+    sys.path.insert(0, backend_path)
+
+from config.content_types import CONTENT_TYPE_KEYWORDS
+from config.brands import get_all_brand_variations
+from config.topics import detect_topics_from_text
 
 logger = logging.getLogger(__name__)
 

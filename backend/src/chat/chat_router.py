@@ -1,8 +1,16 @@
+import sys
+import os
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 import logging
-from .chat_client import NestleChatClient
+
+# Add src to path for absolute imports
+src_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
+
+from chat.chat_client import NestleChatClient
 
 # Configure logging
 logger = logging.getLogger(__name__)

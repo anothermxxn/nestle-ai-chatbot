@@ -1,27 +1,30 @@
 import logging
+import sys
+import os
 from typing import Dict, List, Optional
 from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizableTextQuery
 from azure.core.credentials import AzureKeyCredential
 import json
 
-try:
-    from ...config.database import (
-        SEARCH_CONFIG,
-        AZURE_SEARCH_ENDPOINT,
-        AZURE_SEARCH_ADMIN_KEY,
-        AZURE_SEARCH_INDEX_NAME
-    )
-    from ...config import BATCH_SIZE
-except ImportError:
-    from config.database import (
-        SEARCH_CONFIG,
-        AZURE_SEARCH_ENDPOINT,
-        AZURE_SEARCH_ADMIN_KEY,
-        AZURE_SEARCH_INDEX_NAME
-    )
-    from config import BATCH_SIZE
-from .relevance_scorer import VectorSearchRanker
+# Add src to path for absolute imports
+src_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
+
+# Add backend to path for config imports  
+backend_path = os.path.dirname(src_path)
+if backend_path not in sys.path:
+    sys.path.insert(0, backend_path)
+
+from config.database import (
+    SEARCH_CONFIG,
+    AZURE_SEARCH_ENDPOINT,
+    AZURE_SEARCH_ADMIN_KEY,
+    AZURE_SEARCH_INDEX_NAME
+)
+from config import BATCH_SIZE
+from search.relevance_scorer import VectorSearchRanker
 
 # Configure logging
 logging.basicConfig(

@@ -1,12 +1,20 @@
 import logging
+import sys
+import os
 from typing import Dict, List, Optional
 from datetime import datetime
 
-# Import centralized configurations
-try:
-    from ...config.content_types import CONTENT_TYPE_KEYWORDS
-except ImportError:
-    from config.content_types import CONTENT_TYPE_KEYWORDS
+# Add src to path for absolute imports
+src_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
+
+# Add backend to path for config imports  
+backend_path = os.path.dirname(src_path)
+if backend_path not in sys.path:
+    sys.path.insert(0, backend_path)
+
+from config.content_types import CONTENT_TYPE_KEYWORDS
 
 logger = logging.getLogger(__name__)
 

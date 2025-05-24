@@ -7,6 +7,9 @@ from datetime import datetime
 # Add src to the path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
+# Import config for consistency (though this test script uses minimal config)
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+
 try:
     from chat.chat_client import NestleChatClient
     from chat.context_manager import ContextExtractor
