@@ -6,6 +6,13 @@ from typing import Set, Optional, Dict
 from urllib.parse import urlparse, urljoin
 from playwright.async_api import async_playwright, Browser, Page
 
+try:
+    # Try relative import first (when used as a module)
+    from ...config import MAX_PAGES_DEFAULT, SCRAPER_CONCURRENCY
+except ImportError:
+    # Fall back to absolute import (when run directly)
+    from config import MAX_PAGES_DEFAULT, SCRAPER_CONCURRENCY
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -114,13 +121,16 @@ class LinkCollector:
         
         return links
     
-    async def collect_links(self, max_pages: int = 1000, concurrency: int = 5):
+    async def collect_links(self, max_pages: int = None, concurrency: int = None):
         """Collect links from the website and its subpages.
         
         Args:
             max_pages (int): Maximum number of pages to process
             concurrency (int): Number of concurrent browser pages
         """
+        # Use centralized config defaults
+        max_pages = max_pages or MAX_PAGES_DEFAULT
+        concurrency = concurrency or SCRAPER_CONCURRENCY
         async with BrowserManager() as (browser, _):
             # Create a pool of pages
             pages = []

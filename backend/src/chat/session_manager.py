@@ -4,13 +4,17 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 
 from .context_manager import ChatMessage, SearchContext, ContextExtractor
+try:
+    from ...config import CHAT_CONFIG
+except ImportError:
+    from config import CHAT_CONFIG
 
 logger = logging.getLogger(__name__)
 
 class ConversationSession:
     """Manages a single conversation session with context."""
     
-    def __init__(self, session_id: str = None, max_history: int = 20, context_window: int = 5):
+    def __init__(self, session_id: str = None, max_history: int = None, context_window: int = None):
         """
         Initialize a conversation session.
         
@@ -22,8 +26,8 @@ class ConversationSession:
         self.session_id = session_id or str(uuid.uuid4())
         self.created_at = datetime.now()
         self.last_activity = datetime.now()
-        self.max_history = max_history
-        self.context_window = context_window
+        self.max_history = max_history or CHAT_CONFIG["max_conversation_history"]
+        self.context_window = context_window or CHAT_CONFIG["context_window"]
         
         # Message history
         self.messages: List[ChatMessage] = []
@@ -155,8 +159,8 @@ class ConversationSession:
         """Create session from dictionary."""
         session = cls(
             session_id=data["session_id"],
-            max_history=data.get("max_history", 20),
-            context_window=data.get("context_window", 5)
+            max_history=data.get("max_history", CHAT_CONFIG["max_conversation_history"]),
+            context_window=data.get("context_window", CHAT_CONFIG["context_window"])
         )
         
         session.created_at = datetime.fromisoformat(data["created_at"])
@@ -175,7 +179,7 @@ class ConversationSession:
 class SessionManager:
     """Manages multiple conversation sessions and provides session lifecycle functionality."""
     
-    def __init__(self, session_timeout_hours: int = 24):
+    def __init__(self, session_timeout_hours: int = None):
         """
         Initialize the session manager.
         
@@ -183,7 +187,8 @@ class SessionManager:
             session_timeout_hours (int): Hours after which inactive sessions expire
         """
         self.sessions: Dict[str, ConversationSession] = {}
-        self.session_timeout = timedelta(hours=session_timeout_hours)
+        timeout_hours = session_timeout_hours or CHAT_CONFIG["session_timeout_hours"]
+        self.session_timeout = timedelta(hours=timeout_hours)
     
     def create_session(self, session_id: str = None) -> ConversationSession:
         """Create a new conversation session."""

@@ -3,13 +3,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Azure AI Search settings
+# Azure AI Search configuration
 AZURE_SEARCH_ENDPOINT = os.getenv("AZURE_SEARCH_ENDPOINT")
 AZURE_SEARCH_ADMIN_KEY = os.getenv("AZURE_SEARCH_ADMIN_KEY")
 AZURE_SEARCH_INDEX_NAME = os.getenv("AZURE_SEARCH_INDEX_NAME")
 AZURE_SEARCH_API_VERSION = os.getenv("AZURE_SEARCH_API_VERSION")
-
-# Azure AI Search client configuration
 SEARCH_CONFIG = {
     "endpoint": AZURE_SEARCH_ENDPOINT,
     "admin_key": AZURE_SEARCH_ADMIN_KEY,
@@ -17,14 +15,12 @@ SEARCH_CONFIG = {
     "api_version": AZURE_SEARCH_API_VERSION
 }
 
-# Azure Cosmos DB NoSQL settings
+# Azure Cosmos DB configuration
 AZURE_COSMOS_ENDPOINT = os.getenv("AZURE_COSMOS_ENDPOINT")
 AZURE_COSMOS_KEY = os.getenv("AZURE_COSMOS_KEY")
 AZURE_COSMOS_DATABASE_NAME = os.getenv("AZURE_COSMOS_DATABASE_NAME")
 ENTITIES_CONTAINER_NAME = os.getenv("AZURE_COSMOS_ENTITIES_CONTAINER_NAME")
 RELATIONSHIPS_CONTAINER_NAME = os.getenv("AZURE_COSMOS_RELATIONSHIPS_CONTAINER_NAME")
-
-# Cosmos DB client configuration
 COSMOS_CONFIG = {
     "endpoint": AZURE_COSMOS_ENDPOINT,
     "key": AZURE_COSMOS_KEY,

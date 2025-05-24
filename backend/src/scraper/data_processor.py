@@ -12,6 +12,74 @@ from nltk.corpus import stopwords
 from nltk.util import ngrams
 
 from .url_parser import parse_url
+try:
+    from ...config import (
+        # Compound terms
+        FOOD_COMPOUND_TERMS,
+        BRAND_COMPOUND_TERMS,
+        ALL_COMPOUND_TERMS,
+        
+        # Content filtering
+        EXCLUDE_SECTION_PATTERNS,
+        MIN_CONTENT_LENGTH,
+        FOOD_INDICATORS,
+        GENERIC_TERMS,
+        STOP_WORDS,
+        
+        # Classification indicators
+        WEB_COOKIE_INDICATORS,
+        FOOD_COOKIE_INDICATORS,
+        SOCIAL_MEDIA_INDICATORS,
+        FOOD_DOMAINS,
+        ERROR_INDICATORS,
+        ERROR_CODES,
+        NAV_PATTERNS,
+        
+        # Processing settings
+        DEFAULT_CHUNK_SIZE,
+        DEFAULT_CHUNK_OVERLAP,
+        MARKDOWN_CHUNK_SIZE,
+        MARKDOWN_CHUNK_OVERLAP,
+        MAX_KEYWORDS_PER_CHUNK,
+        BATCH_SIZE,
+        NGRAM_RANGE,
+        MAX_NGRAMS,
+        MAX_PHRASE_LENGTH,
+    )
+except ImportError:
+    from config import (
+        # Compound terms
+        FOOD_COMPOUND_TERMS,
+        BRAND_COMPOUND_TERMS,
+        ALL_COMPOUND_TERMS,
+        
+        # Content filtering
+        EXCLUDE_SECTION_PATTERNS,
+        MIN_CONTENT_LENGTH,
+        FOOD_INDICATORS,
+        GENERIC_TERMS,
+        STOP_WORDS,
+        
+        # Classification indicators
+        WEB_COOKIE_INDICATORS,
+        FOOD_COOKIE_INDICATORS,
+        SOCIAL_MEDIA_INDICATORS,
+        FOOD_DOMAINS,
+        ERROR_INDICATORS,
+        ERROR_CODES,
+        NAV_PATTERNS,
+        
+        # Processing settings
+        DEFAULT_CHUNK_SIZE,
+        DEFAULT_CHUNK_OVERLAP,
+        MARKDOWN_CHUNK_SIZE,
+        MARKDOWN_CHUNK_OVERLAP,
+        MAX_KEYWORDS_PER_CHUNK,
+        BATCH_SIZE,
+        NGRAM_RANGE,
+        MAX_NGRAMS,
+        MAX_PHRASE_LENGTH,
+    )
 
 # Download required NLTK data if not already present
 try:
@@ -24,100 +92,7 @@ except LookupError:
     nltk.download("punkt_tab", quiet=True)
     nltk.download("stopwords", quiet=True)
 
-# Common food-related compound terms that should be kept together
-FOOD_COMPOUND_TERMS = [
-    # Ice cream and frozen desserts
-    "ice cream", "ice creams", "soft serve", "hard pack", "gelato", "sorbet",
-    "frozen yogurt", "frozen dessert", "frozen desserts", "ice cream cake",
-    "ice cream sandwich", "ice cream cone", "ice cream bar", "ice cream sundae",
-    "vanilla ice cream", "chocolate ice cream", "strawberry ice cream",
-    
-    # Chocolate varieties  
-    "milk chocolate", "dark chocolate", "white chocolate", "chocolate chip",
-    "chocolate chips", "chocolate bar", "chocolate bars", "chocolate cake",
-    "chocolate mousse", "chocolate sauce", "chocolate syrup", "hot chocolate",
-    "chocolate brownie", "chocolate cookie", "chocolate cookies",
-    
-    # Coffee products
-    "instant coffee", "ground coffee", "coffee beans", "coffee machine",
-    "coffee maker", "coffee shop", "iced coffee", "cold brew", "espresso",
-    "cappuccino", "latte", "macchiato", "coffee crisp", "coffee mate",
-    
-    # Cream and dairy
-    "whipped cream", "heavy cream", "light cream", "sour cream", "cream cheese",
-    "real dairy", "dairy free", "non dairy",
-    
-    # Baking ingredients
-    "baking powder", "baking soda", "vanilla extract", "almond extract",
-    "brown sugar", "powdered sugar", "maple syrup", "corn syrup", 
-    "coconut oil", "olive oil", "vegetable oil",
-    
-    # Recipe terms
-    "prep time", "cook time", "total time", "serving size", "recipe card",
-    "step by step", "easy recipe", "quick recipe", "healthy recipe",
-    
-    # Nutrition terms
-    "calorie count", "nutrition facts", "dietary fiber", "saturated fat",
-    "trans fat", "vitamin c", "vitamin d", "vitamin b", "omega 3",
-    
-    # Meal types
-    "breakfast cereal", "lunch box", "dinner party", "snack time",
-    "meal planning", "meal prep", "family dinner", "quick meal",
-    
-    # Cooking methods
-    "slow cooker", "pressure cooker", "air fryer", "food processor",
-    "stand mixer", "hand mixer", "baking sheet", "mixing bowl",
-    
-    # Product categories
-    "frozen meals", "ready meals", "baby food", "pet food", "health food",
-    "organic food", "gluten free", "sugar free", "fat free", "low fat"
-]
-
-# Brand compound terms
-BRAND_COMPOUND_TERMS = [
-    "kit kat", "quality street", "after eight", "coffee crisp", "big turk",
-    "lean cuisine", "haagen dazs", "del monte", "real dairy", "coffee mate",
-    "natures bounty", "san pellegrino"
-]
-
-# All compound terms combined
-ALL_COMPOUND_TERMS = FOOD_COMPOUND_TERMS + BRAND_COMPOUND_TERMS
-
-# Common boilerplate content patterns to exclude
-EXCLUDE_SECTION_PATTERNS = [
-    r"information we collect about you",
-    r"performance cookies",
-    r"cookie policy",
-    r"privacy policy",
-    r"terms of service",
-    r"terms and conditions",
-    r"cookie settings",
-    r"manage cookies",
-    r"privacy notice",
-    r"data protection",
-    r"gdpr",
-    r"legal notice",
-    r"copyright notice",
-    r"all rights reserved",
-    r"newsletter signup",
-    r"follow us",
-    r"social media",
-    r"share this",
-    r"share on facebook",
-    r"share on twitter", 
-    r"share on pinterest",
-    r"facebook.*twitter.*pinterest",
-    r"skip to main content",
-    r"contact us",
-    r"customer service",
-    r"site map",
-    r"help center",
-    r"accessibility",
-    r"modern slavery statement"
-]
-
-# Minimum content length to consider (filter out very short sections)
-MIN_CONTENT_LENGTH = 50
+# All constants now imported from centralized configuration
 
 def extract_compound_phrases(text: str) -> List[str]:
     """
@@ -143,7 +118,7 @@ def extract_compound_phrases(text: str) -> List[str]:
     
     return found_phrases
 
-def extract_meaningful_ngrams(text: str, n_range: Tuple[int, int] = (2, 3)) -> List[str]:
+def extract_meaningful_ngrams(text: str, n_range: Tuple[int, int] = NGRAM_RANGE) -> List[str]:
     """
     Extract meaningful n-grams from text using NLTK if available, fallback to basic method.
     
@@ -180,7 +155,7 @@ def extract_meaningful_ngrams(text: str, n_range: Tuple[int, int] = (2, 3)) -> L
             if is_food_related_phrase(phrase):
                 meaningful_ngrams.append(phrase)
     
-    return meaningful_ngrams[:10]  # Limit to top 10
+    return meaningful_ngrams[:MAX_NGRAMS]  # Limit to configured max
 
 def is_food_related_phrase(phrase: str) -> bool:
     """
@@ -192,24 +167,14 @@ def is_food_related_phrase(phrase: str) -> bool:
     Returns:
         bool: True if phrase seems meaningful
     """
-    # Food-related keywords that indicate a meaningful phrase
-    food_indicators = [
-        "chocolate", "cream", "ice", "coffee", "recipe", "baking", "cooking",
-        "dessert", "cake", "cookie", "sweet", "flavor", "ingredient", "sauce",
-        "syrup", "butter", "sugar", "vanilla", "caramel", "strawberry", "berry",
-        "fruit", "nut", "almond", "coconut", "lemon", "orange", "mint", "crispy",
-        "smooth", "rich", "delicious", "frozen", "fresh", "organic", "natural"
-    ]
-    
-    # Check if phrase contains food-related terms
+    # Check if phrase contains food-related terms (using centralized config)
     phrase_words = phrase.split()
-    has_food_term = any(word in food_indicators for word in phrase_words)
+    has_food_term = any(word in FOOD_INDICATORS for word in phrase_words)
     
-    # Avoid generic phrases
-    generic_terms = ["new", "great", "good", "best", "more", "other", "all", "some"]
-    is_generic = all(word in generic_terms for word in phrase_words)
+    # Avoid generic phrases (using centralized config)
+    is_generic = all(word in GENERIC_TERMS for word in phrase_words)
     
-    return has_food_term and not is_generic and len(phrase_words) <= 4
+    return has_food_term and not is_generic and len(phrase_words) <= MAX_PHRASE_LENGTH
 
 def keyword_extraction(url_parts: List[str], title: str, content: str, 
                                content_type: str, brand: str = None) -> List[str]:
@@ -259,13 +224,12 @@ def keyword_extraction(url_parts: List[str], title: str, content: str,
         content_keywords = extract_content_keywords(content)
         keywords.update(content_keywords)
     
-    # Remove stop words and very short terms
-    stop_words = {"the", "and", "or", "in", "on", "at", "to", "for", "of", "with", "a", "an"}
-    keywords = {k for k in keywords if len(k) > 2 and k not in stop_words}
+    # Remove stop words and very short terms (using centralized config)
+    keywords = {k for k in keywords if len(k) > 2 and k not in STOP_WORDS}
     
     return sorted(list(keywords))
 
-def extract_content_keywords(content: str, max_keywords: int = 20) -> List[str]:
+def extract_content_keywords(content: str, max_keywords: int = MAX_KEYWORDS_PER_CHUNK) -> List[str]:
     """
     Extract meaningful keywords from content using frequency analysis and compound detection.
     
@@ -312,29 +276,7 @@ def is_food_related_word(word: str) -> bool:
     Returns:
         bool: True if word is food-related
     """
-    food_domains = [
-        # Ingredients
-        "chocolate", "vanilla", "strawberry", "caramel", "coconut", "almond", "peanut",
-        "butter", "cream", "milk", "sugar", "honey", "maple", "cinnamon", "mint",
-        
-        # Food types
-        "cookie", "cake", "pie", "bread", "pasta", "sauce", "soup", "salad",
-        "sandwich", "pizza", "burger", "cereal", "yogurt", "cheese", "fruit",
-        
-        # Cooking terms
-        "recipe", "baking", "cooking", "grilling", "frying", "boiling", "mixing",
-        "seasoning", "marinating", "sautéing", "roasting", "preparation",
-        
-        # Descriptors
-        "crispy", "creamy", "sweet", "salty", "spicy", "fresh", "frozen", "organic",
-        "delicious", "tasty", "flavorful", "rich", "smooth", "crunchy",
-        
-        # Nutrition
-        "calories", "protein", "fiber", "vitamins", "minerals", "healthy", "nutrition",
-        "ingredients", "serving", "portion"
-    ]
-    
-    return word in food_domains
+    return word in FOOD_DOMAINS
 
 def sanitize_url(url: str) -> str:
     """
@@ -390,21 +332,13 @@ def is_error_page(title: str) -> bool:
     """
     title_lower = title.lower() if title else ""
     
-    error_indicators = [
-        "404 error",
-        "page not found",
-        "page doesn't exist",
-        "page has been removed",
-        "red mugger strikes",
-        "stole the page you were looking for"
-    ]
-    
-    for indicator in error_indicators:
+    # Check against centralized error indicators
+    for indicator in ERROR_INDICATORS:
         if indicator in title_lower:
             return True
     
-    error_codes = ["400", "401", "403", "404", "500", "502", "503"]
-    for code in error_codes:
+    # Check against centralized error codes
+    for code in ERROR_CODES:
         if code in title_lower:
             return True
     
@@ -440,34 +374,16 @@ def is_boilerplate_section(title: str, content: str) -> bool:
         if re.search(pattern, title_lower) or re.search(pattern, content_lower):
             return True
     
-    # Check for social media sharing sections
-    social_media_indicators = [
-        "facebook", "twitter", "pinterest", "email", "yummly", "instagram", "linkedin"
-    ]
-    social_link_count = sum(1 for platform in social_media_indicators if platform in content_lower)
+    # Check for social media sharing sections (using centralized config)
+    social_link_count = sum(1 for platform in SOCIAL_MEDIA_INDICATORS if platform in content_lower)
     if social_link_count >= 3 and any(term in content_lower for term in ["share", "follow", "connect"]):
         return True
     
-    # More careful detection for web cookies vs food cookies
-    web_cookie_indicators = [
-        "tracking", "analytics", "advertising", "gdpr", "consent", 
-        "privacy policy", "data protection", "personal information",
-        "third party", "performance cookies", "functional cookies",
-        "targeting cookies", "essential cookies", "browser",
-        "website", "collect information", "your preferences",
-        "opt out", "manage cookies", "cookie settings"
-    ]
-    
-    food_cookie_indicators = [
-        "recipe", "ingredients", "chocolate", "baking", "oven",
-        "flour", "sugar", "butter", "vanilla", "cream",
-        "crispy", "chewy", "sweet", "dessert", "treat"
-    ]
-    
+    # More careful detection for web cookies vs food cookies (using centralized config)
     # If "cookie" appears, check context to determine if it's web or food related
     if "cookie" in content_lower:
-        web_score = sum(1 for indicator in web_cookie_indicators if indicator in content_lower)
-        food_score = sum(1 for indicator in food_cookie_indicators if indicator in content_lower)
+        web_score = sum(1 for indicator in WEB_COOKIE_INDICATORS if indicator in content_lower)
+        food_score = sum(1 for indicator in FOOD_COOKIE_INDICATORS if indicator in content_lower)
         
         # Only filter as web cookie content if:
         # 1. Multiple web indicators present AND
@@ -475,14 +391,8 @@ def is_boilerplate_section(title: str, content: str) -> bool:
         if web_score >= 2 and (food_score == 0 or web_score > food_score * 2):
             return True
     
-    # Check for navigation-only content
-    nav_patterns = [
-        r"^(home|about|contact|products|services|blog)$",
-        r"^\s*>\s*",  # Breadcrumb navigation
-        r"^[<>←→\s]+$"  # Navigation arrows/symbols
-    ]
-    
-    for pattern in nav_patterns:
+    # Check for navigation-only content (using centralized config)
+    for pattern in NAV_PATTERNS:
         if re.match(pattern, content.strip(), re.IGNORECASE):
             return True
     
@@ -703,14 +613,14 @@ def process_markdown_file(file_path: str, url: str, common_content_hashes: Set[s
         url_info["content_type"] = "other"
         url_info["keywords"] = [k for k in url_info["keywords"] if k != "recipe"]
     
-    # First split on markdown headers to preserve document structure
-    markdown_splitter = MarkdownTextSplitter(chunk_size=2000, chunk_overlap=200)
+    # First split on markdown headers to preserve document structure (using centralized config)
+    markdown_splitter = MarkdownTextSplitter(chunk_size=MARKDOWN_CHUNK_SIZE, chunk_overlap=MARKDOWN_CHUNK_OVERLAP)
     markdown_docs = markdown_splitter.create_documents([content])
     
-    # Further split large sections if needed
+    # Further split large sections if needed (using centralized config)
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=100,
+        chunk_size=DEFAULT_CHUNK_SIZE,
+        chunk_overlap=DEFAULT_CHUNK_OVERLAP,
         length_function=len,
         separators=["\n\n", "\n", " ", ""]
     )
@@ -749,8 +659,8 @@ def process_markdown_file(file_path: str, url: str, common_content_hashes: Set[s
             filtered_sections += 1
             continue
         
-        # Split into smaller chunks if needed
-        if len(doc.page_content) > 1000:
+        # Split into smaller chunks if needed (using centralized config)
+        if len(doc.page_content) > DEFAULT_CHUNK_SIZE:
             section_chunks = text_splitter.split_text(doc.page_content)
         else:
             section_chunks = [doc.page_content]
@@ -760,8 +670,8 @@ def process_markdown_file(file_path: str, url: str, common_content_hashes: Set[s
             if len(chunk.strip()) < MIN_CONTENT_LENGTH:
                 continue
             
-            # Extract chunk-specific keywords including compound phrases
-            chunk_keywords = extract_content_keywords(chunk, max_keywords=10)
+            # Extract chunk-specific keywords including compound phrases (using centralized config)
+            chunk_keywords = extract_content_keywords(chunk, max_keywords=MAX_KEYWORDS_PER_CHUNK)
             
             # Combine page-level and chunk-level keywords
             all_keywords = list(set(keywords + chunk_keywords))
@@ -778,7 +688,6 @@ def process_markdown_file(file_path: str, url: str, common_content_hashes: Set[s
                 "chunk_index": chunk_idx,
                 "total_chunks": len(section_chunks),
                 "content": chunk.strip(),
-                "processed_at": datetime.utcnow().isoformat()
             })
     
     if filtered_sections > 0:

@@ -83,7 +83,7 @@ def main():
     
     parser.add_argument(
         "--base-url",
-        default="https://www.madewithnestle.ca/sitemap",
+        default="https://www.madewithnestle.ca",
         help="Starting URL to collect links from"
     )
     

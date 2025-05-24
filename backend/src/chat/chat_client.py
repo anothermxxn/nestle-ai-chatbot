@@ -1,23 +1,33 @@
 import logging
-import sys
-import os
 from typing import Dict, List, Optional
 from openai import AzureOpenAI
-from dotenv import load_dotenv
 from .session_manager import SessionManager
 
-# Add search module to path
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "search"))
-from search_client import AzureSearchClient
+# Import search client using proper relative imports
+try:
+    from ..search.search_client import AzureSearchClient
+except ImportError:
+    # Fallback for when running as script
+    import sys
+    import os
+    sys.path.append(os.path.join(os.path.dirname(__file__), "..", "search"))
+    from search_client import AzureSearchClient
 
-# Load environment variables
-load_dotenv()
-
-# Azure OpenAI API settings.
-AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
-AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
-AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
-AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT")
+# Import centralized configuration
+try:
+    from ...config import (
+        AZURE_OPENAI_CONFIG,
+        CHAT_CONFIG,
+        CHAT_PROMPTS,
+        validate_azure_openai_config
+    )
+except ImportError:
+    from config import (
+        AZURE_OPENAI_CONFIG,
+        CHAT_CONFIG,
+        CHAT_PROMPTS,
+        validate_azure_openai_config
+    )
 
 # Configure logging
 logging.basicConfig(
@@ -34,21 +44,27 @@ class NestleChatClient:
     
     def __init__(self):
         """Initialize the chat client with search, OpenAI, and context/session management."""
+        # Validate configuration
+        if not validate_azure_openai_config():
+            raise ValueError("Invalid Azure OpenAI configuration")
+        
         # Initialize search client with enhanced ranking
         self.search_client = AzureSearchClient(enable_enhanced_ranking=True)
         
-        # Initialize session manager
-        self.session_manager = SessionManager(session_timeout_hours=24)
+        # Initialize session manager (using centralized config)
+        self.session_manager = SessionManager(
+            session_timeout_hours=CHAT_CONFIG["session_timeout_hours"]
+        )
         
         # Store deployment name
-        self.deployment_name = AZURE_OPENAI_DEPLOYMENT
+        self.deployment_name = AZURE_OPENAI_CONFIG["deployment"]
         
-        # Initialize Azure OpenAI client
+        # Initialize Azure OpenAI client (using centralized config)
         try:
             self.openai_client = AzureOpenAI(
-                api_key=AZURE_OPENAI_API_KEY,
-                azure_endpoint=AZURE_OPENAI_ENDPOINT,
-                api_version=AZURE_OPENAI_API_VERSION
+                api_key=AZURE_OPENAI_CONFIG["api_key"],
+                azure_endpoint=AZURE_OPENAI_CONFIG["endpoint"],
+                api_version=AZURE_OPENAI_CONFIG["api_version"]
             )
             logger.info("Successfully initialized chat client")
         except Exception as e:
@@ -62,27 +78,7 @@ class NestleChatClient:
         Returns:
             str: The prompt template with placeholders for query, sources, and context
         """
-        return """
-        You are a helpful AI agent for Made with Nestlé website.
-        Answer the query using only the sources provided below.
-        Use bullets if the answer has multiple points.
-        If the answer is longer than 3 sentences, provide a summary.
-        Answer ONLY with the facts listed in the list of sources below.
-        Cite your source when you answer the question.
-        If there isn't enough information below, say you don't know.
-        Do not generate answers that don't use the sources below.
-        Focus on Nestle products, recipes, and brand information.
-        Be helpful and friendly in your responses.
-        
-        Consider the conversation context when formulating your response.
-        If this relates to previous questions in the conversation, acknowledge that context naturally.
-
-        Conversation Context: {context_summary}
-        
-        Current Query: {query}
-        Sources:
-        {sources}
-        """
+        return CHAT_PROMPTS["default_system_prompt"]
     
     def _format_links(self, search_results: List[Dict]) -> List[Dict]:
         """
@@ -241,7 +237,7 @@ class NestleChatClient:
             
             if not search_results:
                 no_results_response = {
-                    "answer": "I couldn't find any relevant information about your question. Please try rephrasing your question or asking about something else.",
+                    "answer": CHAT_PROMPTS["no_results_message"],
                     "sources": [],
                     "source_links": [],
                     "search_results_count": 0,
@@ -291,15 +287,15 @@ class NestleChatClient:
                     }
                 ],
                 model=self.deployment_name,
-                temperature=0.3,
-                max_tokens=1000
+                temperature=CHAT_CONFIG["default_temperature"],
+                max_tokens=CHAT_CONFIG["default_max_tokens"]
             )
             
             # Safely extract answer from response
             if not response.choices or len(response.choices) == 0:
                 logger.error("OpenAI response contains no choices")
                 error_response = {
-                    "answer": "I'm sorry, I couldn't generate a response. Please try again.",
+                    "answer": CHAT_PROMPTS["error_message"],
                     "sources": search_results,
                     "source_links": source_links,
                     "search_results_count": len(search_results),
@@ -325,7 +321,7 @@ class NestleChatClient:
             
             # Check if answer is empty
             if not answer:
-                answer = "I found relevant sources but couldn't generate a complete answer. Please check the sources below."
+                answer = CHAT_PROMPTS["generation_error_message"]
             
             # Add agent message to conversation history
             session.add_agent_message(
@@ -374,7 +370,7 @@ class NestleChatClient:
                 session_info = {"session_id": None}
             
             return {
-                "answer": "I'm sorry, I encountered an error while processing your question. Please try again.",
+                "answer": CHAT_PROMPTS["error_message"],
                 "sources": [],
                 "source_links": [],
                 "search_results_count": 0,

@@ -1,26 +1,27 @@
-from datetime import datetime
 import logging
 from typing import Dict, List, Optional
 from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizableTextQuery
 from azure.core.credentials import AzureKeyCredential
+import json
 
-# Handle imports for both relative and absolute contexts
 try:
-    from .config import (
+    from ...config.database import (
+        SEARCH_CONFIG,
         AZURE_SEARCH_ENDPOINT,
         AZURE_SEARCH_ADMIN_KEY,
         AZURE_SEARCH_INDEX_NAME
     )
-    from .relevance_scorer import VectorSearchRanker
+    from ...config import BATCH_SIZE
 except ImportError:
-    # Fallback for absolute import context
-    from config import (
+    from config.database import (
+        SEARCH_CONFIG,
         AZURE_SEARCH_ENDPOINT,
         AZURE_SEARCH_ADMIN_KEY,
         AZURE_SEARCH_INDEX_NAME
     )
-    from relevance_scorer import VectorSearchRanker
+    from config import BATCH_SIZE
+from .relevance_scorer import VectorSearchRanker
 
 # Configure logging
 logging.basicConfig(
@@ -61,34 +62,21 @@ class AzureSearchClient:
             self.ranker = None
 
     def _prepare_document(self, document: Dict) -> Dict:
-            """
-            Prepare document for indexing by:
-            1. Adding a unique id field
-            2. Converting processed_at to Azure Search format
+        """
+        Prepare document for indexing by adding a unique id field.
+        
+        Args:
+            document (Dict): Document to prepare.
             
-            Args:
-                document (Dict): Document to prepare.
-                
-            Returns:
-                Dict: Prepared document.
-            """
-            doc = document.copy()
-            
-            # Generate unique id from url, doc_index, and chunk_index
-            doc["id"] = f"{doc['url']}_{doc['doc_index']}_{doc['chunk_index']}".replace("/", "_")
-            
-            if "processed_at" in doc:
-                # Convert ISO format to Azure Search format
-                try:
-                    # Parse the ISO datetime string
-                    dt = datetime.fromisoformat(doc["processed_at"])
-                    # Format for Azure Search
-                    doc["processed_at"] = dt.strftime("%Y-%m-%dT%H:%M:%S") + "+00:00"
-                except Exception as e:
-                    logger.error(f"Error formatting processed_at: {str(e)}")
-                    raise
-            
-            return doc
+        Returns:
+            Dict: Prepared document.
+        """
+        doc = document.copy()
+        
+        # Generate unique id from url, doc_index, and chunk_index
+        doc["id"] = f"{doc['url']}_{doc['doc_index']}_{doc['chunk_index']}".replace("/", "_")
+        
+        return doc
         
     async def index_documents(self, documents: List[Dict]) -> bool:
         """
@@ -106,7 +94,7 @@ class AzureSearchClient:
                 return True
                 
             # Process in batches of 100 (Azure Search recommended batch size)
-            batch_size = 100
+            batch_size = BATCH_SIZE
             total_documents = len(documents)
             total_batches = (total_documents + batch_size - 1) // batch_size
             overall_success = True
@@ -208,7 +196,7 @@ class AzureSearchClient:
         try:
             # Build search options
             search_options = {
-                "select": "id,url,page_title,section_title,content,content_type,brand,keywords,doc_index,chunk_index,total_chunks,processed_at",
+                "select": "id,url,page_title,section_title,content,content_type,brand,keywords,doc_index,chunk_index,total_chunks",
                 "top": top,
                 "skip": skip,
                 "include_total_count": True,

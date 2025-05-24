@@ -2,6 +2,12 @@ import logging
 from typing import Dict, List, Optional
 from datetime import datetime
 
+# Import centralized configurations
+try:
+    from ...config.content_types import CONTENT_TYPE_KEYWORDS
+except ImportError:
+    from config.content_types import CONTENT_TYPE_KEYWORDS
+
 logger = logging.getLogger(__name__)
 
 class VectorSearchRanker:
@@ -68,27 +74,8 @@ class VectorSearchRanker:
             
         query_lower = query.lower()
         
-        # Define query patterns and their preferred content types
-        content_patterns = {
-            "recipe": ["recipe", "cooking", "bake", "cook", "ingredient", "prepare", "how to make", "baking"],
-            "brand": [
-                "product", "brand", "chocolate", "coffee", "cereal",
-                # Actual brand names from data
-                "del monte", "maggi", "drumstick", "nestea", "perrier", "coffee crisp", 
-                "quality street", "nescafe", "aero", "boost", "after eight", "carnation", 
-                "coffee-mate", "coffee mate", "turtles", "haagen-dazs", "haagen dazs", 
-                "kit kat", "kitkat", "big turk", "smarties", "milo", "materna", "crunch", 
-                "real dairy", "nature's bounty", "natures bounty", "gerber", "parlour", 
-                "nesfruta", "mackintosh toffee", "mackintosh", "nesquik", "nido", "mirage", 
-                "rolo", "ibgard", "purina"
-            ],
-            "other": ["about", "company", "nestle", "history", "corporate", "who is", "what is"],
-            "news": ["news", "announcement", "latest", "update", "press"],
-            "sustainability": ["sustainability", "environment", "green", "eco", "responsible", "climate"]
-        }
-        
-        # Check if query suggests a specific content type
-        for content, keywords in content_patterns.items():
+        # Check if query suggests a specific content type (using centralized config)
+        for content, keywords in CONTENT_TYPE_KEYWORDS.items():
             if any(keyword in query_lower for keyword in keywords):
                 if content_type.lower() == content or content in content_type.lower():
                     return 1.0

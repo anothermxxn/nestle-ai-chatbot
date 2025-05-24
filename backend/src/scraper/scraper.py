@@ -3,6 +3,10 @@ import asyncio
 import logging
 from .link_collector import LinkCollector
 from .content_processor import ContentProcessor
+try:
+    from ...config import MAX_PAGES_LARGE
+except ImportError:
+    from config import MAX_PAGES_LARGE
 
 # Configure logging
 logging.basicConfig(
@@ -11,7 +15,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-async def collect_links(base_url: str, output_file: str, max_pages: int = 10000):
+async def collect_links(base_url: str, output_file: str, max_pages: int = None):
     """Collect links from the website and save to file.
     
     Args:
@@ -19,6 +23,7 @@ async def collect_links(base_url: str, output_file: str, max_pages: int = 10000)
         output_file (str): Path to save collected links
         max_pages (int): Maximum number of pages to process
     """
+    max_pages = max_pages or MAX_PAGES_LARGE
     collector = LinkCollector(base_url=base_url, output_file=output_file)
     await collector.collect_links(max_pages=max_pages)
 
@@ -36,7 +41,7 @@ async def run_scraper(
     base_url: str,
     links_file: str,
     output_dir: str,
-    max_pages: int = 10000,
+    max_pages: int = None,
     phase: str = "all"
 ):
     """Run the scraper in the specified phase.

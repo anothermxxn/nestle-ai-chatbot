@@ -3,6 +3,16 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 
+# Import centralized configurations
+try:
+    from ...config.content_types import CONTENT_TYPE_KEYWORDS
+    from ...config.brands import get_all_brand_variations
+    from ...config.topics import detect_topics_from_text
+except ImportError:
+    from config.content_types import CONTENT_TYPE_KEYWORDS
+    from config.brands import get_all_brand_variations
+    from config.topics import detect_topics_from_text
+
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -55,76 +65,11 @@ class ContextExtractor:
     
     def __init__(self):
         """Initialize the context extractor with predefined keywords and brands."""
-        # Known Nestle brands
-        self.brands = [
-            "del monte", "maggi", "drumstick", "nestea", "perrier", "coffee crisp",
-            "quality street", "nescafe", "aero", "boost", "after eight", "carnation",
-            "coffee-mate", "turtles", "haagen-dazs", "häagen-dazs", "kit kat", "kitkat", 
-            "big turk", "smarties", "milo", "materna", "crunch", "real dairy", "nature's bounty",
-            "gerber", "parlour", "nesfruta", "mackintosh", "nesquik", "nido", "mirage",
-            "rolo", "ibgard", "purina", "oreo"
-        ]
+        # Known Nestle brands (from centralized config)
+        self.brands = get_all_brand_variations()
         
-        # Content type indicators
-        self.content_type_keywords = {
-            "recipe": [
-                "recipe", "cook", "bake", "prepare", "ingredient", "how to make",
-                "ingredients", "directions", "instructions", "servings", "total time",
-                "prep", "assembly", "tips", "cooking time", "prep time", "method",
-                "steps", "procedure", "technique"
-            ],
-            "brand": [
-                "product", "brand", "about", "tell me about", "features", "benefits",
-                "nutrition information", "calories", "crafted", "made with", 
-                "frozen dessert", "cones", "nutrition facts", "varieties",
-                "flavors", "flavours", "description", "details"
-            ],
-            "news": [
-                "news", "latest", "update", "announcement", "new", "launch",
-                "release", "coming soon", "available now"
-            ],
-            "other": [
-                "company", "nestle", "history", "about nestle", "corporate",
-                "values", "mission", "story", "heritage"
-            ],
-            "sustainability": [
-                "sustainability", "sustainable", "environment", "eco", "green", 
-                "carbon", "renewable", "recycling", "climate", "responsible",
-                "environmental impact", "eco-friendly", "organic", "natural"
-            ]
-        }
-        
-        # Extract topics/themes
-        self.topic_keywords = [
-            # Basic food categories
-            "chocolate", "coffee", "cookie", "cake", "dessert", "baking", "cooking", "nutrition",
-            
-            # Frozen desserts & ice cream
-            "frozen", "ice cream", "sorbet", "gelato", "bars", "popsicles", "cones", "sundae",
-            
-            # Flavors from chunks
-            "caramel", "vanilla", "strawberry", "mango", "berry", "coconut", "pineapple", 
-            "raspberry", "truffle", "white chocolate", "lemon", "tropical", "mint",
-            
-            # Savory foods
-            "noodles", "masala", "curry", "soup", "tacos", "rice", "biryani", "pasta",
-            "bouillon", "seasoning", "sauce", "spicy", "chilli", "garlic",
-            
-            # Dessert types
-            "meringue", "pavlova", "coulis", "brownie", "cheesecake", "mousse", "tart",
-            
-            # Cooking descriptors
-            "sweet", "salty", "creamy", "crispy", "smooth", "rich", "delicious",
-            "refreshing", "indulgent", "decadent",
-            
-            # Cooking methods & terms
-            "preparation", "serving", "assembly", "mixing", "whipping", "melting",
-            "freezing", "chilling", "heating", "boiling", "simmering",
-            
-            # Dietary & nutrition
-            "healthy", "protein", "fiber", "vitamins", "calories", "fat", "sugar",
-            "dairy", "plant-based", "vegetarian", "organic", "natural"
-        ]
+        # Content type indicators (from centralized config)
+        self.content_type_keywords = CONTENT_TYPE_KEYWORDS
     
     def update_search_context(self, user_input: str, search_context: SearchContext) -> None:
         """
@@ -142,8 +87,8 @@ class ContextExtractor:
         # Update preferred content types
         self._extract_content_types(user_input_lower, search_context)
         
-        # Extract topics/themes
-        self._extract_topics(user_input_lower, search_context)
+        # Extract topics/themes using enhanced detection
+        self._extract_topics_enhanced(user_input, search_context)
     
     def _extract_brands(self, user_input_lower: str, search_context: SearchContext) -> None:
         """Extract and update mentioned brands from user input."""
@@ -167,16 +112,19 @@ class ContextExtractor:
                 if len(search_context.preferred_content_types) > 5:
                     search_context.preferred_content_types = search_context.preferred_content_types[-5:]
     
-    def _extract_topics(self, user_input_lower: str, search_context: SearchContext) -> None:
-        """Extract and update topics/themes from user input."""
-        for keyword in self.topic_keywords:
-            if keyword in user_input_lower:
-                if keyword not in search_context.recent_topics:
-                    search_context.recent_topics.append(keyword)
-                    
-                # Keep only recent topics (last 8)
-                if len(search_context.recent_topics) > 8:
-                    search_context.recent_topics = search_context.recent_topics[-8:]
+    def _extract_topics_enhanced(self, user_input: str, search_context: SearchContext) -> None:
+        """Extract and update topics/themes using enhanced detection from user input."""
+        # Use the new enhanced topic detection
+        detected_topics = detect_topics_from_text(user_input, min_keyword_matches=1)
+        
+        for topic_key, topic_data in detected_topics.items():
+            topic_name = topic_data["name"]
+            if topic_name not in search_context.recent_topics:
+                search_context.recent_topics.append(topic_name)
+                
+            # Keep only recent topics (last 8)
+            if len(search_context.recent_topics) > 8:
+                search_context.recent_topics = search_context.recent_topics[-8:]
     
     def analyze_query_intent(self, user_input: str) -> Dict[str, Any]:
         """
@@ -193,7 +141,7 @@ class ContextExtractor:
         analysis = {
             "query": user_input,
             "detected_brands": [],
-            "detected_topics": [],
+            "detected_topics": {},
             "likely_content_types": [],
             "intent_confidence": {}
         }
@@ -203,10 +151,9 @@ class ContextExtractor:
             if brand in user_input_lower:
                 analysis["detected_brands"].append(brand)
         
-        # Detect topics
-        for topic in self.topic_keywords:
-            if topic in user_input_lower:
-                analysis["detected_topics"].append(topic)
+        # Detect topics using enhanced detection
+        detected_topics = detect_topics_from_text(user_input, min_keyword_matches=1)
+        analysis["detected_topics"] = detected_topics
         
         # Detect likely content types with confidence scores
         for content_type, keywords in self.content_type_keywords.items():
@@ -257,7 +204,7 @@ class ContextExtractor:
         
         # Suggest keywords from current query and context
         suggested_keywords = []
-        suggested_keywords.extend(query_analysis["detected_topics"])
+        suggested_keywords.extend(query_analysis["detected_topics"].keys())
         
         # Add context topics if not much detected in current query
         if len(suggested_keywords) < 3 and search_context.recent_topics:

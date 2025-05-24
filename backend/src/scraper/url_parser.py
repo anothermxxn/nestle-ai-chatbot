@@ -6,92 +6,17 @@ from urllib.parse import unquote, urlparse
 import logging
 from html import unescape
 
+# Import centralized configurations
+try:
+    from ...config.content_types import CONTENT_TYPES, CONTENT_TYPE_KEYWORDS
+    from ...config.brands import BRAND_PATTERNS
+except ImportError:
+    from config.content_types import CONTENT_TYPES, CONTENT_TYPE_KEYWORDS
+    from config.brands import BRAND_PATTERNS
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Known content types and their URL patterns
-CONTENT_TYPES = {
-    "recipe": ["recipe", "recipes", "cooking", "meal-ideas", "meal-planning"],
-    "news": ["news", "media", "press-release", "press-releases", "media-library", "announcements"],
-    "about": ["about", "about-us", "company", "our-company", "history", "heritage"],
-    "brand": ["brands", "our-brands"],
-    "product": ["products", "product-details", "ranges"],
-    "nutrition": ["nutrition", "health", "wellness", "nutrition-facts", "maternal", "infant"],
-    "beverages": ["beverages", "drinks", "coffee", "tea"],
-    "chocolates": ["chocolates", "confectionery"],
-    "frozen": ["frozen-meals", "frozen-desserts", "ice-cream"],
-    "healthcare": ["healthcare", "health-science", "medical-nutrition"],
-    "professional": ["professional", "food-service", "business-solutions"],
-    "sustainability": ["sustainability", "planet", "environment", "responsible-sourcing"],
-    "community": ["community", "communities", "charitable-partners", "nestle-cares"],
-    "careers": ["careers", "jobs", "work-with-us"],
-    "contact": ["contact", "contact-us", "support"]
-}
-
-# Known brand patterns with variations
-BRAND_PATTERNS = {
-    # Maternal and Infant Nutrition
-    "GERBER": ["gerber", "gerber-baby", "gerber-graduates"],
-    "MATERNA": ["materna"],
-    "CERELAC": ["cerelac"],
-    "NIDO": ["nido"],
-    
-    # Beverages
-    "CARNATION": ["carnation", "carnation-hot-chocolate", "carnation-breakfast"],
-    "MILO": ["milo"],
-    "NESQUIK": ["nesquik"],
-    "NESTEA": ["nestea"],
-    "NESFRUTA": ["nesfruta"],
-    "GOODHOST": ["goodhost", "good-host"],
-    
-    # Chocolates
-    "AERO": ["aero"],
-    "AFTER EIGHT": ["after-eight", "after_eight", "aftereight"],
-    "BIG TURK": ["big-turk", "bigturk"],
-    "COFFEE CRISP": ["coffee-crisp", "coffeecrisp"],
-    "CRUNCH": ["crunch"],
-    "KIT KAT": ["kitkat", "kit-kat", "kit_kat"],
-    "MACKINTOSH TOFFEE": ["mackintosh-toffee", "mack-toffee", "macktoffee"],
-    "MIRAGE": ["mirage"],
-    "QUALITY STREET": ["quality-street", "quality_street", "qualitystreet"],
-    "ROLO": ["rolo"],
-    "SMARTIES": ["smarties"],
-    "TURTLES": ["turtles"],
-    
-    # Coffee
-    "COFFEE-MATE": ["coffee-mate", "coffeemate"],
-    "NESCAFE": ["nescafe", "nescafé", "nescafe-dolce-gusto"],
-    "NESPRESSO": ["nespresso"],
-    
-    # Frozen Meals
-    "DELISSIO": ["delissio"],
-    "LEAN CUISINE": ["lean-cuisine", "leancuisine"],
-    "STOUFFER'S": ["stouffers", "stouffer", "stouffers-bistro"],
-    
-    # Nutrition and Health
-    "BOOST": ["boost"],
-    "IBGARD": ["ibgard"],
-    "NATURE'S BOUNTY": ["natures-bounty", "naturesbounty"],
-    
-    # Ice Cream & Frozen Desserts
-    "DEL MONTE": ["del-monte", "delmonte"],
-    "DRUMSTICK": ["drumstick"],
-    "HAAGEN-DAZS": ["haagen-dazs", "haagendazs"],
-    "PARLOUR": ["parlour"],
-    "REAL DAIRY": ["real-dairy", "realdairy"],
-    
-    # Imported Foods
-    "MAGGI": ["maggi"],
-    
-    # Pet Foods
-    "PURINA": ["purina"],
-    
-    # Waters
-    "PERRIER": ["perrier"],
-    "SAN PELLEGRINO": ["san-pellegrino", "sanpellegrino"],
-    "ESSENTIA": ["essentia"]
-}
 
 def decode_url_part(text: str) -> str:
     """Decode URL-encoded text including hex sequences.
@@ -177,26 +102,44 @@ def determine_content_type(path_parts: List[str], content: Optional[str] = None)
     Returns:
         str: Determined content type
     """
-    # Check first path component against known types
+    # Check for brand page structure
+    if len(path_parts) == 1:
+        first_part = decode_url_part(path_parts[0]).lower()
+        # Check if this single part matches any brand pattern
+        for brand, patterns in BRAND_PATTERNS.items():
+            if any(pattern.lower() == first_part for pattern in patterns):
+                return "brand"
+    
+    # Check for product page structure
+    if len(path_parts) >= 2:
+        first_part = decode_url_part(path_parts[0]).lower()
+        # Check if first part matches any brand pattern
+        for brand, patterns in BRAND_PATTERNS.items():
+            if any(pattern.lower() == first_part for pattern in patterns):
+                return "product"
+    
+    # Check first path component against known content type patterns
     if path_parts and path_parts[0]:
         first_part = decode_url_part(path_parts[0]).lower()
         for content_type, patterns in CONTENT_TYPES.items():
             if first_part in patterns:
                 return content_type
     
-    # Check if it's a brand page
-    if extract_brand(path_parts):
-        return "brand"
-    
-    # Fallback: analyze content if provided
+    # Content analysis fallback
     if content:
         content_lower = content.lower()
-        if any(word in content_lower for word in ["recipe", "ingredients", "method", "preparation"]):
-            return "recipe"
-        if any(word in content_lower for word in ["news", "press release", "announced"]):
-            return "news"
-        if any(word in content_lower for word in ["about us", "our company", "our history"]):
-            return "about"
+        
+        # Score each content type based on keyword matches
+        type_scores = {}
+        for content_type, keywords in CONTENT_TYPE_KEYWORDS.items():
+            score = sum(1 for keyword in keywords if keyword in content_lower)
+            if score > 0:
+                type_scores[content_type] = score
+        
+        # Return the content type with the highest score
+        if type_scores:
+            best_type = max(type_scores.items(), key=lambda x: x[1])[0]
+            return best_type
     
     return "other"
 

@@ -107,39 +107,16 @@ class ContentProcessor:
                                 with open(output_path, "w", encoding="utf-8") as f:
                                     f.write(content)
                                 
-                                self.processed_urls[url] = {
-                                    "success": True,
-                                    "output_path": output_path,
-                                    "processed_at": datetime.utcnow().isoformat()
-                                }
-                                
                                 logger.info(f"Successfully processed: {url}")
                                 break
                             else:
                                 logger.warning(f"Failed to crawl {url}: {result.error_message}")
-                                if attempt == max_retries - 1:
-                                    self.processed_urls[url] = {
-                                        "success": False,
-                                        "error": result.error_message or "Unknown crawling error",
-                                        "processed_at": datetime.utcnow().isoformat()
-                                    }
                             
                         except Exception as e:
                             logger.error(f"Error processing {url} (attempt {attempt + 1}): {str(e)}")
-                            if attempt == max_retries - 1:
-                                self.processed_urls[url] = {
-                                    "success": False,
-                                    "error": str(e),
-                                    "processed_at": datetime.utcnow().isoformat()
-                                }
                 
                 except Exception as e:
                     logger.error(f"Unhandled error processing {url}: {str(e)}")
-                    self.processed_urls[url] = {
-                        "success": False,
-                        "error": str(e),
-                        "processed_at": datetime.utcnow().isoformat()
-                    }
         
         # Save processing results
         self._save_results()
