@@ -146,7 +146,9 @@ class ConversationSession:
         
         # Suggest keywords based on topics
         if self.search_context.recent_topics:
-            params["suggested_keywords"] = self.search_context.recent_topics[-3:]
+            recent_topic_names = self.search_context.recent_topics[-3:]
+            mapped_keywords = self.context_extractor.map_topic_names_to_keywords(recent_topic_names)
+            params["suggested_keywords"] = mapped_keywords[:5]  # Limit to 5 keywords
         
         return params
     

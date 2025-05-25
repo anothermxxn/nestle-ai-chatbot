@@ -17,7 +17,7 @@ if backend_path not in sys.path:
 
 from config.content_types import CONTENT_TYPE_KEYWORDS
 from config.brands import get_all_brand_variations
-from config.topics import detect_topics_from_text
+from config.topics import detect_topics_from_text, ALL_TOPICS
 
 logger = logging.getLogger(__name__)
 
@@ -210,15 +210,69 @@ class ContextExtractor:
         
         # Suggest keywords from current query and context
         suggested_keywords = []
-        suggested_keywords.extend(query_analysis["detected_topics"].keys())
+        
+        # Extract actual keywords from detected topics
+        for topic_data in query_analysis["detected_topics"].values():
+            matched_keywords = topic_data.get("matched_keywords", [])
+            suggested_keywords.extend(matched_keywords[:2])  # Limit to 2 keywords per topic
         
         # Add context topics if not much detected in current query
         if len(suggested_keywords) < 3 and search_context.recent_topics:
             remaining_slots = 3 - len(suggested_keywords)
-            suggested_keywords.extend(search_context.recent_topics[-remaining_slots:])
+            recent_topic_names = search_context.recent_topics[-remaining_slots:]
+            mapped_keywords = self.map_topic_names_to_keywords(recent_topic_names)
+            suggested_keywords.extend(mapped_keywords)
             if search_context.recent_topics:
                 suggestions["context_enhanced"] = True
         
         suggestions["suggested_keywords"] = suggested_keywords[:5]  # Limit to 5 keywords
         
-        return suggestions 
+        return suggestions
+    
+    def map_topic_names_to_keywords(self, topic_names: List[str]) -> List[str]:
+        """
+        Map topic names to actual keywords that exist in the search index.
+        Dynamically extracts keywords from the topic configuration.
+        
+        Args:
+            topic_names (List[str]): List of topic names from context
+            
+        Returns:
+            List[str]: List of actual keywords that can be used for search filtering
+        """
+        mapped_keywords = []
+        
+        for topic_name in topic_names:
+            # Find the topic configuration by name
+            topic_config = None
+            for topic_key, topic_data in ALL_TOPICS.items():
+                if topic_data["name"] == topic_name:
+                    topic_config = topic_data
+                    break
+            
+            if topic_config:
+                # Extract keywords from the topic configuration
+                # Prioritize keywords that are more likely to exist in search index
+                topic_keywords = topic_config.get("keywords", [])
+                
+                # Filter and prioritize keywords based on common search terms
+                prioritized_keywords = []
+                for keyword in topic_keywords:
+                    # Prioritize shorter, more common terms that are likely in search index
+                    if len(keyword.split()) <= 2 and len(keyword) >= 3:
+                        prioritized_keywords.append(keyword)
+                
+                # Add top 3-4 keywords from this topic
+                mapped_keywords.extend(prioritized_keywords[:4])
+            else:
+                # Fallback: extract simple keywords from topic name
+                simple_keywords = topic_name.lower().replace(" & ", " ").split()
+                mapped_keywords.extend([kw for kw in simple_keywords if len(kw) > 2])
+        
+        # Remove duplicates while preserving order
+        unique_keywords = []
+        for keyword in mapped_keywords:
+            if keyword not in unique_keywords:
+                unique_keywords.append(keyword)
+        
+        return unique_keywords 

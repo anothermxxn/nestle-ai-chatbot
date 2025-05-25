@@ -210,8 +210,21 @@ class SessionContextTester:
                          f"Content types: {content_types}")
             
             # Test topic detection
-            topics = recipe_analysis.get("detected_topics", [])
-            has_cooking_topics = any(topic in ["chocolate", "cookie", "baking"] for topic in topics)
+            topics = recipe_analysis.get("detected_topics", {})
+            # Handle both dict and list formats for topics
+            if isinstance(topics, dict):
+                # Extract matched keywords from the dictionary structure
+                topic_keywords = []
+                for topic_data in topics.values():
+                    if isinstance(topic_data, dict):
+                        topic_keywords.extend(topic_data.get("matched_keywords", []))
+                
+                # Check if any detected keywords are related to cooking/food
+                has_cooking_topics = any(keyword.lower() in ["chocolate", "cookie", "baking", "ingredients", "recipe", "cooking"] for keyword in topic_keywords)
+            else:
+                # Fallback for list format
+                has_cooking_topics = any(topic in ["chocolate", "cookie", "baking"] for topic in topics)
+            
             self.log_test("Detects relevant topics", has_cooking_topics,
                          f"Topics: {topics}")
             
