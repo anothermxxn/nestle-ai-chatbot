@@ -187,13 +187,27 @@ SEARCH_INDEX_SETTINGS = {
                 }
             }
         ],
+        "vectorizers": [
+            {
+                "name": "default",
+                "kind": "azureOpenAI",
+                "azureOpenAIParameters": {
+                    "resourceUri": os.getenv("AZURE_EMBEDDING_ENDPOINT"),
+                    "deploymentId": os.getenv("AZURE_EMBEDDING_DEPLOYMENT"),
+                    "apiKey": os.getenv("AZURE_EMBEDDING_API_KEY"),
+                    "modelName": os.getenv("AZURE_EMBEDDING_MODEL_NAME")
+                }
+            }
+        ],
         "profiles": [
             {
                 "name": "default",
                 "compression": "default",
-                "algorithm": "default"
+                "algorithm": "default",
+                "vectorizer": "default"
             }
-        ]
+        ],
+        
     }
 }
 
