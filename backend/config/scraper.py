@@ -124,7 +124,50 @@ FOOD_INDICATORS = [
 
 GENERIC_TERMS = ["new", "great", "good", "best", "more", "other", "all", "some"]
 
-STOP_WORDS = {"the", "and", "or", "in", "on", "at", "to", "for", "of", "with", "a", "an"}
+STOP_WORDS = {
+    # Basic stop words
+    "the", "and", "or", "in", "on", "at", "to", "for", "of", "with", "a", "an",
+    
+    # Pronouns and basic words
+    "you", "your", "we", "our", "us", "me", "my", "i", "he", "she", "it", "they", "them", "their",
+    
+    # Web-related terms
+    "www", "http", "https", "html", "com", "org", "net", "ca", "uk", "php", "asp", "jsp",
+    "url", "link", "page", "site", "web", "website", "blog", "post", "home", "index",
+    
+    # Navigation and UI terms
+    "next", "previous", "prev", "back", "forward", "menu", "nav", "navigation", "button",
+    "click", "here", "read", "more", "view", "show", "hide", "open", "close", "toggle",
+    
+    # Generic content words
+    "content", "text", "article", "section", "title", "heading", "paragraph", "image",
+    "video", "audio", "media", "file", "document", "pdf", "download", "upload",
+    
+    # Social media terms
+    "facebook", "twitter", "pinterest", "email", "yummly", "instagram", "linkedin",
+    "share", "follow", "connect", "social", "media", "like", "subscribe", "join",
+    
+    # Web cookies and tracking terms
+    "cookies", "cookie", "tracking", "analytics", "gdpr", "consent", "privacy",
+    "policy", "terms", "conditions", "banner", "notice", "manage", "preferences",
+    
+    # Common verbs that aren't meaningful as keywords
+    "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does",
+    "did", "will", "would", "could", "should", "may", "might", "can", "get", "got", "make",
+    "made", "take", "took", "give", "gave", "put", "see", "saw", "come", "came", "go", "went",
+    
+    # Time and date terms that are usually not meaningful
+    "today", "yesterday", "tomorrow", "now", "then", "when", "where", "why", "how", "what",
+    "who", "which", "that", "this", "these", "those",
+    
+    # Quantity and size terms that are usually generic
+    "all", "some", "many", "few", "most", "much", "more", "less", "little", "big", "small",
+    "large", "huge", "tiny", "new", "old", "young", "first", "last", "second", "third",
+    
+    # Generic descriptors
+    "good", "bad", "great", "best", "better", "worst", "worse", "nice", "fine", "ok", "okay",
+    "yes", "no", "true", "false", "right", "wrong", "easy", "hard", "simple", "complex"
+}
 
 WEB_COOKIE_INDICATORS = [
     "tracking cookies", "analytics cookies", "advertising cookies", 

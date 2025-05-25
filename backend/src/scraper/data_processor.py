@@ -12,6 +12,7 @@ from nltk.corpus import stopwords
 from nltk.util import ngrams
 
 from .url_parser import parse_url
+from .llm_keyword_extractor import extract_keywords_with_llm
 try:
     from ...config import (
         # Compound terms
@@ -116,6 +117,40 @@ def extract_compound_phrases(text: str) -> List[str]:
     
     return found_phrases
 
+def contains_unwanted_terms(phrase: str) -> bool:
+    """
+    Check if a phrase contains unwanted terms like social media, web terms, etc.
+    
+    Args:
+        phrase (str): Phrase to check
+        
+    Returns:
+        bool: True if phrase contains unwanted terms
+    """
+    phrase_lower = phrase.lower()
+    
+    # Check for social media terms
+    for term in SOCIAL_MEDIA_INDICATORS:
+        if term in phrase_lower:
+            return True
+    
+    # Check for web-related fragments
+    web_fragments = ['https', 'http', 'www', '.com', '.ca', '.org', 'sauce https']
+    for fragment in web_fragments:
+        if fragment in phrase_lower:
+            return True
+    
+    # Check for common unwanted phrase patterns
+    unwanted_patterns = [
+        'behind delicious', 'keep exploring', 'measure impact', 'proud partner',
+        'delighted consumers', 'years'
+    ]
+    for pattern in unwanted_patterns:
+        if pattern in phrase_lower:
+            return True
+    
+    return False
+
 def extract_meaningful_ngrams(text: str, n_range: Tuple[int, int] = NGRAM_RANGE) -> List[str]:
     """
     Extract meaningful n-grams from text using NLTK if available, fallback to basic method.
@@ -131,10 +166,16 @@ def extract_meaningful_ngrams(text: str, n_range: Tuple[int, int] = NGRAM_RANGE)
     tokens = word_tokenize(text.lower())
     stop_words = set(stopwords.words("english"))
     
+    # Add our custom stop words to NLTK stop words
+    combined_stop_words = stop_words.union(STOP_WORDS)
+    
     # Filter out stopwords, punctuation, and very short words
     filtered_tokens = [
         token for token in tokens 
-        if token.isalpha() and len(token) > 2 and token not in stop_words
+        if (token.isalpha() and 
+            len(token) > 2 and 
+            token not in combined_stop_words and
+            is_meaningful_keyword(token))  # Apply our meaningful keyword filter
     ]
     
     if len(filtered_tokens) < n_range[0]:
@@ -150,7 +191,7 @@ def extract_meaningful_ngrams(text: str, n_range: Tuple[int, int] = NGRAM_RANGE)
             phrase = " ".join(gram)
             
             # Only keep n-grams that look like meaningful phrases
-            if is_food_related_phrase(phrase):
+            if is_food_related_phrase(phrase) and not contains_unwanted_terms(phrase):
                 meaningful_ngrams.append(phrase)
     
     return meaningful_ngrams[:MAX_NGRAMS]  # Limit to configured max
@@ -174,10 +215,75 @@ def is_food_related_phrase(phrase: str) -> bool:
     
     return has_food_term and not is_generic and len(phrase_words) <= MAX_PHRASE_LENGTH
 
+def is_meaningful_keyword(word: str) -> bool:
+    """
+    Check if a keyword is meaningful for search purposes.
+    Filters out common web-related terms, generic words, and other noise.
+    
+    Args:
+        word (str): Word to check
+        
+    Returns:
+        bool: True if word is meaningful as a keyword
+    """
+    word_lower = word.lower()
+    
+    # Skip if it's in stop words
+    if word_lower in STOP_WORDS:
+        return False
+    
+    # Skip URLs and web-related fragments
+    web_patterns = [
+        r'^https?',
+        r'\.com$', r'\.org$', r'\.net$', r'\.ca$', r'\.uk$',
+        r'www\d*$', r'^php$', r'^html$', r'^htm$', r'^asp$', r'^jsp$'
+    ]
+    for pattern in web_patterns:
+        if re.match(pattern, word_lower):
+            return False
+    
+    # Skip URL fragments and malformed terms
+    if any(fragment in word_lower for fragment in ['https', 'http', 'www.', '.com', '.ca', '.org']):
+        return False
+    
+    # Skip social media terms (additional check beyond stop words)
+    social_terms = set(SOCIAL_MEDIA_INDICATORS)
+    if word_lower in social_terms:
+        return False
+    
+    # Skip pure numbers or number-heavy strings
+    if word.isdigit() or len(re.findall(r'\d', word)) > len(word) // 2:
+        return False
+    
+    # Skip very common generic terms that don't add search value
+    generic_junk = {
+        'copy', 'playing', 'next', 'prev', 'previous', 'continue', 'skip',
+        'loading', 'please', 'wait', 'click', 'tap', 'press', 'enter',
+        'search', 'find', 'browse', 'explore', 'discover', 'learn', 'mins',
+        'behind', 'keep', 'exploring', 'measure', 'impact', 'doing', 'proud',
+        'partner', 'years', 'consumers', 'delighted'
+    }
+    if word_lower in generic_junk:
+        return False
+    
+    # Skip single characters or very short abbreviations that aren't meaningful
+    if len(word) <= 2 and word_lower not in {'qt', 'ml', 'oz', 'lb', 'kg', 'mg'}:
+        return False
+    
+    # Skip terms that are clearly web/cookie related
+    web_cookie_terms = {
+        'tracking', 'analytics', 'gdpr', 'consent', 'banner', 'notice',
+        'performance', 'functional', 'targeting', 'essential', 'necessary'
+    }
+    if word_lower in web_cookie_terms:
+        return False
+    
+    return True
+
 def keyword_extraction(url_parts: List[str], title: str, content: str, 
                                content_type: str, brand: str = None) -> List[str]:
     """
-    Keyword extraction that preserves compound terms and extracts meaningful phrases.
+    Keyword extraction using LLM with fallback to rule-based approach.
     
     Args:
         url_parts (List[str]): URL path parts
@@ -187,7 +293,37 @@ def keyword_extraction(url_parts: List[str], title: str, content: str,
         brand (str): Brand name if available
         
     Returns:
-        List[str]: List of keywords including compound terms
+        List[str]: List of meaningful keywords
+    """
+    try:
+        # Use LLM-based keyword extraction
+        keywords = extract_keywords_with_llm(content, title, content_type, brand)
+        
+        # If LLM returns good results, use them
+        if len(keywords) >= 3:
+            return keywords
+        
+        # Otherwise fall back to basic rule-based extraction
+        return _fallback_keyword_extraction(url_parts, title, content, content_type, brand)
+        
+    except Exception as e:
+        print(f"Keyword extraction failed, using fallback: {e}")
+        return _fallback_keyword_extraction(url_parts, title, content, content_type, brand)
+
+def _fallback_keyword_extraction(url_parts: List[str], title: str, content: str, 
+                                content_type: str, brand: str = None) -> List[str]:
+    """
+    Fallback rule-based keyword extraction.
+    
+    Args:
+        url_parts (List[str]): URL path parts
+        title (str): Page title
+        content (str): Full page content
+        content_type (str): Content type
+        brand (str): Brand name if available
+        
+    Returns:
+        List[str]: List of keywords
     """
     keywords = set()
     
@@ -196,40 +332,70 @@ def keyword_extraction(url_parts: List[str], title: str, content: str,
     if brand:
         keywords.add(brand.lower())
     
-    # Combine all text for analysis
-    all_text = f"{title} {' '.join(url_parts)} {content}"
-    
-    # Extract keywords
-    compound_phrases = extract_compound_phrases(all_text)
-    keywords.update(compound_phrases)
-    meaningful_phrases = extract_meaningful_ngrams(all_text, n_range=(2, 3))
-    keywords.update(meaningful_phrases)
+    # Extract meaningful words from title
     title_words = re.findall(r"\w+", title.lower())
-    keywords.update([word for word in title_words if len(word) > 2])
+    for word in title_words:
+        if len(word) > 2 and is_meaningful_keyword(word):
+            keywords.add(word)
     
     # Add meaningful parts from URL
     for part in url_parts:
-        if part.lower() not in ["www", "com", "html", "php"] and not part.isdigit():
+        if part.lower() not in ["www", "com", "html", "php", "http", "https"] and not part.isdigit():
             cleaned = urllib.parse.unquote(part).lower()
             # Check for compound terms in URL parts
             if cleaned.replace("-", " ") in ALL_COMPOUND_TERMS:
                 keywords.add(cleaned.replace("-", " "))
             else:
-                keywords.update(re.findall(r"\w+", cleaned))
+                # Extract words from URL part and filter them
+                url_words = re.findall(r"\w+", cleaned)
+                for word in url_words:
+                    if len(word) > 2 and is_meaningful_keyword(word):
+                        keywords.add(word)
     
-    # Extract keywords from content with better context awareness
+    # Basic content analysis for food-related terms
     if content:
-        content_keywords = extract_content_keywords(content)
-        keywords.update(content_keywords)
+        # Look for food-related terms in content
+        content_lower = content.lower()
+        for food_term in FOOD_INDICATORS:
+            if food_term in content_lower:
+                keywords.add(food_term)
     
-    # Remove stop words and very short terms (using centralized config)
-    keywords = {k for k in keywords if len(k) > 2 and k not in STOP_WORDS}
-    
-    return sorted(list(keywords))
+    # Final filtering and limit
+    filtered_keywords = [k for k in keywords if is_meaningful_keyword(k)]
+    return sorted(filtered_keywords[:10])  # Limit to 10 keywords
 
 def extract_content_keywords(content: str, max_keywords: int = MAX_KEYWORDS_PER_CHUNK) -> List[str]:
     """
-    Extract meaningful keywords from content using frequency analysis and compound detection.
+    Extract meaningful keywords from content using LLM with fallback to frequency analysis.
+    
+    Args:
+        content (str): Page content
+        max_keywords (int): Maximum number of keywords to return
+        
+    Returns:
+        List[str]: List of meaningful keywords
+    """
+    # Try LLM-based extraction for chunks if content is substantial
+    if len(content) > 100:
+        try:
+            # Use LLM for chunk-level keyword extraction
+            chunk_title = content[:100] + "..." if len(content) > 100 else content
+            llm_keywords = extract_keywords_with_llm(content, chunk_title, "content", None)
+            
+            # Filter out content type and focus on meaningful terms
+            filtered_keywords = [k for k in llm_keywords if k not in ["content", "product", "brand"]]
+            
+            if len(filtered_keywords) >= 3:
+                return filtered_keywords[:max_keywords]
+        except Exception as e:
+            print(f"LLM chunk keyword extraction failed: {e}")
+    
+    # Fallback to basic frequency analysis
+    return _fallback_content_keywords(content, max_keywords)
+
+def _fallback_content_keywords(content: str, max_keywords: int = MAX_KEYWORDS_PER_CHUNK) -> List[str]:
+    """
+    Fallback content keyword extraction using frequency analysis.
     
     Args:
         content (str): Page content
@@ -248,19 +414,21 @@ def extract_content_keywords(content: str, max_keywords: int = MAX_KEYWORDS_PER_
     words = re.findall(r"\b\w{3,}\b", content.lower())
     word_freq = Counter(words)
     
-    # Get English stop words
-    stop_words = set(stopwords.words("english"))
+    # Get English stop words from NLTK
+    nltk_stop_words = set(stopwords.words("english"))
     
-    # Filter words by relevance and frequency
-    food_related_words = []
+    # Filter words by relevance and frequency with enhanced criteria
+    meaningful_words = []
     
-    for word, freq in word_freq.most_common(50):  # Look at top 50 words
-        if (word not in stop_words and 
+    for word, freq in word_freq.most_common(20):  # Look at top 20 words
+        if (word not in nltk_stop_words and 
+            word not in STOP_WORDS and  # Use our enhanced stop words
             freq >= 2 and  # Appears at least twice
-            (is_food_related_word(word) or freq >= 5)):  # Either food-related or very frequent
-            food_related_words.append(word)
+            is_meaningful_keyword(word) and  # Pass our meaningful keyword filter
+            (is_food_related_word(word) or freq >= 3)):  # Either food-related or frequent
+            meaningful_words.append(word)
     
-    keywords.update(food_related_words[:max_keywords])
+    keywords.update(meaningful_words[:max_keywords])
     
     return list(keywords)
 
@@ -549,7 +717,7 @@ def process_markdown_file(file_path: str, url: str) -> List[Dict]:
 def process_all_content(raw_dir: str = None, processed_dir: str = None) -> Dict:
     """
     Process all markdown files and prepare them for vector storage.
-    Uses configuration settings for filtering behavior.
+    Uses LLM-based keyword extraction with rule-based fallback.
     
     Args:
         raw_dir (str): Path to directory containing raw markdown files
@@ -566,18 +734,27 @@ def process_all_content(raw_dir: str = None, processed_dir: str = None) -> Dict:
         "content_types": defaultdict(int),
         "brands": defaultdict(int),
         "files": [],
-        "filtering_mode": "conservative",
+        "filtering_mode": "LLM-enhanced",
         "min_content_length": MIN_CONTENT_LENGTH,
+        "llm_extraction_stats": {
+            "successful": 0,
+            "fallback": 0,
+            "failed": 0
+        }
     }
     
     all_chunks = []
     
-    print(f"Processing files with {results['filtering_mode']} filtering (min length: {MIN_CONTENT_LENGTH})...")
+    print(f"Processing files with {results['filtering_mode']} keyword extraction (min length: {MIN_CONTENT_LENGTH})...")
+    print("Note: LLM-based keyword extraction may take longer but provides higher quality keywords.")
     
-    for filename in os.listdir(raw_dir):
-        if not filename.endswith(".md"):
-            continue
-            
+    # Get list of markdown files
+    md_files = [f for f in os.listdir(raw_dir) if f.endswith(".md")]
+    total_files = len(md_files)
+    
+    for idx, filename in enumerate(md_files, 1):
+        print(f"Processing file {idx}/{total_files}: {filename[:50]}{'...' if len(filename) > 50 else ''}")
+        
         file_path = os.path.join(raw_dir, filename)
         url = filename[:-3].replace("_", "/")
         
@@ -591,6 +768,12 @@ def process_all_content(raw_dir: str = None, processed_dir: str = None) -> Dict:
                 results["content_types"][first_chunk["content_type"]] += 1
                 if first_chunk["brand"]:
                     results["brands"][first_chunk["brand"]] += 1
+                
+                # Count LLM vs fallback usage (rough estimate)
+                if len(first_chunk.get("keywords", [])) > 5:
+                    results["llm_extraction_stats"]["successful"] += 1
+                else:
+                    results["llm_extraction_stats"]["fallback"] += 1
             
             file_info = {
                 "filename": filename,
@@ -606,6 +789,7 @@ def process_all_content(raw_dir: str = None, processed_dir: str = None) -> Dict:
             results["total_files"] += 1
             
         except Exception as e:
+            results["llm_extraction_stats"]["failed"] += 1
             results["files"].append({
                 "filename": filename,
                 "url": sanitize_url(url),
@@ -615,6 +799,7 @@ def process_all_content(raw_dir: str = None, processed_dir: str = None) -> Dict:
     
     # Save all chunks to a single file
     chunks_file = os.path.join(processed_dir, "vector_chunks.json")
+    print(f"\nSaving {len(all_chunks)} chunks to {chunks_file}")
     with open(chunks_file, "w", encoding="utf-8") as f:
         json.dump(all_chunks, f, indent=2, ensure_ascii=False)
     
@@ -627,6 +812,10 @@ def process_all_content(raw_dir: str = None, processed_dir: str = None) -> Dict:
     with open(results_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
     
-    print(f"Processed {results['total_files']} files into {results['total_chunks']} chunks")
+    print(f"\nProcessed {results['total_files']} files into {results['total_chunks']} chunks")
+    print(f"LLM extraction stats:")
+    print(f"  - Successful: {results['llm_extraction_stats']['successful']}")
+    print(f"  - Fallback used: {results['llm_extraction_stats']['fallback']}")
+    print(f"  - Failed: {results['llm_extraction_stats']['failed']}")
     
     return results
