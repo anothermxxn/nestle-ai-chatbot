@@ -1,5 +1,3 @@
-import sys
-import os
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
@@ -35,7 +33,6 @@ class ChatRequest(BaseModel):
     brand: Optional[str] = Field(None, description="Filter by brand (e.g., 'NESTEA')")
     keywords: Optional[List[str]] = Field(None, description="Filter by keywords")
     top_search_results: int = Field(5, description="Number of search results to use", ge=1, le=20)
-    use_vector_search: bool = Field(True, description="Whether to use vector search")
 
 class ChatResponse(BaseModel):
     """Response model for chat queries."""
@@ -44,6 +41,9 @@ class ChatResponse(BaseModel):
     search_results_count: int = Field(..., description="Number of search results used")
     query: str = Field(..., description="Original query")
     filters_applied: Dict = Field(..., description="Filters that were applied")
+    graphrag_enhanced: bool = Field(..., description="Whether GraphRAG was successfully used for enhanced context")
+    combined_relevance_score: Optional[float] = Field(0.0, description="Combined relevance score from GraphRAG")
+    retrieval_metadata: Optional[Dict] = Field({}, description="Metadata about the retrieval process")
 
 class RecipeRequest(BaseModel):
     """Request model for recipe suggestions."""
@@ -83,8 +83,7 @@ async def chat_search(request: ChatRequest):
             content_type=request.content_type,
             brand=request.brand,
             keywords=request.keywords,
-            top_search_results=request.top_search_results,
-            use_vector_search=request.use_vector_search
+            top_search_results=request.top_search_results
         )
         
         if "error" in response:
