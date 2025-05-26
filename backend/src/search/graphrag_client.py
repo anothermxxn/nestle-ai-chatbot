@@ -216,17 +216,33 @@ class GraphRAGClient:
         try:
             expanded_entities = []
             all_relationships = []
+            seen_entity_ids = set()  # Track seen entities to avoid duplicates
+            
+            # Add seed entities to seen set
+            for entity in seed_entities:
+                seen_entity_ids.add(entity.id)
             
             current_entities = seed_entities.copy()
             remaining_depth = depth
+            max_entities_per_level = 20  # Limit expansion to prevent explosion
+            
+            logger.info(f"Starting graph traversal with {len(current_entities)} seed entities, depth={depth}")
             
             while remaining_depth > 0 and current_entities:
                 next_level_entities = []
+                entities_added_this_level = 0
                 
                 for entity in current_entities:
+                    if entities_added_this_level >= max_entities_per_level:
+                        logger.info(f"Reached max entities per level ({max_entities_per_level}), stopping expansion")
+                        break
+                        
                     relationships = await self.graph_client.get_entity_relationships(
                         entity.id, direction="both"
                     )
+                    
+                    # Limit relationships per entity to prevent explosion
+                    relationships = relationships[:10]
                     
                     for rel in relationships:
                         if rel.weight >= self.config["min_relationship_weight"]:
@@ -237,22 +253,31 @@ class GraphRAGClient:
                                 else rel.from_entity_id
                             )
                             
-                            for entity_type in EntityType:
-                                connected_entities = await self.graph_client.find_entities_by_type(
-                                    entity_type, limit=1000
-                                )
-                                
-                                for connected_entity in connected_entities:
-                                    if connected_entity.id == connected_entity_id:
-                                        if connected_entity not in expanded_entities:
-                                            expanded_entities.append(connected_entity)
-                                            next_level_entities.append(connected_entity)
+                            # Skip if we've already seen this entity
+                            if connected_entity_id in seen_entity_ids:
+                                continue
+                            
+                            # Directly fetch the connected entity by ID
+                            try:
+                                connected_entity = await self.graph_client.get_entity_by_id(connected_entity_id)
+                                if connected_entity:
+                                    expanded_entities.append(connected_entity)
+                                    next_level_entities.append(connected_entity)
+                                    seen_entity_ids.add(connected_entity_id)
+                                    entities_added_this_level += 1
+                                    
+                                    if entities_added_this_level >= max_entities_per_level:
                                         break
+                                        
+                            except Exception as e:
+                                logger.warning(f"Failed to fetch entity {connected_entity_id}: {str(e)}")
+                                continue
                 
                 current_entities = next_level_entities
                 remaining_depth -= 1
+                logger.info(f"Level {depth - remaining_depth}: found {len(next_level_entities)} new entities")
             
-            logger.info(f"Graph traversal found {len(expanded_entities)} entities and {len(all_relationships)} relationships")
+            logger.info(f"Graph traversal completed: {len(expanded_entities)} entities, {len(all_relationships)} relationships")
             return expanded_entities, all_relationships
             
         except Exception as e:

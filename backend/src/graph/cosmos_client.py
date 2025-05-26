@@ -282,6 +282,34 @@ class CosmosGraphClient:
             return []
     
     # Query Operations
+    async def get_entity_by_id(self, entity_id: str) -> Optional[Entity]:
+        """
+        Get an entity by ID without knowing its type.
+        
+        Args:
+            entity_id (str): The ID of the entity
+            
+        Returns:
+            Optional[Entity]: The entity if found, None otherwise
+        """
+        try:
+            query = "SELECT * FROM c WHERE c.id = @entity_id"
+            
+            items = list(self.entities_container.query_items(
+                query=query,
+                parameters=[{"name": "@entity_id", "value": entity_id}],
+                enable_cross_partition_query=True
+            ))
+            
+            if items:
+                return Entity.from_cosmos_document(items[0])
+            else:
+                return None
+                
+        except Exception as e:
+            logger.error(f"Failed to get entity by ID {entity_id}: {str(e)}")
+            return None
+
     async def find_entities_by_type(self, entity_type: EntityType, 
                                    limit: int = 100) -> List[Entity]:
         """
