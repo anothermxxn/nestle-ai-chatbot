@@ -5,30 +5,18 @@ from azure.cosmos import CosmosClient, PartitionKey, exceptions
 from azure.cosmos.container import ContainerProxy
 from azure.cosmos.database import DatabaseProxy
 
-try:
-    from ...config import (
-        COSMOS_CONFIG, 
-        validate_config, 
-        ENTITY_TYPES, 
-        ENTITIES_CONTAINER_NAME,
-        RELATIONSHIPS_CONTAINER_NAME,
-        CONTAINER_CONFIGS
-    )
-except ImportError:
-    import sys
-    import os
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-    from config import (
-        COSMOS_CONFIG, 
-        validate_config, 
-        ENTITY_TYPES, 
-        ENTITIES_CONTAINER_NAME,
-        RELATIONSHIPS_CONTAINER_NAME,
-        CONTAINER_CONFIGS
-    )
+from utils.import_helper import setup_imports
+setup_imports(__file__)
+from config import (
+    COSMOS_CONFIG, 
+    validate_config, 
+    ENTITY_TYPES, 
+    ENTITIES_CONTAINER_NAME,
+    RELATIONSHIPS_CONTAINER_NAME,
+    CONTAINER_CONFIGS
+)
 from .models import Entity, Relationship, EntityType, RelationshipType
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

@@ -11,10 +11,12 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.util import ngrams
 
+from utils.import_helper import setup_imports
+setup_imports(__file__)
 from .url_parser import parse_url
 from .llm_keyword_extractor import extract_keywords_with_llm
-# Import configuration
-from ...config import (
+from .keyword_utils import is_meaningful_keyword
+from config import (
     # Compound terms
     ALL_COMPOUND_TERMS,
     
@@ -177,36 +179,7 @@ def is_food_related_phrase(phrase: str) -> bool:
     
     return has_food_term and not is_generic and len(phrase_words) <= MAX_PHRASE_LENGTH
 
-def is_meaningful_keyword(word: str) -> bool:
-    """
-    Check if a keyword is meaningful for search purposes.
-    Filters out only technical web terms and artifacts that LLMs might miss.
-    
-    Args:
-        word (str): Word to check
-        
-    Returns:
-        bool: True if word is meaningful as a keyword
-    """
-    word_lower = word.lower()
-    
-    # Skip if it's in stop words
-    if word_lower in STOP_WORDS:
-        return False
-    
-    # Skip pure numbers or number-heavy strings
-    if word.isdigit() or len(re.findall(r'\d', word)) > len(word) // 2:
-        return False
-    
-    # Skip very short terms
-    if len(word) <= 2 and word_lower not in {'qt', 'ml', 'oz', 'lb', 'kg', 'mg'}:
-        return False
-    
-    # Skip URL fragments and malformed terms
-    if any(fragment in word_lower for fragment in ['https', 'http', 'www.', '.com', '.ca', '.org']):
-        return False
-    
-    return True
+
 
 def keyword_extraction(url_parts: List[str], title: str, content: str, 
                                content_type: str, brand: str = None) -> List[str]:

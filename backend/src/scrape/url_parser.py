@@ -1,14 +1,13 @@
-"""URL parsing utilities for the Nestle AI Chatbot."""
-
 import re
 from typing import Dict, List, Optional
 from urllib.parse import unquote, urlparse
 import logging
 from html import unescape
 
-# Import configuration
-from ...config.content_types import CONTENT_TYPES, CONTENT_TYPE_KEYWORDS
-from ...config.brands import BRAND_PATTERNS
+from utils.import_helper import setup_imports
+setup_imports(__file__)
+from config.content_types import CONTENT_TYPES, CONTENT_TYPE_KEYWORDS
+from config.brands import BRAND_PATTERNS
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -177,7 +176,7 @@ def extract_keywords(url_parts: List[str], title: str, content_type: str, brand:
         keywords.update(re.findall(r"\w+", cleaned))
     
     # Import our minimal technical stop words
-    from ...config.scraper import STOP_WORDS
+    from config.scraper import STOP_WORDS
     
     # Remove only technical terms and short terms
     keywords = {k for k in keywords if len(k) > 2 and k not in STOP_WORDS}

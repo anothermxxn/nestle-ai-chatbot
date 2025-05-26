@@ -8,6 +8,7 @@ from .data_processor import (
     sanitize_url,
     generate_safe_id
 )
+from .keyword_utils import is_meaningful_keyword
 
 __all__ = [
     # Link collection
@@ -32,5 +33,8 @@ __all__ = [
     "process_all_content",
     "process_markdown_file",
     "sanitize_url",
-    "generate_safe_id"
+    "generate_safe_id",
+    
+    # Keyword utilities
+    "is_meaningful_keyword"
 ] 

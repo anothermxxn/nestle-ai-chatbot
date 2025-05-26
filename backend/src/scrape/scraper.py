@@ -1,10 +1,10 @@
-import os
-import asyncio
 import logging
+
+from utils.import_helper import setup_imports
+setup_imports(__file__)
 from .link_collector import LinkCollector
 from .content_processor import ContentProcessor
-# Import configuration
-from ...config import MAX_PAGES_LARGE
+from config import MAX_PAGES_LARGE
 
 # Configure logging
 logging.basicConfig(
