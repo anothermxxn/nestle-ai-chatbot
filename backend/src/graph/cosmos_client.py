@@ -1,17 +1,31 @@
 import logging
 from typing import Dict, List, Any, Optional
+from datetime import datetime
 from azure.cosmos import CosmosClient, PartitionKey, exceptions
 from azure.cosmos.container import ContainerProxy
 from azure.cosmos.database import DatabaseProxy
 
-from .config import (
-    COSMOS_CONFIG, 
-    validate_config, 
-    ENTITY_TYPES, 
-    ENTITIES_CONTAINER_NAME,
-    RELATIONSHIPS_CONTAINER_NAME,
-    CONTAINER_CONFIGS
-)
+try:
+    from ...config import (
+        COSMOS_CONFIG, 
+        validate_config, 
+        ENTITY_TYPES, 
+        ENTITIES_CONTAINER_NAME,
+        RELATIONSHIPS_CONTAINER_NAME,
+        CONTAINER_CONFIGS
+    )
+except ImportError:
+    import sys
+    import os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+    from config import (
+        COSMOS_CONFIG, 
+        validate_config, 
+        ENTITY_TYPES, 
+        ENTITIES_CONTAINER_NAME,
+        RELATIONSHIPS_CONTAINER_NAME,
+        CONTAINER_CONFIGS
+    )
 from .models import Entity, Relationship, EntityType, RelationshipType
 
 # Configure logging
@@ -163,7 +177,7 @@ class CosmosGraphClient:
             
             # Update properties
             existing_item.update(properties)
-            existing_item["updated_at"] = Entity().updated_at.isoformat()
+            existing_item["updated_at"] = datetime.utcnow().isoformat()
             
             # Replace item
             self.entities_container.replace_item(

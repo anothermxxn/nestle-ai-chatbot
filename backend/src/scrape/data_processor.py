@@ -47,6 +47,9 @@ try:
         MAX_PHRASE_LENGTH,
     )
 except ImportError:
+    import sys
+    import os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
     from config import (
         # Compound terms
         ALL_COMPOUND_TERMS,

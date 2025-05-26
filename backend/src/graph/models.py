@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Dict, List, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 import uuid
 
 class EntityType(Enum):
@@ -24,12 +25,16 @@ class Entity:
     id: str
     entity_type: EntityType
     properties: Dict[str, Any]
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: datetime = field(default_factory=datetime.utcnow)
     
     def to_cosmos_document(self) -> Dict[str, Any]:
         """Convert entity to Cosmos DB document format."""
         doc = {
             "id": self.id,
             "entity_type": self.entity_type.value,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
             **self.properties
         }
         return doc
@@ -38,12 +43,18 @@ class Entity:
     def from_cosmos_document(cls, doc: Dict[str, Any]) -> "Entity":
         """Create entity from Cosmos DB document."""
         properties = {k: v for k, v in doc.items() 
-                     if k not in ["id", "entity_type"]}
+                     if k not in ["id", "entity_type", "created_at", "updated_at"]}
+        
+        # Parse timestamps
+        created_at = datetime.fromisoformat(doc.get("created_at", datetime.utcnow().isoformat()))
+        updated_at = datetime.fromisoformat(doc.get("updated_at", datetime.utcnow().isoformat()))
         
         return cls(
             id=doc["id"],
             entity_type=EntityType(doc["entity_type"]),
-            properties=properties
+            properties=properties,
+            created_at=created_at,
+            updated_at=updated_at
         )
 
 @dataclass
@@ -55,6 +66,8 @@ class Relationship:
     to_entity_id: str
     properties: Dict[str, Any]
     weight: float = 1.0
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: datetime = field(default_factory=datetime.utcnow)
     
     def to_cosmos_document(self) -> Dict[str, Any]:
         """Convert relationship to Cosmos DB document format."""
@@ -64,6 +77,8 @@ class Relationship:
             "from_entity_id": self.from_entity_id,
             "to_entity_id": self.to_entity_id,
             "weight": self.weight,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
             **self.properties
         }
     
@@ -71,7 +86,11 @@ class Relationship:
     def from_cosmos_document(cls, doc: Dict[str, Any]) -> "Relationship":
         """Create relationship from Cosmos DB document."""
         properties = {k: v for k, v in doc.items() 
-                     if k not in ["id", "relationship_type", "from_entity_id", "to_entity_id", "weight"]}
+                     if k not in ["id", "relationship_type", "from_entity_id", "to_entity_id", "weight", "created_at", "updated_at"]}
+        
+        # Parse timestamps
+        created_at = datetime.fromisoformat(doc.get("created_at", datetime.utcnow().isoformat()))
+        updated_at = datetime.fromisoformat(doc.get("updated_at", datetime.utcnow().isoformat()))
         
         return cls(
             id=doc["id"],
@@ -79,12 +98,20 @@ class Relationship:
             from_entity_id=doc["from_entity_id"],
             to_entity_id=doc["to_entity_id"],
             properties=properties,
-            weight=float(doc.get("weight", 1.0))
+            weight=float(doc.get("weight", 1.0)),
+            created_at=created_at,
+            updated_at=updated_at
         )
 
 def create_brand_entity(name: str, chunk_ids: List[str] = None, **kwargs) -> Entity:
     """Create a Brand entity with proper categorization."""
-    from .config import normalize_brand_name, get_brand_category
+    try:
+        from ...config import normalize_brand_name, get_brand_category
+    except ImportError:
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+        from config import normalize_brand_name, get_brand_category
     
     normalized_name = normalize_brand_name(name)
     if not normalized_name:
@@ -175,7 +202,13 @@ def extract_entities_from_chunks(chunks: List[Dict[str, Any]]) -> Dict[str, List
     Returns:
         Dict[str, List[Entity]]: Dictionary of entity types and their instances
     """
-    from .config import extract_topics_from_keywords
+    try:
+        from ...config import detect_topics_from_text
+    except ImportError:
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+        from config import detect_topics_from_text
     
     entities = {
         "brands": {},
@@ -199,13 +232,20 @@ def extract_entities_from_chunks(chunks: List[Dict[str, Any]]) -> Dict[str, List
                 brand_chunks[brand_name] = []
             brand_chunks[brand_name].append(chunk_id)
         
-        # Extract topic entities from keywords
-        keywords = chunk.get("keywords", [])
-        topics = extract_topics_from_keywords(keywords)
-        for topic in topics:
-            if topic not in topic_chunks:
-                topic_chunks[topic] = []
-            topic_chunks[topic].append(chunk_id)
+        # Extract topic entities
+        content_text = " ".join([
+            chunk.get("content", ""),
+            chunk.get("page_title", ""),
+            chunk.get("section_title", ""),
+            " ".join(chunk.get("keywords", []))
+        ])
+        
+        detected_topics = detect_topics_from_text(content_text, min_keyword_matches=1)
+        for topic_key, topic_data in detected_topics.items():
+            topic_name = topic_data["name"]
+            if topic_name not in topic_chunks:
+                topic_chunks[topic_name] = []
+            topic_chunks[topic_name].append(chunk_id)
         
         # Extract recipe entities
         if chunk.get("content_type") == "recipe":

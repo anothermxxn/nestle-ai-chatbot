@@ -7,10 +7,11 @@ from urllib.parse import urlparse, urljoin
 from playwright.async_api import async_playwright, Browser, Page
 
 try:
-    # Try relative import first (when used as a module)
     from ...config import MAX_PAGES_DEFAULT, SCRAPER_CONCURRENCY
 except ImportError:
-    # Fall back to absolute import (when run directly)
+    import sys
+    import os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
     from config import MAX_PAGES_DEFAULT, SCRAPER_CONCURRENCY
 
 # Configure logging
