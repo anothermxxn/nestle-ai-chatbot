@@ -75,8 +75,7 @@ class SessionContextTester:
             print("Query 1: Asking about chocolate products")
             response1 = await self.client.search_and_chat(
                 query="Tell me about chocolate products from Nestle",
-                session_id=session_id,
-                use_context=True
+                session_id=session_id
             )
             
             has_answer = bool(response1.get("answer"))
@@ -88,21 +87,19 @@ class SessionContextTester:
             print("Query 2: Follow-up question (should use chocolate context)")
             response2 = await self.client.search_and_chat(
                 query="What recipes can I make with these?",
-                session_id=session_id,
-                use_context=True
+                session_id=session_id
             )
             
             context_enhanced = response2.get("context_enhanced_search", False)
             has_context_summary = bool(response2.get("conversation_context"))
-            self.log_test("Second query uses context", context_enhanced or has_context_summary,
+            self.log_test("Second query uses context", context_enhanced and has_context_summary,
                          f"Context enhanced: {context_enhanced}, Has context summary: {has_context_summary}")
             
             # Third query about different topic
             print("Query 3: Switching to coffee topic")
             response3 = await self.client.search_and_chat(
                 query="What coffee products does Nestle make?",
-                session_id=session_id,
-                use_context=True
+                session_id=session_id
             )
             
             # Check that conversation context includes previous topics
@@ -115,8 +112,7 @@ class SessionContextTester:
             print("Query 4: Query that could benefit from both contexts")
             response4 = await self.client.search_and_chat(
                 query="Can I make mocha recipes?",
-                session_id=session_id,
-                use_context=True
+                session_id=session_id
             )
             
             final_context = response4.get("conversation_context", "")
@@ -319,8 +315,7 @@ class SessionContextTester:
                 
                 response = await self.client.search_and_chat(
                     query=query,
-                    session_id=session_id,
-                    use_context=True
+                    session_id=session_id
                 )
                 
                 context_summary = response.get("conversation_context", "").lower()
@@ -476,8 +471,7 @@ async def run_interactive_session_test():
                 print("Thinking...")
                 response = await client.search_and_chat(
                     query=user_input,
-                    session_id=session_id,
-                    use_context=True
+                    session_id=session_id
                 )
                 
                 print(f"Bot: {response.get('answer', 'No answer')}")
