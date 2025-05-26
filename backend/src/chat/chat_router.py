@@ -5,10 +5,9 @@ from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 import logging
 
-# Add src to path for absolute imports
-src_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if src_path not in sys.path:
-    sys.path.insert(0, src_path)
+# Setup import paths using centralized helper
+from utils.import_helper import setup_imports
+setup_imports(__file__)
 
 from chat.chat_client import NestleChatClient
 

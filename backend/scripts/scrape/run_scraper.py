@@ -1,22 +1,12 @@
-#!/usr/bin/env python3
-"""
-Nestle AI Chatbot Scraper Script
-
-This script provides a command-line interface for running the web scraper.
-It imports the core functionality from src/scraper and provides argument parsing.
-"""
-
 import os
 import sys
 import asyncio
 import argparse
 import logging
 
-# Add src to the path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
-
-# Import config
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+from utils.import_helper import setup_imports
+setup_imports(__file__)
 from config import (
     DEFAULT_BASE_URL,
     DEFAULT_LINKS_FILE,
@@ -24,7 +14,6 @@ from config import (
     MAX_PAGES_DEFAULT,
     SCRAPER_CONCURRENCY
 )
-
 from scrape.link_collector import LinkCollector
 from scrape.content_processor import ContentProcessor
 

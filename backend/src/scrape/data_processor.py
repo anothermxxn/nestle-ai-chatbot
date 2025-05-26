@@ -13,75 +13,39 @@ from nltk.util import ngrams
 
 from .url_parser import parse_url
 from .llm_keyword_extractor import extract_keywords_with_llm
-try:
-    from ...config import (
-        # Compound terms
-        ALL_COMPOUND_TERMS,
-        
-        # Content filtering
-        EXCLUDE_SECTION_PATTERNS,
-        MIN_CONTENT_LENGTH,
-        FOOD_INDICATORS,
-        GENERIC_TERMS,
-        STOP_WORDS,
-        
-        # Classification indicators
-        WEB_COOKIE_INDICATORS,
-        FOOD_COOKIE_INDICATORS,
-        SOCIAL_MEDIA_INDICATORS,
-        FOOD_DOMAINS,
-        ERROR_INDICATORS,
-        
-        # Enhanced filtering patterns
-        CONSENT_MANAGEMENT_PATTERNS,
-        PRIVACY_CONTENT_INDICATORS,
-        
-        # Processing settings
-        DEFAULT_CHUNK_SIZE,
-        DEFAULT_CHUNK_OVERLAP,
-        MARKDOWN_CHUNK_SIZE,
-        MARKDOWN_CHUNK_OVERLAP,
-        MAX_KEYWORDS_PER_CHUNK,
-        NGRAM_RANGE,
-        MAX_NGRAMS,
-        MAX_PHRASE_LENGTH,
-    )
-except ImportError:
-    import sys
-    import os
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-    from config import (
-        # Compound terms
-        ALL_COMPOUND_TERMS,
-        
-        # Content filtering
-        EXCLUDE_SECTION_PATTERNS,
-        MIN_CONTENT_LENGTH,
-        FOOD_INDICATORS,
-        GENERIC_TERMS,
-        STOP_WORDS,
-        
-        # Classification indicators
-        WEB_COOKIE_INDICATORS,
-        FOOD_COOKIE_INDICATORS,
-        SOCIAL_MEDIA_INDICATORS,
-        FOOD_DOMAINS,
-        ERROR_INDICATORS,
-        
-        # Enhanced filtering patterns
-        CONSENT_MANAGEMENT_PATTERNS,
-        PRIVACY_CONTENT_INDICATORS,
-        
-        # Processing settings
-        DEFAULT_CHUNK_SIZE,
-        DEFAULT_CHUNK_OVERLAP,
-        MARKDOWN_CHUNK_SIZE,
-        MARKDOWN_CHUNK_OVERLAP,
-        MAX_KEYWORDS_PER_CHUNK,
-        NGRAM_RANGE,
-        MAX_NGRAMS,
-        MAX_PHRASE_LENGTH,
-    )
+# Import configuration
+from ...config import (
+    # Compound terms
+    ALL_COMPOUND_TERMS,
+    
+    # Content filtering
+    EXCLUDE_SECTION_PATTERNS,
+    MIN_CONTENT_LENGTH,
+    FOOD_INDICATORS,
+    GENERIC_TERMS,
+    STOP_WORDS,
+    
+    # Classification indicators
+    WEB_COOKIE_INDICATORS,
+    FOOD_COOKIE_INDICATORS,
+    SOCIAL_MEDIA_INDICATORS,
+    FOOD_DOMAINS,
+    ERROR_INDICATORS,
+    
+    # Enhanced filtering patterns
+    CONSENT_MANAGEMENT_PATTERNS,
+    PRIVACY_CONTENT_INDICATORS,
+    
+    # Processing settings
+    DEFAULT_CHUNK_SIZE,
+    DEFAULT_CHUNK_OVERLAP,
+    MARKDOWN_CHUNK_SIZE,
+    MARKDOWN_CHUNK_OVERLAP,
+    MAX_KEYWORDS_PER_CHUNK,
+    NGRAM_RANGE,
+    MAX_NGRAMS,
+    MAX_PHRASE_LENGTH,
+)
 
 # Download required NLTK data if not already present
 try:

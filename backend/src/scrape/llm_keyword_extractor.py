@@ -4,13 +4,7 @@ import re
 from typing import List, Optional, Dict
 from openai import AsyncAzureOpenAI
 
-try:
-    from ...config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
-except ImportError:
-    import sys
-    import os
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-    from config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
+from ...config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
 
 
 class LLMKeywordExtractor:

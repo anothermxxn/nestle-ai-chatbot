@@ -4,19 +4,11 @@ import asyncio
 import json
 from datetime import datetime
 
-# Add src to the path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
-
-# Import config for consistency (though this test script uses minimal config)
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
-
-try:
-    from chat.chat_client import NestleChatClient
-    from chat.context_manager import ContextExtractor
-    print("✅ Successfully imported chat components")
-except ImportError as e:
-    print(f"❌ Failed to import chat components: {e}")
-    sys.exit(1)
+from utils.import_helper import setup_imports
+setup_imports(__file__)
+from chat.chat_client import NestleChatClient
+from chat.context_manager import ContextExtractor
 
 class SessionContextTester:
     """Test class for session and context functionality."""
@@ -30,15 +22,15 @@ class SessionContextTester:
         """Initialize the chat client."""
         try:
             self.client = NestleChatClient()
-            print("✅ Chat client initialized successfully")
+            print("Chat client initialized successfully")
             return True
         except Exception as e:
-            print(f"❌ Failed to initialize chat client: {e}")
+            print(f"Failed to initialize chat client: {e}")
             return False
     
     def log_test(self, test_name: str, success: bool, details: str = ""):
         """Log test results."""
-        status = "✅ PASS" if success else "❌ FAIL"
+        status = "PASS" if success else "FAIL"
         print(f"{status} {test_name}")
         if details:
             print(f"    {details}")
@@ -52,7 +44,7 @@ class SessionContextTester:
     
     async def test_basic_session_creation(self):
         """Test basic session creation and management."""
-        print("\n🔧 Testing Basic Session Creation")
+        print("\nTesting Basic Session Creation")
         print("-" * 40)
         
         try:
@@ -78,12 +70,9 @@ class SessionContextTester:
     
     async def test_context_aware_conversation(self, session_id: str):
         """Test multi-turn context-aware conversation."""
-        print("\n💬 Testing Context-Aware Conversation")
-        print("-" * 40)
-        
         try:
             # First query about chocolate
-            print("🔹 Query 1: Asking about chocolate products")
+            print("Query 1: Asking about chocolate products")
             response1 = await self.client.search_and_chat(
                 query="Tell me about chocolate products from Nestle",
                 session_id=session_id,
@@ -96,7 +85,7 @@ class SessionContextTester:
                          f"Answer length: {len(response1.get('answer', ''))}, Session matches: {has_session}")
             
             # Second query that should use context
-            print("🔹 Query 2: Follow-up question (should use chocolate context)")
+            print("Query 2: Follow-up question (should use chocolate context)")
             response2 = await self.client.search_and_chat(
                 query="What recipes can I make with these?",
                 session_id=session_id,
@@ -109,7 +98,7 @@ class SessionContextTester:
                          f"Context enhanced: {context_enhanced}, Has context summary: {has_context_summary}")
             
             # Third query about different topic
-            print("🔹 Query 3: Switching to coffee topic")
+            print("Query 3: Switching to coffee topic")
             response3 = await self.client.search_and_chat(
                 query="What coffee products does Nestle make?",
                 session_id=session_id,
@@ -123,7 +112,7 @@ class SessionContextTester:
                          f"Context mentions chocolate: {mentions_chocolate}")
             
             # Fourth query that could use both chocolate and coffee context
-            print("🔹 Query 4: Query that could benefit from both contexts")
+            print("Query 4: Query that could benefit from both contexts")
             response4 = await self.client.search_and_chat(
                 query="Can I make mocha recipes?",
                 session_id=session_id,
@@ -143,7 +132,7 @@ class SessionContextTester:
     
     async def test_session_history_tracking(self, session_id: str):
         """Test that session properly tracks conversation history."""
-        print("\n📚 Testing Session History Tracking")
+        print("\nTesting Session History Tracking")
         print("-" * 40)
         
         try:
@@ -188,7 +177,7 @@ class SessionContextTester:
     
     async def test_context_enhancement_suggestions(self):
         """Test that context extractor provides good suggestions."""
-        print("\n🧠 Testing Context Enhancement Suggestions")
+        print("\nTesting Context Enhancement Suggestions")
         print("-" * 40)
         
         try:
@@ -236,7 +225,7 @@ class SessionContextTester:
     
     async def test_specialized_methods_with_context(self):
         """Test specialized chat methods with session context."""
-        print("\n🎯 Testing Specialized Methods with Context")
+        print("\nTesting Specialized Methods with Context")
         print("-" * 40)
         
         try:
@@ -272,7 +261,7 @@ class SessionContextTester:
     
     async def test_session_management_operations(self):
         """Test session management operations."""
-        print("\n⚙️ Testing Session Management Operations")
+        print("\nTesting Session Management Operations")
         print("-" * 40)
         
         try:
@@ -309,7 +298,7 @@ class SessionContextTester:
     
     async def test_context_persistence_across_queries(self):
         """Test that context persists and enhances across multiple queries."""
-        print("\n🔄 Testing Context Persistence")
+        print("\nTesting Context Persistence")
         print("-" * 40)
         
         try:
@@ -326,7 +315,7 @@ class SessionContextTester:
             
             context_builds_correctly = True
             for i, (query, expected_context_words) in enumerate(queries_and_expectations):
-                print(f"🔸 Persistence Query {i+1}: {query}")
+                print(f"Persistence Query {i+1}: {query}")
                 
                 response = await self.client.search_and_chat(
                     query=query,
@@ -361,23 +350,23 @@ class SessionContextTester:
     def print_test_summary(self):
         """Print summary of all test results."""
         print("\n" + "=" * 60)
-        print("📊 SESSION & CONTEXT TEST SUMMARY")
+        print("SESSION & CONTEXT TEST SUMMARY")
         print("=" * 60)
         
         total_tests = len(self.test_results)
         passed_tests = sum(1 for result in self.test_results if result["success"])
         failed_tests = total_tests - passed_tests
         
-        print(f"🧪 Total Tests: {total_tests}")
-        print(f"✅ Passed: {passed_tests}")
-        print(f"❌ Failed: {failed_tests}")
-        print(f"📈 Success Rate: {(passed_tests/total_tests)*100:.1f}%" if total_tests > 0 else "📈 Success Rate: N/A")
+        print(f"Total Tests: {total_tests}")
+        print(f"Passed: {passed_tests}")
+        print(f"Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests)*100:.1f}%" if total_tests > 0 else "Success Rate: N/A")
         
         if failed_tests > 0:
-            print(f"\n🔍 FAILED TESTS:")
+            print(f"\nFAILED TESTS:")
             for result in self.test_results:
                 if not result["success"]:
-                    print(f"   ❌ {result['test']}: {result['details']}")
+                    print(f"   {result['test']}: {result['details']}")
         
         # Test categories summary
         categories = {
@@ -387,7 +376,7 @@ class SessionContextTester:
             "Specialized Methods": ["specialized", "recipe", "product", "tips"]
         }
         
-        print(f"\n📊 BY CATEGORY:")
+        print(f"\nBY CATEGORY:")
         for category, keywords in categories.items():
             category_tests = [r for r in self.test_results if any(kw in r["test"].lower() for kw in keywords)]
             if category_tests:
@@ -396,7 +385,7 @@ class SessionContextTester:
 
 async def run_comprehensive_test():
     """Run the comprehensive session and context test suite."""
-    print("🧪 NESTLE AI CHATBOT - SESSION & CONTEXT TEST SUITE")
+    print("NESTLE AI CHATBOT - SESSION & CONTEXT TEST SUITE")
     print("=" * 60)
     print("Testing advanced conversation management and context awareness features")
     print("=" * 60)
@@ -405,7 +394,7 @@ async def run_comprehensive_test():
     
     # Initialize
     if not await tester.initialize_client():
-        print("❌ Cannot continue without chat client")
+        print("Cannot continue without chat client")
         return False
     
     # Run all tests
@@ -430,9 +419,8 @@ async def run_comprehensive_test():
 
 async def run_interactive_session_test():
     """Run an interactive test where user can chat and see context building."""
-    print("\n🎮 INTERACTIVE SESSION CONTEXT TEST")
+    print("\nINTERACTIVE SESSION CONTEXT TEST")
     print("=" * 50)
-    print("Chat with the bot and watch how context builds up!")
     print("Commands:")
     print("  /session - Show current session info")
     print("  /history - Show conversation history") 
@@ -444,71 +432,71 @@ async def run_interactive_session_test():
     try:
         client = NestleChatClient()
         session_id = client.create_session("interactive-test")
-        print(f"🆔 Started session: {session_id}")
+        print(f"Started session: {session_id}")
         
         while True:
             try:
-                user_input = input(f"\n🧑 You: ").strip()
+                user_input = input(f"\nYou: ").strip()
                 
                 if user_input.lower() in ['/quit', '/exit']:
-                    print("👋 Goodbye!")
+                    print("Goodbye!")
                     break
                 
                 if user_input == '/session':
                     stats = client.get_all_sessions_stats()
-                    print(f"📊 Session Stats: {json.dumps(stats, indent=2)}")
+                    print(f"Session Stats: {json.dumps(stats, indent=2)}")
                     continue
                 
                 if user_input == '/history':
                     history = client.get_session_history(session_id)
                     if history:
-                        print(f"📚 Message Count: {history['message_count']}")
+                        print(f"Message Count: {history['message_count']}")
                         for msg in history['messages'][-5:]:  # Show last 5 messages
-                            role_emoji = "🧑" if msg['role'] == 'user' else "🤖"
-                            print(f"   {role_emoji} {msg['content'][:100]}...")
+                            role_prefix = "User" if msg['role'] == 'user' else "Bot"
+                            print(f"   {role_prefix}: {msg['content'][:100]}...")
                     continue
                 
                 if user_input == '/context':
                     history = client.get_session_history(session_id)
                     if history:
-                        print(f"🧠 Context: {history.get('conversation_summary', 'No context')}")
+                        print(f"Context: {history.get('conversation_summary', 'No context')}")
                         search_context = history.get('search_context', {})
-                        print(f"🔍 Search Context: {json.dumps(search_context, indent=2)}")
+                        print(f"Search Context: {json.dumps(search_context, indent=2)}")
                     continue
                 
                 if user_input == '/new':
                     session_id = client.create_session()
-                    print(f"🆕 New session started: {session_id}")
+                    print(f"New session started: {session_id}")
                     continue
                 
                 if not user_input or user_input.startswith('/'):
                     continue
                 
                 # Process the query
-                print("🤖 Thinking...")
+                print("Thinking...")
                 response = await client.search_and_chat(
                     query=user_input,
                     session_id=session_id,
                     use_context=True
                 )
                 
-                print(f"🤖 Bot: {response.get('answer', 'No answer')}")
-                print(f"📊 Sources: {response.get('search_results_count', 0)}")
+                print(f"Bot: {response.get('answer', 'No answer')}")
+                print(f"Sources: {response.get('search_results_count', 0)}")
                 
                 if response.get('conversation_context'):
-                    print(f"🧠 Context: {response['conversation_context']}")
+                    print(f"Context: {response['conversation_context']}")
                 
                 if response.get('context_enhanced_search'):
-                    print("✨ Search was enhanced with conversation context!")
+                    print("Search was enhanced with conversation context!")
                 
             except KeyboardInterrupt:
-                print("\n\n👋 Goodbye!")
+                print("\n\nGoodbye!")
                 break
             except Exception as e:
-                print(f"❌ Error: {str(e)}")
+                print(f"Error: {str(e)}")
     
     except Exception as e:
-        print(f"❌ Failed to start interactive test: {str(e)}")
+        print(f"Failed to start interactive test: {str(e)}")
 
 def main():
     """Main function."""

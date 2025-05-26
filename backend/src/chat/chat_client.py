@@ -1,19 +1,9 @@
 import logging
-import sys
-import os
 from typing import Dict, List, Optional
 from openai import AzureOpenAI
 
-# Add src to path for absolute imports
-src_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if src_path not in sys.path:
-    sys.path.insert(0, src_path)
-
-# Add backend to path for config imports  
-backend_path = os.path.dirname(src_path)
-if backend_path not in sys.path:
-    sys.path.insert(0, backend_path)
-
+from utils.import_helper import setup_imports
+setup_imports(__file__)
 from chat.session_manager import SessionManager
 from search.search_client import AzureSearchClient
 from config import (

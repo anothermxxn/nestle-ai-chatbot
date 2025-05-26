@@ -6,16 +6,9 @@ from urllib.parse import unquote, urlparse
 import logging
 from html import unescape
 
-# Import centralized configurations
-try:
-    from ...config.content_types import CONTENT_TYPES, CONTENT_TYPE_KEYWORDS
-    from ...config.brands import BRAND_PATTERNS
-except ImportError:
-    import sys
-    import os
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-    from config.content_types import CONTENT_TYPES, CONTENT_TYPE_KEYWORDS
-    from config.brands import BRAND_PATTERNS
+# Import configuration
+from ...config.content_types import CONTENT_TYPES, CONTENT_TYPE_KEYWORDS
+from ...config.brands import BRAND_PATTERNS
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

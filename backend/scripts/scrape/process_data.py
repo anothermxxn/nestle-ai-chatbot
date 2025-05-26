@@ -3,16 +3,13 @@ import sys
 import argparse
 import logging
 
-# Add src to the path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
-
-# Import config
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+from utils.import_helper import setup_imports
+setup_imports(__file__)
 from config import (
     RAW_DATA_DIR,
     PROCESSED_DATA_DIR
 )
-
 from scrape.data_processor import (
     process_all_content,
 )
@@ -94,9 +91,9 @@ def main():
     success = run_content_processing(args.raw_dir, args.processed_dir)
     
     if success:
-        logger.info("\n🎉 Content processing completed successfully!")
+        logger.info("\nContent processing completed successfully!")
     else:
-        logger.error("\n❌ Content processing failed. Check logs for details.")
+        logger.error("\nContent processing failed.")
         sys.exit(1)
 
 if __name__ == "__main__":

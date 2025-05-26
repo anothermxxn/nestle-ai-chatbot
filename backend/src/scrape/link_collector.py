@@ -6,13 +6,7 @@ from typing import Set, Optional, Dict
 from urllib.parse import urlparse, urljoin
 from playwright.async_api import async_playwright, Browser, Page
 
-try:
-    from ...config import MAX_PAGES_DEFAULT, SCRAPER_CONCURRENCY
-except ImportError:
-    import sys
-    import os
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-    from config import MAX_PAGES_DEFAULT, SCRAPER_CONCURRENCY
+from ...config import MAX_PAGES_DEFAULT, SCRAPER_CONCURRENCY
 
 # Configure logging
 logging.basicConfig(

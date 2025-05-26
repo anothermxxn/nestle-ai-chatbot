@@ -1,20 +1,10 @@
 import logging
-import sys
-import os
 import uuid
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 
-# Add src to path for absolute imports
-src_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if src_path not in sys.path:
-    sys.path.insert(0, src_path)
-
-# Add backend to path for config imports  
-backend_path = os.path.dirname(src_path)
-if backend_path not in sys.path:
-    sys.path.insert(0, backend_path)
-
+from utils.import_helper import setup_imports
+setup_imports(__file__)
 from chat.context_manager import ChatMessage, SearchContext, ContextExtractor
 from config import CHAT_CONFIG
 

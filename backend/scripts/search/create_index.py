@@ -4,11 +4,9 @@ import requests
 import logging
 from dotenv import load_dotenv
 
-# Add src to the path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
-
-# Import config
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+from utils.import_helper import setup_imports
+setup_imports(__file__)
 from config import (
     SEARCH_INDEX_SETTINGS,
     AZURE_SEARCH_ENDPOINT,
@@ -24,22 +22,16 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Use config values
-endpoint = AZURE_SEARCH_ENDPOINT
-admin_key = AZURE_SEARCH_ADMIN_KEY
-index_name = AZURE_SEARCH_INDEX_NAME
-api_version = AZURE_SEARCH_API_VERSION
-
 def create_index(index_settings):
     """Create a new search index."""
-    url = f"{endpoint}/indexes/{index_name}?api-version={api_version}"
+    url = f"{AZURE_SEARCH_ENDPOINT}/indexes/{AZURE_SEARCH_INDEX_NAME}?api-version={AZURE_SEARCH_API_VERSION}"
     headers = {
         "Content-Type": "application/json",
-        "api-key": admin_key
+        "api-key": AZURE_SEARCH_ADMIN_KEY
     }
     
     try:
-        logger.info(f"Creating index '{index_name}'...")
+        logger.info(f"Creating index '{AZURE_SEARCH_INDEX_NAME}'...")
         response = requests.put(url, headers=headers, json=index_settings)
         response.raise_for_status()
         logger.info("Index created successfully")

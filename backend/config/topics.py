@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict
 
 TOPIC_CATEGORIES = {
     # Food & Beverage Categories

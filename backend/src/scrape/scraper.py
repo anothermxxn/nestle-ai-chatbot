@@ -3,13 +3,8 @@ import asyncio
 import logging
 from .link_collector import LinkCollector
 from .content_processor import ContentProcessor
-try:
-    from ...config import MAX_PAGES_LARGE
-except ImportError:
-    import sys
-    import os
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-    from config import MAX_PAGES_LARGE
+# Import configuration
+from ...config import MAX_PAGES_LARGE
 
 # Configure logging
 logging.basicConfig(

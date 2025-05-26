@@ -7,15 +7,9 @@ from azure.search.documents.models import VectorizableTextQuery
 from azure.core.credentials import AzureKeyCredential
 import json
 
-# Add src to path for absolute imports
-src_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if src_path not in sys.path:
-    sys.path.insert(0, src_path)
-
-# Add backend to path for config imports  
-backend_path = os.path.dirname(src_path)
-if backend_path not in sys.path:
-    sys.path.insert(0, backend_path)
+# Setup import paths using centralized helper
+from utils.import_helper import setup_imports
+setup_imports(__file__)
 
 from config.database import (
     SEARCH_CONFIG,
