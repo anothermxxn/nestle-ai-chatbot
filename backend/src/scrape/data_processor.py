@@ -120,7 +120,7 @@ def contains_unwanted_terms(phrase: str) -> bool:
 
 def extract_meaningful_ngrams(text: str, n_range: Tuple[int, int] = NGRAM_RANGE) -> List[str]:
     """
-    Extract meaningful n-grams from text using NLTK if available, fallback to basic method.
+    Extract meaningful n-grams from text using NLTK with minimal filtering.
     
     Args:
         text (str): Input text
@@ -131,18 +131,13 @@ def extract_meaningful_ngrams(text: str, n_range: Tuple[int, int] = NGRAM_RANGE)
     """
     # Enhanced method with NLTK
     tokens = word_tokenize(text.lower())
-    stop_words = set(stopwords.words("english"))
     
-    # Add our custom stop words to NLTK stop words
-    combined_stop_words = stop_words.union(STOP_WORDS)
-    
-    # Filter out stopwords, punctuation, and very short words
     filtered_tokens = [
         token for token in tokens 
         if (token.isalpha() and 
             len(token) > 2 and 
-            token not in combined_stop_words and
-            is_meaningful_keyword(token))  # Apply our meaningful keyword filter
+            token not in STOP_WORDS and
+            is_meaningful_keyword(token))
     ]
     
     if len(filtered_tokens) < n_range[0]:
@@ -185,7 +180,7 @@ def is_food_related_phrase(phrase: str) -> bool:
 def is_meaningful_keyword(word: str) -> bool:
     """
     Check if a keyword is meaningful for search purposes.
-    Filters out common web-related terms, generic words, and other noise.
+    Filters out only technical web terms and artifacts that LLMs might miss.
     
     Args:
         word (str): Word to check
@@ -199,50 +194,16 @@ def is_meaningful_keyword(word: str) -> bool:
     if word_lower in STOP_WORDS:
         return False
     
-    # Skip URLs and web-related fragments
-    web_patterns = [
-        r'^https?',
-        r'\.com$', r'\.org$', r'\.net$', r'\.ca$', r'\.uk$',
-        r'www\d*$', r'^php$', r'^html$', r'^htm$', r'^asp$', r'^jsp$'
-    ]
-    for pattern in web_patterns:
-        if re.match(pattern, word_lower):
-            return False
-    
-    # Skip URL fragments and malformed terms
-    if any(fragment in word_lower for fragment in ['https', 'http', 'www.', '.com', '.ca', '.org']):
-        return False
-    
-    # Skip social media terms (additional check beyond stop words)
-    social_terms = set(SOCIAL_MEDIA_INDICATORS)
-    if word_lower in social_terms:
-        return False
-    
     # Skip pure numbers or number-heavy strings
     if word.isdigit() or len(re.findall(r'\d', word)) > len(word) // 2:
         return False
     
-    # Skip very common generic terms that don't add search value
-    generic_junk = {
-        'copy', 'playing', 'next', 'prev', 'previous', 'continue', 'skip',
-        'loading', 'please', 'wait', 'click', 'tap', 'press', 'enter',
-        'search', 'find', 'browse', 'explore', 'discover', 'learn', 'mins',
-        'behind', 'keep', 'exploring', 'measure', 'impact', 'doing', 'proud',
-        'partner', 'years', 'consumers', 'delighted'
-    }
-    if word_lower in generic_junk:
-        return False
-    
-    # Skip single characters or very short abbreviations that aren't meaningful
+    # Skip very short terms
     if len(word) <= 2 and word_lower not in {'qt', 'ml', 'oz', 'lb', 'kg', 'mg'}:
         return False
     
-    # Skip terms that are clearly web/cookie related
-    web_cookie_terms = {
-        'tracking', 'analytics', 'gdpr', 'consent', 'banner', 'notice',
-        'performance', 'functional', 'targeting', 'essential', 'necessary'
-    }
-    if word_lower in web_cookie_terms:
+    # Skip URL fragments and malformed terms
+    if any(fragment in word_lower for fragment in ['https', 'http', 'www.', '.com', '.ca', '.org']):
         return False
     
     return True
@@ -381,18 +342,14 @@ def _fallback_content_keywords(content: str, max_keywords: int = MAX_KEYWORDS_PE
     words = re.findall(r"\b\w{3,}\b", content.lower())
     word_freq = Counter(words)
     
-    # Get English stop words from NLTK
-    nltk_stop_words = set(stopwords.words("english"))
-    
-    # Filter words by relevance and frequency with enhanced criteria
+    # Filter words by relevance and frequency
     meaningful_words = []
     
-    for word, freq in word_freq.most_common(20):  # Look at top 20 words
-        if (word not in nltk_stop_words and 
-            word not in STOP_WORDS and  # Use our enhanced stop words
-            freq >= 2 and  # Appears at least twice
-            is_meaningful_keyword(word) and  # Pass our meaningful keyword filter
-            (is_food_related_word(word) or freq >= 3)):  # Either food-related or frequent
+    for word, freq in word_freq.most_common(20):
+        if (word not in STOP_WORDS and
+            freq >= 2 and
+            is_meaningful_keyword(word) and
+            (is_food_related_word(word) or freq >= 3)):
             meaningful_words.append(word)
     
     keywords.update(meaningful_words[:max_keywords])

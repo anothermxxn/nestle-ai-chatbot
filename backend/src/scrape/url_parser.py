@@ -176,9 +176,11 @@ def extract_keywords(url_parts: List[str], title: str, content_type: str, brand:
         cleaned = decode_url_part(part).lower()
         keywords.update(re.findall(r"\w+", cleaned))
     
-    # Remove common words and short terms
-    stop_words = {"the", "and", "or", "in", "on", "at", "to", "for", "of", "with"}
-    keywords = {k for k in keywords if len(k) > 2 and k not in stop_words}
+    # Import our minimal technical stop words
+    from ...config.scraper import STOP_WORDS
+    
+    # Remove only technical terms and short terms
+    keywords = {k for k in keywords if len(k) > 2 and k not in STOP_WORDS}
     
     return sorted(list(keywords))
 

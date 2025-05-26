@@ -125,48 +125,41 @@ FOOD_INDICATORS = [
 GENERIC_TERMS = ["new", "great", "good", "best", "more", "other", "all", "some"]
 
 STOP_WORDS = {
-    # Basic stop words
-    "the", "and", "or", "in", "on", "at", "to", "for", "of", "with", "a", "an",
-    
-    # Pronouns and basic words
-    "you", "your", "we", "our", "us", "me", "my", "i", "he", "she", "it", "they", "them", "their",
-    
-    # Web-related terms
+    # Web/technical terms that LLMs might miss
     "www", "http", "https", "html", "com", "org", "net", "ca", "uk", "php", "asp", "jsp",
-    "url", "link", "page", "site", "web", "website", "blog", "post", "home", "index",
+    "url", "href", "src", "alt", "css", "js", "javascript", "cdn", "api", "json", "xml",
     
-    # Navigation and UI terms
-    "next", "previous", "prev", "back", "forward", "menu", "nav", "navigation", "button",
-    "click", "here", "read", "more", "view", "show", "hide", "open", "close", "toggle",
-    
-    # Generic content words
-    "content", "text", "article", "section", "title", "heading", "paragraph", "image",
-    "video", "audio", "media", "file", "document", "pdf", "download", "upload",
-    
-    # Social media terms
-    "facebook", "twitter", "pinterest", "email", "yummly", "instagram", "linkedin",
-    "share", "follow", "connect", "social", "media", "like", "subscribe", "join",
-    
-    # Web cookies and tracking terms
+    # Tracking and analytics terms (often in web content)
     "cookies", "cookie", "tracking", "analytics", "gdpr", "consent", "privacy",
-    "policy", "terms", "conditions", "banner", "notice", "manage", "preferences",
+    "gtm", "ga", "utm", "pixel", "beacon", "tag", "manager", "dataLayer",
     
-    # Common verbs that aren't meaningful as keywords
-    "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does",
-    "did", "will", "would", "could", "should", "may", "might", "can", "get", "got", "make",
-    "made", "take", "took", "give", "gave", "put", "see", "saw", "come", "came", "go", "went",
+    # Web UI/UX terms that might appear in scraped content
+    "onclick", "onload", "href", "target", "blank", "nofollow", "noopener",
+    "viewport", "responsive", "breakpoint", "modal", "tooltip", "dropdown",
     
-    # Time and date terms that are usually not meaningful
-    "today", "yesterday", "tomorrow", "now", "then", "when", "where", "why", "how", "what",
-    "who", "which", "that", "this", "these", "those",
+    # Social media platform-specific terms
+    "facebook", "twitter", "pinterest", "instagram", "linkedin", "youtube",
+    "tiktok", "snapchat", "whatsapp", "telegram", "discord", "reddit",
     
-    # Quantity and size terms that are usually generic
-    "all", "some", "many", "few", "most", "much", "more", "less", "little", "big", "small",
-    "large", "huge", "tiny", "new", "old", "young", "first", "last", "second", "third",
+    # E-commerce and web platform terms
+    "shopify", "woocommerce", "magento", "wordpress", "drupal", "joomla",
+    "prestashop", "bigcommerce", "squarespace", "wix", "webflow",
     
-    # Generic descriptors
-    "good", "bad", "great", "best", "better", "worst", "worse", "nice", "fine", "ok", "okay",
-    "yes", "no", "true", "false", "right", "wrong", "easy", "hard", "simple", "complex"
+    # Web performance and technical terms
+    "cdn", "ssl", "tls", "cors", "csrf", "xss", "sql", "nosql", "mongodb",
+    "redis", "elasticsearch", "nginx", "apache", "cloudflare", "aws",
+    
+    # Cookie and consent management specific terms
+    "onetrust", "cookiebot", "trustarc", "quantcast", "iubenda", "cookiepro",
+    "necessary", "functional", "targeting", "performance", "essential",
+    
+    # Web scraping artifacts that might slip through
+    "noscript", "iframe", "embed", "object", "param", "canvas", "svg",
+    "webp", "avif", "base64", "blob", "data", "mime", "charset", "utf",
+    
+    # Generic web content management terms
+    "cms", "admin", "dashboard", "backend", "frontend", "api", "endpoint",
+    "webhook", "cron", "cache", "session", "token", "auth", "oauth"
 }
 
 WEB_COOKIE_INDICATORS = [

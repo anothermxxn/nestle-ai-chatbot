@@ -5,7 +5,7 @@ from typing import List, Optional, Dict
 from openai import AsyncAzureOpenAI
 
 from ...config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
-
+from .data_processor import is_meaningful_keyword
 
 class LLMKeywordExtractor:
     """LLM-based keyword extractor using Azure OpenAI"""
@@ -69,10 +69,6 @@ class LLMKeywordExtractor:
     
     async def extract_keywords_async(self, content: str, title: str, content_type: str, brand: Optional[str] = None) -> List[str]:
         """Extract keywords using LLM asynchronously"""
-        
-        if not self.client:
-            return self._fallback_keywords(content, title, content_type, brand)
-        
         try:
             prompt = self._create_keyword_prompt(content, title, content_type, brand)
             
@@ -139,7 +135,7 @@ class LLMKeywordExtractor:
                     keyword = keyword.strip().lower()
                     # Remove quotes and extra whitespace
                     keyword = keyword.strip('"\'')
-                    if len(keyword) > 2 and self._is_valid_keyword(keyword):
+                    if len(keyword) > 2 and is_meaningful_keyword(keyword):
                         cleaned_keywords.append(keyword)
             
             # Always include content type and brand
@@ -154,7 +150,7 @@ class LLMKeywordExtractor:
             
         except Exception as e:
             print(f"LLM keyword extraction failed: {e}")
-            return self._fallback_keywords(content, title, content_type, brand)
+            return []
     
     def extract_keywords_sync(self, content: str, title: str, content_type: str, brand: Optional[str] = None) -> List[str]:
         """Extract keywords synchronously (wrapper for async method)"""
@@ -174,63 +170,9 @@ class LLMKeywordExtractor:
             )
         except Exception as e:
             print(f"Sync keyword extraction failed: {e}")
-            return self._fallback_keywords(content, title, content_type, brand)
-    
-    def _is_valid_keyword(self, keyword: str) -> bool:
-        """Basic validation for keywords"""
-        # Skip if contains unwanted terms
-        unwanted_terms = {
-            'www', 'http', 'https', 'com', 'org', 'ca', 'html', 'php',
-            'facebook', 'twitter', 'instagram', 'email', 'pinterest',
-            'cookies', 'tracking', 'analytics', 'gdpr', 'privacy'
-        }
-        
-        keyword_lower = keyword.lower()
-        if any(term in keyword_lower for term in unwanted_terms):
-            return False
-        
-        # Skip pure numbers
-        if keyword.isdigit():
-            return False
-        
-        # Skip very short terms
-        if len(keyword) <= 2:
-            return False
-        
-        return True
-    
-    def _fallback_keywords(self, content: str, title: str, content_type: str, brand: Optional[str] = None) -> List[str]:
-        """Fallback keyword extraction when LLM is not available"""
-        keywords = [content_type]
-        
-        if brand:
-            keywords.append(brand.lower())
-        
-        # Basic extraction from title
-        title_words = re.findall(r'\b\w{3,}\b', title.lower())
-        for word in title_words:
-            if self._is_valid_keyword(word):
-                keywords.append(word)
-        
-        return list(set(keywords[:10]))  # Limit and remove duplicates
-
-
-# Global instance
-_keyword_extractor = None
-
-def get_keyword_extractor() -> LLMKeywordExtractor:
-    """Get or create global keyword extractor instance"""
-    global _keyword_extractor
-    if _keyword_extractor is None:
-        _keyword_extractor = LLMKeywordExtractor()
-    return _keyword_extractor
+            return []
 
 def extract_keywords_with_llm(content: str, title: str, content_type: str, brand: Optional[str] = None) -> List[str]:
     """Extract keywords using LLM - main entry point"""
-    extractor = get_keyword_extractor()
+    extractor = LLMKeywordExtractor()
     return extractor.extract_keywords_sync(content, title, content_type, brand)
-
-async def extract_keywords_with_llm_async(content: str, title: str, content_type: str, brand: Optional[str] = None) -> List[str]:
-    """Extract keywords using LLM asynchronously - main entry point"""
-    extractor = get_keyword_extractor()
-    return await extractor.extract_keywords_async(content, title, content_type, brand) 
