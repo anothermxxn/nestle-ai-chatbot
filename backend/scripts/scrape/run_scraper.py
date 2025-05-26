@@ -25,8 +25,8 @@ from config import (
     SCRAPER_CONCURRENCY
 )
 
-from scraper.link_collector import LinkCollector
-from scraper.content_processor import ContentProcessor
+from scrape.link_collector import LinkCollector
+from scrape.content_processor import ContentProcessor
 
 # Configure logging
 logging.basicConfig(

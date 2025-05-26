@@ -13,7 +13,7 @@ from config import (
     PROCESSED_DATA_DIR
 )
 
-from scraper.data_processor import (
+from scrape.data_processor import (
     process_all_content,
 )
 
