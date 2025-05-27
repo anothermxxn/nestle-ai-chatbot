@@ -152,12 +152,12 @@ class SessionContextTester:
                 self.log_test("Messages have proper structure", has_proper_structure,
                              f"Keys: {list(first_message.keys())}")
                 
-                # Check for both user and agent messages
+                # Check for both user and assistant messages
                 user_messages = [msg for msg in messages if msg["role"] == "user"]
-                agent_messages = [msg for msg in messages if msg["role"] == "agent"] 
-                has_both_roles = len(user_messages) > 0 and len(agent_messages) > 0
-                self.log_test("Has both user and agent messages", has_both_roles,
-                             f"User: {len(user_messages)}, Agent: {len(agent_messages)}")
+                assistant_messages = [msg for msg in messages if msg["role"] == "assistant"] 
+                has_both_roles = len(user_messages) > 0 and len(assistant_messages) > 0
+                self.log_test("Has both user and assistant messages", has_both_roles,
+                             f"User: {len(user_messages)}, Assistant: {len(assistant_messages)}")
             
             # Check session metadata
             metadata = history.get("metadata", {})

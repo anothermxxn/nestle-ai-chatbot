@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ChatMessage:
     """Represents a single message in a conversation."""
-    role: str  # "user" or "agent"
+    role: str  # "user" or "assistant"
     content: str
     timestamp: datetime
     metadata: Optional[Dict[str, Any]] = None

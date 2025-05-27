@@ -239,7 +239,7 @@ class NestleChatClient:
             }
         }
         
-        session.add_agent_message(
+        session.add_assistant_message(
             response["answer"],
             {"search_results_count": 0, "filters_applied": response["filters_applied"]}
         )
@@ -339,7 +339,7 @@ class NestleChatClient:
                 answer, graph_context
             )
             
-            session.add_agent_message(answer, {
+            session.add_assistant_message(answer, {
                 "search_results_count": len(search_results),
                 "filters_applied": base_response["filters_applied"],
                 "context_enhanced": True,
@@ -354,7 +354,7 @@ class NestleChatClient:
                 "retrieval_metadata": enhanced_response.get("retrieval_metadata", {})
             })
         else:
-            session.add_agent_message(answer, {
+            session.add_assistant_message(answer, {
                 "search_results_count": len(search_results),
                 "filters_applied": base_response["filters_applied"],
                 "context_enhanced": True,

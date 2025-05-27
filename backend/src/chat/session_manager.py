@@ -65,10 +65,10 @@ class ConversationSession:
         # Extract context information from user input
         self.context_extractor.update_search_context(content, self.search_context)
     
-    def add_agent_message(self, content: str, metadata: Optional[Dict] = None) -> None:
-        """Add an agent message to the conversation."""
+    def add_assistant_message(self, content: str, metadata: Optional[Dict] = None) -> None:
+        """Add an assistant message to the conversation."""
         message = ChatMessage(
-            role="agent",
+            role="assistant",
             content=content,
             timestamp=datetime.now(),
             metadata=metadata
