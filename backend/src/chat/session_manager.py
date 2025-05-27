@@ -3,10 +3,8 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 
-from utils.import_helper import setup_imports
-setup_imports(__file__)
-from chat.context_manager import ChatMessage, SearchContext, ContextExtractor
-from config import CHAT_CONFIG
+from .context_manager import ChatMessage, SearchContext, ContextExtractor
+from backend.config import CHAT_CONFIG
 
 logger = logging.getLogger(__name__)
 

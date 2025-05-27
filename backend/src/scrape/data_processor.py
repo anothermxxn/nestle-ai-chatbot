@@ -11,12 +11,10 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.util import ngrams
 
-from utils.import_helper import setup_imports
-setup_imports(__file__)
 from .url_parser import parse_url
 from .llm_keyword_extractor import extract_keywords_with_llm
 from .keyword_utils import is_meaningful_keyword
-from config import (
+from backend.config import (
     # Compound terms
     ALL_COMPOUND_TERMS,
     

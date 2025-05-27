@@ -4,11 +4,7 @@ import os
 from typing import Dict, List, Optional
 from datetime import datetime
 
-# Setup import paths using centralized helper
-from utils.import_helper import setup_imports
-setup_imports(__file__)
-
-from config.content_types import CONTENT_TYPE_KEYWORDS
+from backend.config.content_types import CONTENT_TYPE_KEYWORDS
 
 logger = logging.getLogger(__name__)
 

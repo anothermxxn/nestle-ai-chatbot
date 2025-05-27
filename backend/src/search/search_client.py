@@ -7,18 +7,14 @@ from azure.search.documents.models import VectorizableTextQuery
 from azure.core.credentials import AzureKeyCredential
 import json
 
-# Setup import paths using centralized helper
-from utils.import_helper import setup_imports
-setup_imports(__file__)
-
-from config.database import (
+from backend.config.database import (
     SEARCH_CONFIG,
     AZURE_SEARCH_ENDPOINT,
     AZURE_SEARCH_ADMIN_KEY,
     AZURE_SEARCH_INDEX_NAME
 )
-from config import BATCH_SIZE
-from search.relevance_scorer import VectorSearchRanker
+from backend.config import BATCH_SIZE
+from .relevance_scorer import VectorSearchRanker
 
 # Configure logging
 logging.basicConfig(

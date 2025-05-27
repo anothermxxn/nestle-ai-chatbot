@@ -4,10 +4,8 @@ from urllib.parse import unquote, urlparse
 import logging
 from html import unescape
 
-from utils.import_helper import setup_imports
-setup_imports(__file__)
-from config.content_types import CONTENT_TYPES, CONTENT_TYPE_KEYWORDS
-from config.brands import BRAND_PATTERNS
+from backend.config.content_types import CONTENT_TYPES, CONTENT_TYPE_KEYWORDS
+from backend.config.brands import BRAND_PATTERNS
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -176,7 +174,7 @@ def extract_keywords(url_parts: List[str], title: str, content_type: str, brand:
         keywords.update(re.findall(r"\w+", cleaned))
     
     # Import our minimal technical stop words
-    from config.scraper import STOP_WORDS
+    from backend.config.scraper import STOP_WORDS
     
     # Remove only technical terms and short terms
     keywords = {k for k in keywords if len(k) > 2 and k not in STOP_WORDS}

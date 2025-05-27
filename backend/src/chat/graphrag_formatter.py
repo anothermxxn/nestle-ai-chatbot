@@ -2,10 +2,8 @@ import logging
 from typing import Dict, List, Any
 from dataclasses import dataclass
 
-from utils.import_helper import setup_imports
-setup_imports(__file__)
-from search.graphrag_client import GraphRAGResult
-from graph.models import Entity, Relationship
+from ..search.graphrag_client import GraphRAGResult
+from ..graph.models import Entity, Relationship
 
 logger = logging.getLogger(__name__)
 

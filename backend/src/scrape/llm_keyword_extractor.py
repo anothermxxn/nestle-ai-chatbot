@@ -4,9 +4,7 @@ import re
 from typing import List, Optional
 from openai import AsyncAzureOpenAI
 
-from utils.import_helper import setup_imports
-setup_imports(__file__)
-from config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
+from backend.config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
 from .keyword_utils import is_meaningful_keyword
 
 class LLMKeywordExtractor:

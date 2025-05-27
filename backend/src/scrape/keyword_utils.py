@@ -1,8 +1,6 @@
 import re
 
-from utils.import_helper import setup_imports
-setup_imports(__file__)
-from config import STOP_WORDS
+from backend.config import STOP_WORDS
 
 def is_meaningful_keyword(word: str) -> bool:
     """

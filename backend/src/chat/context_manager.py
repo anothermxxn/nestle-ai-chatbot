@@ -3,11 +3,9 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 
-from utils.import_helper import setup_imports
-setup_imports(__file__)
-from config.content_types import CONTENT_TYPE_KEYWORDS
-from config.brands import get_all_brand_variations
-from config.topics import detect_topics_from_text, ALL_TOPICS
+from backend.config.content_types import CONTENT_TYPE_KEYWORDS
+from backend.config.brands import get_all_brand_variations
+from backend.config.topics import detect_topics_from_text, ALL_TOPICS
 
 logger = logging.getLogger(__name__)
 

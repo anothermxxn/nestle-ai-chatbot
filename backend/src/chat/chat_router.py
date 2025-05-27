@@ -3,11 +3,7 @@ from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 import logging
 
-# Setup import paths using centralized helper
-from utils.import_helper import setup_imports
-setup_imports(__file__)
-
-from chat.chat_client import NestleChatClient
+from .chat_client import NestleChatClient
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -61,7 +57,6 @@ class NutritionRequest(BaseModel):
     """Request model for nutrition information."""
     food_item: str = Field(..., description="Food item or product name", min_length=1)
 
-# API Endpoints
 @router.post("/search", response_model=ChatResponse)
 async def chat_search(request: ChatRequest):
     """

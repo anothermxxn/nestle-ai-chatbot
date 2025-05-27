@@ -4,8 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import uuid
 
-from utils.import_helper import setup_imports
-setup_imports(__file__)
+
 
 class EntityType(Enum):
     """Enumeration of all supported entity types."""
@@ -109,7 +108,7 @@ class Relationship:
 def create_brand_entity(name: str, chunk_ids: List[str] = None, **kwargs) -> Entity:
     """Create a Brand entity with proper categorization."""
     # Import configuration functions
-    from config import normalize_brand_name, get_brand_category
+    from backend.config import normalize_brand_name, get_brand_category
     
     normalized_name = normalize_brand_name(name)
     if not normalized_name:
@@ -201,7 +200,7 @@ def extract_entities_from_chunks(chunks: List[Dict[str, Any]]) -> Dict[str, List
         Dict[str, List[Entity]]: Dictionary of entity types and their instances
     """
     # Import configuration functions
-    from config import detect_topics_from_text
+    from backend.config import detect_topics_from_text
     
     entities = {
         "brands": {},
