@@ -73,6 +73,14 @@ else
     az group create --name $RESOURCE_GROUP --location "$LOCATION" --output table
 fi
 
+# Check if web app already exists and delete it to avoid conflicts
+if az webapp show --resource-group $RESOURCE_GROUP --name $BACKEND_APP_NAME &> /dev/null; then
+    echo "Web app already exists. Deleting to avoid deployment conflicts..."
+    az webapp delete --resource-group $RESOURCE_GROUP --name $BACKEND_APP_NAME
+    echo "Waiting for deletion to complete..."
+    sleep 15
+fi
+
 # Create App Service Plan 
 echo "Creating App Service Plan..."
 
@@ -92,6 +100,7 @@ fi
 
 # Create Backend Web App
 echo "Creating Backend Web App..."
+
 az webapp create \
   --resource-group $RESOURCE_GROUP \
   --plan $APP_SERVICE_PLAN \
@@ -118,16 +127,40 @@ az webapp config set \
 
 echo "Backend configuration completed"
 
-# Configure GitHub deployment
-echo "Configuring GitHub deployment..."
-GITHUB_REPO="https://github.com/anothermxxn/nestle-ai-chatbot.git"
+# Configure local Git deployment
+echo "Configuring local Git deployment..."
 
-az webapp deployment source config \
+# Configure local Git deployment source
+DEPLOYMENT_URL=$(az webapp deployment source config-local-git \
   --resource-group $RESOURCE_GROUP \
   --name $BACKEND_APP_NAME \
-  --repo-url $GITHUB_REPO \
-  --branch main \
-  --manual-integration
+  --query url --output tsv)
+
+echo "Git deployment URL: $DEPLOYMENT_URL"
+
+# Deploy code from local repository
+echo "Deploying code from local repository..."
+
+# Go back to project root where the main git repository is
+cd ..
+
+# Ensure we're on the main branch and everything is committed
+echo "Preparing git repository for deployment..."
+git add .
+git commit -m "Prepare for Azure deployment" || echo "No changes to commit"
+
+# Add Azure remote if not exists
+if ! git remote get-url azure &> /dev/null; then
+    git remote add azure $DEPLOYMENT_URL
+else
+    git remote set-url azure $DEPLOYMENT_URL
+fi
+
+echo "Pushing to Azure..."
+# Push the entire project, Azure will use the backend folder based on deployment settings
+git push azure main --force
+
+cd deploy
 
 # Create Static Web App for Frontend
 echo "Creating Frontend Static Web App..."
