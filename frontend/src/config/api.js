@@ -1,6 +1,6 @@
 // API URLs
 export const API_CONFIG = {
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   wsURL: import.meta.env.VITE_WS_URL,
   timeout: 30000, // 30 seconds
   retryAttempts: 3,
