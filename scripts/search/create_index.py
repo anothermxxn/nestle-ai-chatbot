@@ -4,10 +4,8 @@ import requests
 import logging
 from dotenv import load_dotenv
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
-from utils.import_helper import setup_imports
-setup_imports(__file__)
-from config import (
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+from backend.config import (
     SEARCH_INDEX_SETTINGS,
     AZURE_SEARCH_ENDPOINT,
     AZURE_SEARCH_ADMIN_KEY,

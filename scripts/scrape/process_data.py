@@ -3,13 +3,12 @@ import sys
 import argparse
 import logging
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
-from utils.import_helper import setup_imports
-setup_imports(__file__)
-from config import (
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+from backend.config import (
     RAW_DATA_DIR,
     PROCESSED_DATA_DIR
 )
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "src"))
 from scrape.data_processor import (
     process_all_content,
 )

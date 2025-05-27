@@ -4,16 +4,15 @@ import asyncio
 import argparse
 import logging
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
-from utils.import_helper import setup_imports
-setup_imports(__file__)
-from config import (
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+from backend.config import (
     DEFAULT_BASE_URL,
     DEFAULT_LINKS_FILE,
     RAW_DATA_DIR,
     MAX_PAGES_DEFAULT,
     SCRAPER_CONCURRENCY
 )
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "src"))
 from scrape.link_collector import LinkCollector
 from scrape.content_processor import ContentProcessor
 

@@ -5,16 +5,15 @@ import sys
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
-from utils.import_helper import setup_imports
-setup_imports(__file__)
-from config import (
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+from backend.config import (
     DEFAULT_VECTOR_CHUNKS_FILE,
     COSMOS_CONFIG,
     ENTITIES_CONTAINER_NAME,
     RELATIONSHIPS_CONTAINER_NAME,
     validate_config
 )
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "src"))
 from graph.cosmos_client import CosmosGraphClient
 from graph.models import (
     extract_entities_from_chunks,
