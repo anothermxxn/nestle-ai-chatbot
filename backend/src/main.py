@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .chat.chat_router import router as chat_router
+from .chat.websocket_router import router as websocket_router
 
 app = FastAPI(
     title="Nestle AI Chatbot",
@@ -19,6 +20,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(chat_router)
+app.include_router(websocket_router)
 
 @app.get("/")
 async def root():
