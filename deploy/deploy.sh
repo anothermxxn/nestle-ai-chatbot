@@ -130,11 +130,25 @@ echo "Backend configuration completed"
 # Configure local Git deployment
 echo "Configuring local Git deployment..."
 
+# First, configure deployment credentials
+echo "Setting up deployment credentials..."
+DEPLOYMENT_USER="nestle-deploy-user"
+echo "Please enter a password for deployment user (minimum 8 characters):"
+read -s DEPLOYMENT_PASSWORD
+
+# Configure deployment user
+az webapp deployment user set \
+  --user-name $DEPLOYMENT_USER \
+  --password $DEPLOYMENT_PASSWORD
+
 # Configure local Git deployment source
 DEPLOYMENT_URL=$(az webapp deployment source config-local-git \
   --resource-group $RESOURCE_GROUP \
   --name $BACKEND_APP_NAME \
   --query url --output tsv)
+
+# Replace 'None' with actual deployment username in the URL
+DEPLOYMENT_URL=$(echo $DEPLOYMENT_URL | sed "s/None@/$DEPLOYMENT_USER@/")
 
 echo "Git deployment URL: $DEPLOYMENT_URL"
 
