@@ -2,13 +2,11 @@ import logging
 from typing import Dict, List, Optional
 from openai import AzureOpenAI
 
-from utils.import_helper import setup_imports
-setup_imports(__file__)
-from chat.session_manager import SessionManager
-from search.search_client import AzureSearchClient
-from search.graphrag_client import GraphRAGClient
-from chat.graphrag_formatter import GraphRAGFormatter
-from config import (
+from .session_manager import SessionManager
+from ..search.search_client import AzureSearchClient
+from ..search.graphrag_client import GraphRAGClient
+from .graphrag_formatter import GraphRAGFormatter
+from backend.config import (
     AZURE_OPENAI_CONFIG,
     CHAT_CONFIG,
     CHAT_PROMPTS,
@@ -61,24 +59,93 @@ class NestleChatClient:
             logger.error(f"Failed to initialize OpenAI client: {str(e)}")
             raise
     
+    def _normalize_url(self, url: str) -> str:
+        """
+        Normalize URL for comparison to handle edge cases.
+        
+        Args:
+            url (str): Raw URL
+            
+        Returns:
+            str: Normalized URL for comparison
+        """
+        if not url:
+            return ""
+        
+        # Convert to lowercase
+        normalized = url.lower().strip()
+        
+        # Remove protocol differences (http vs https)
+        normalized = normalized.replace("https://", "").replace("http://", "")
+        
+        # Remove www prefix
+        if normalized.startswith("www."):
+            normalized = normalized[4:]
+        
+        # Remove trailing slash
+        if normalized.endswith("/"):
+            normalized = normalized[:-1]
+        
+        # Remove common query parameters that don't affect content
+        if "?" in normalized:
+            base_url, query = normalized.split("?", 1)
+            # Keep only meaningful query parameters, remove tracking/session params
+            meaningful_params = []
+            for param in query.split("&"):
+                if "=" in param:
+                    key, value = param.split("=", 1)
+                    # Skip common tracking/session parameters
+                    if key not in ["utm_source", "utm_medium", "utm_campaign", "sessionid", "sid", "_ga", "fbclid"]:
+                        meaningful_params.append(param)
+            
+            if meaningful_params:
+                normalized = base_url + "?" + "&".join(meaningful_params)
+            else:
+                normalized = base_url
+        
+        # Remove fragment identifiers
+        if "#" in normalized:
+            normalized = normalized.split("#")[0]
+        
+        return normalized
+
     def _format_links(self, search_results: List[Dict]) -> List[Dict]:
         """
         Format search results as source links for frontend display.
+        Removes duplicate URLs to ensure unique sources.
         
         Args:
             search_results (List[Dict]): Search results from Azure Search
             
         Returns:
-            List[Dict]: Formatted source links for frontend
+            List[Dict]: Formatted source links for frontend with unique URLs
         """
         if not search_results:
             return []
         
         formatted_links = []
-        for i, result in enumerate(search_results, 1):
+        seen_urls = set()
+        link_id = 1
+        
+        for result in search_results:
             try:
                 # Safely extract URL parts
                 url = result.get("url", "")
+                
+                # Skip if URL is empty
+                if not url:
+                    continue
+                
+                # Normalize URL for comparison
+                normalized_url = self._normalize_url(url)
+                
+                # Skip if normalized URL already seen
+                if normalized_url in seen_urls:
+                    logger.debug(f"Skipping duplicate URL: {url} (normalized: {normalized_url})")
+                    continue
+                
+                seen_urls.add(normalized_url)
+                
                 domain = ""
                 if url and "/" in url:
                     try:
@@ -91,26 +158,35 @@ class NestleChatClient:
                 snippet = content[:150] + "..." if len(content) > 150 else content
                 
                 source_link = {
-                    "id": i,
+                    "id": link_id,
                     "title": result.get("page_title", "Unknown Source"),
                     "section": result.get("section_title", ""),
-                    "url": url,
+                    "url": url,  # Keep original URL for display
                     "snippet": snippet,
                     "domain": domain
                 }
                 formatted_links.append(source_link)
+                link_id += 1
+                
             except Exception as e:
-                logger.warning(f"Error formatting source link {i}: {str(e)}")
-                # Add a basic link even if formatting fails
-                formatted_links.append({
-                    "id": i,
-                    "title": "Source",
-                    "section": "",
-                    "url": result.get("url", ""),
-                    "snippet": "Content preview unavailable",
-                    "domain": ""
-                })
+                logger.warning(f"Error formatting source link: {str(e)}")
+                # Add a basic link even if formatting fails (if URL is unique)
+                url = result.get("url", "")
+                if url:
+                    normalized_url = self._normalize_url(url)
+                    if normalized_url and normalized_url not in seen_urls:
+                        seen_urls.add(normalized_url)
+                        formatted_links.append({
+                            "id": link_id,
+                            "title": "Source",
+                            "section": "",
+                            "url": url,
+                            "snippet": "Content preview unavailable",
+                            "domain": ""
+                        })
+                        link_id += 1
         
+        logger.info(f"Deduplicated sources: {len(search_results)} -> {len(formatted_links)} unique URLs")
         return formatted_links
     
     def _format_search_results(self, search_results: List[Dict]) -> str:
