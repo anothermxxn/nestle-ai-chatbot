@@ -43,11 +43,26 @@ const MessageText = styled(Paper)(({ messagetype }) => ({
   lineHeight: 1.4,
   wordWrap: 'break-word',
   fontWeight: 500,
-  background: messagetype === 'user' ? colors.gray100 : colors.primary,
-  color: messagetype === 'user' ? colors.primary : colors.white,
+  background: messagetype === 'user' 
+    ? colors.gray100 
+    : messagetype === 'system' 
+    ? colors.gray200 
+    : colors.primary,
+  color: messagetype === 'user' 
+    ? colors.primary 
+    : messagetype === 'system' 
+    ? colors.gray600 
+    : colors.white,
   borderBottomRightRadius: messagetype === 'user' ? 4 : 8,
   borderBottomLeftRadius: messagetype === 'assistant' ? 4 : 8,
   boxShadow: 'none',
+  ...(messagetype === 'system' && {
+    textAlign: 'center',
+    fontStyle: 'italic',
+    fontSize: 12,
+    margin: '4px auto',
+    maxWidth: '200px',
+  }),
 }));
 
 const FormattedText = styled(Box)({

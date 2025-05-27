@@ -25,6 +25,7 @@ def get_chat_client():
 class ChatRequest(BaseModel):
     """Request model for chat queries."""
     query: str = Field(..., description="User's question or search query", min_length=1)
+    session_id: Optional[str] = Field(None, description="Session ID for conversation context")
     content_type: Optional[str] = Field(None, description="Filter by content type (e.g., 'recipe', 'brand')")
     brand: Optional[str] = Field(None, description="Filter by brand (e.g., 'NESTEA')")
     keywords: Optional[List[str]] = Field(None, description="Filter by keywords")
@@ -75,6 +76,7 @@ async def chat_search(request: ChatRequest):
         
         response = await client.search_and_chat(
             query=request.query,
+            session_id=request.session_id,
             content_type=request.content_type,
             brand=request.brand,
             keywords=request.keywords,
@@ -272,4 +274,100 @@ async def get_example_queries():
             "Calories in KitKat",
             "Health benefits of coffee"
         ]
-    } 
+    }
+
+# Session Management Endpoints
+
+class SessionRequest(BaseModel):
+    """Request model for session creation."""
+    session_id: Optional[str] = Field(None, description="Custom session ID")
+
+class SessionResponse(BaseModel):
+    """Response model for session operations."""
+    session_id: str = Field(..., description="Session ID")
+    message: str = Field(..., description="Operation result message")
+
+@router.post("/session", response_model=SessionResponse)
+async def create_session(request: SessionRequest = None):
+    """
+    Create a new conversation session.
+    
+    This endpoint creates a new session for maintaining conversation context
+    across multiple chat interactions.
+    """
+    try:
+        client = get_chat_client()
+        session_id = client.create_session(request.session_id if request else None)
+        
+        return SessionResponse(
+            session_id=session_id,
+            message="Session created successfully"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error creating session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create session: {str(e)}")
+
+@router.get("/session/{session_id}")
+async def get_session_history(session_id: str):
+    """
+    Get conversation history for a session.
+    
+    Returns the complete conversation history and context for the specified session.
+    """
+    try:
+        client = get_chat_client()
+        session_data = client.get_session_history(session_id)
+        
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        return session_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting session history: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get session history: {str(e)}")
+
+@router.delete("/session/{session_id}", response_model=SessionResponse)
+async def delete_session(session_id: str):
+    """
+    Delete a conversation session.
+    
+    Removes the session and all associated conversation history.
+    """
+    try:
+        client = get_chat_client()
+        success = client.delete_session(session_id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        return SessionResponse(
+            session_id=session_id,
+            message="Session deleted successfully"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete session: {str(e)}")
+
+@router.get("/sessions/stats")
+async def get_sessions_stats():
+    """
+    Get statistics about all active sessions.
+    
+    Returns information about active sessions and overall usage statistics.
+    """
+    try:
+        client = get_chat_client()
+        stats = client.get_all_sessions_stats()
+        
+        return stats
+        
+    except Exception as e:
+        logger.error(f"Error getting session stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get session stats: {str(e)}") 

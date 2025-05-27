@@ -51,14 +51,21 @@ class ApiClient {
   /**
    * Sends a chat message and gets a response
    * @param {string} message - User message
+   * @param {string} sessionId - Optional session ID for conversation context
    * @returns {Promise<Object>} Chat response
    */
-  async sendChatMessage(message) {
+  async sendChatMessage(message, sessionId = null) {
+    const requestBody = {
+      query: message,
+    };
+    
+    if (sessionId) {
+      requestBody.session_id = sessionId;
+    }
+    
     return this.request('/chat/search', {
       method: 'POST',
-      body: JSON.stringify({
-        query: message,
-      }),
+      body: JSON.stringify(requestBody),
     });
   }
 
@@ -163,6 +170,43 @@ class ApiClient {
    */
   async getExamples() {
     return this.request('/chat/examples');
+  }
+
+  /**
+   * Creates a new chat session
+   * @param {string} sessionId - Optional custom session ID
+   * @returns {Promise<Object>} Session creation response
+   */
+  async createSession(sessionId = null) {
+    const requestBody = {};
+    if (sessionId) {
+      requestBody.session_id = sessionId;
+    }
+    
+    return this.request('/chat/session', {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+    });
+  }
+
+  /**
+   * Gets session history
+   * @param {string} sessionId - Session ID
+   * @returns {Promise<Object>} Session history
+   */
+  async getSessionHistory(sessionId) {
+    return this.request(`/chat/session/${sessionId}`);
+  }
+
+  /**
+   * Deletes a chat session
+   * @param {string} sessionId - Session ID to delete
+   * @returns {Promise<Object>} Deletion response
+   */
+  async deleteSession(sessionId) {
+    return this.request(`/chat/session/${sessionId}`, {
+      method: 'DELETE',
+    });
   }
 }
 

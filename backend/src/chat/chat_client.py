@@ -322,29 +322,63 @@ class NestleChatClient:
         
         return response
 
-    def _create_prompt(self, query: str, search_results: List[Dict], graph_context) -> str:
+    def _create_prompt(self, query: str, search_results: List[Dict], graph_context, conversation_history) -> str:
         """
-        Create the prompt for the LLM based on search results and graph context.
+        Create the prompt for the LLM based on search results, graph context, and conversation history.
         
         Args:
             query (str): User query
             search_results (List[Dict]): Search results
             graph_context: Graph context object or None
+            conversation_history: List of previous messages for context
             
         Returns:
             str: Formatted prompt for LLM
         """
+        # Format conversation context
+        conversation_context = ""
+        
+        if conversation_history:
+            conversation_context = "\n\nCONVERSATION HISTORY:\n"
+            for msg in conversation_history:
+                role = "User" if msg.role == "user" else "Assistant"
+                conversation_context += f"{role}: {msg.content}\n"
+            conversation_context += f"\nCurrent question: {query}\n"
+        
         if graph_context:
-            return self.graphrag_formatter.create_graph_enhanced_prompt(
-                query, graph_context, CHAT_PROMPTS["system_prompt"]
+            if conversation_context:
+                # Create a modified system prompt template that includes conversation context
+                modified_system_prompt = CHAT_PROMPTS["system_prompt"].replace(
+                    "USER QUESTION: {query}",
+                    f"{conversation_context}\nUSER QUESTION: {{query}}"
+                )
+            else:
+                modified_system_prompt = CHAT_PROMPTS["system_prompt"]
+            
+            # Create the graph enhanced prompt with the modified template
+            final_prompt = self.graphrag_formatter.create_graph_enhanced_prompt(
+                query, graph_context, modified_system_prompt
             )
+            
+            return final_prompt
         else:
             sources_formatted = self._format_search_results(search_results)
-            return CHAT_PROMPTS["system_prompt"].format(
+            prompt_template = CHAT_PROMPTS["system_prompt"]
+            
+            if conversation_context:
+                # Insert conversation context before the current question
+                prompt_template = prompt_template.replace(
+                    "USER QUESTION: {query}",
+                    f"{conversation_context}\nUSER QUESTION: {{query}}"
+                )
+            
+            final_prompt = prompt_template.format(
                 query=query, 
                 sources=sources_formatted,
                 graph_context="No graph context available."
             )
+            
+            return final_prompt
 
     async def _generate_llm_response(self, prompt: str) -> str:
         """
@@ -472,6 +506,14 @@ class NestleChatClient:
             logger.info(f"Processing context-aware chat query: {query}")
             
             session = self.session_manager.get_or_create_session(session_id)
+            
+            # Get conversation context
+            conversation_history = []
+            if len(session.messages) > 0:
+                recent_messages = session.get_context_messages()
+                conversation_history = recent_messages[-4:]  # Last 4 messages for context
+            
+            # Add the current user message
             session.add_user_message(query, {"vector_search_enabled": True, "context_enabled": True})
             
             # Perform search
@@ -485,10 +527,8 @@ class NestleChatClient:
             # Handle results
             if not search_results:
                 return self._create_no_results_response(query, session, search_params)
-            prompt = self._create_prompt(query, search_results, graph_context)
+            prompt = self._create_prompt(query, search_results, graph_context, conversation_history)
             source_links = self._format_links(search_results)
-            
-            logger.info(f"Sending query to LLM with {len(search_results)} sources and conversation context")
             
             # Create final response
             answer = await self._generate_llm_response(prompt)

@@ -7,7 +7,7 @@ import {
   Alert
 } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
-import { Send, ExpandMore, Close } from '@mui/icons-material';
+import { Send, ExpandMore, Close, Refresh } from '@mui/icons-material';
 import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
 import MessageBubble from './MessageBubble';
 import { 
@@ -19,7 +19,7 @@ import {
   StyledAvatar, 
   StyledIconButton 
 } from './common';
-import apiClient from '../services/api';
+import useChatSession from '../hooks/useChatSession';
 import { createErrorHandler } from '../utils/errorHandler';
 
 // Loading animation for typing indicator
@@ -177,6 +177,13 @@ const ChatWindow = ({ onClose, onCollapse }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Session management
+  const {
+    sendMessage,
+    resetSession,
+    hasActiveSession
+  } = useChatSession();
+
   // Reference for auto-scrolling to bottom of messages
   const messagesEndRef = useRef(null);
 
@@ -190,6 +197,26 @@ const ChatWindow = ({ onClose, onCollapse }) => {
     scrollToBottom();
   }, [messages]);
 
+  // Handle session reset
+  const handleResetSession = async () => {
+    try {
+      await resetSession();
+      // Reset messages to initial state
+      setMessages([
+        {
+          id: 1,
+          type: "assistant",
+          content:
+            "Hey! I'm Smartie, your personal MadeWithNestle assistant. Ask me anything, and I'll quickly search the entire site to find the answers you need!",
+          timestamp: new Date(),
+        },
+      ]);
+      setError(null);
+    } catch (err) {
+      handleError(err);
+    }
+  };
+
   /**
    * Scrolls the message container to the bottom
    */
@@ -202,7 +229,7 @@ const ChatWindow = ({ onClose, onCollapse }) => {
    * Manages loading states and error handling
    */
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return;
+    if (!inputValue.trim() || isLoading || !hasActiveSession) return;
 
     const messageText = inputValue;
 
@@ -221,7 +248,7 @@ const ChatWindow = ({ onClose, onCollapse }) => {
     setError(null);
 
     try {
-      const data = await apiClient.sendChatMessage(messageText);
+      const data = await sendMessage(messageText);
 
       // Create assistant response message
       const assistantMessage = {
@@ -262,6 +289,14 @@ const ChatWindow = ({ onClose, onCollapse }) => {
           <SmartieTitle variant="h6">SMARTIE</SmartieTitle>
         </SmartieHeader>
         <HeaderControls>
+          <StyledIconButton 
+            variant="header" 
+            onClick={handleResetSession} 
+            size="small"
+            title="Reset conversation"
+          >
+            <Refresh sx={{ fontSize: 16 }} />
+          </StyledIconButton>
           <StyledIconButton variant="header" onClick={onCollapse} size="small">
             <ExpandMore sx={{ fontSize: 16 }} />
           </StyledIconButton>
@@ -294,6 +329,8 @@ const ChatWindow = ({ onClose, onCollapse }) => {
             {error}
           </Alert>
         )}
+
+
 
         {/* Invisible element for auto-scrolling */}
         <Box ref={messagesEndRef} />

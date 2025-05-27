@@ -213,12 +213,20 @@ class SessionManager:
     
     def get_or_create_session(self, session_id: str = None) -> ConversationSession:
         """Get existing session or create new one."""
+        logger.info(f"get_or_create_session called with session_id: {session_id}")
+        logger.info(f"Currently have {len(self.sessions)} active sessions")
+        
         if session_id:
             session = self.get_session(session_id)
             if session:
+                logger.info(f"Found existing session {session_id} with {len(session.messages)} messages")
                 return session
+            else:
+                logger.info(f"Session {session_id} not found, creating new one")
         
-        return self.create_session(session_id)
+        new_session = self.create_session(session_id)
+        logger.info(f"Created new session {new_session.session_id}")
+        return new_session
     
     def delete_session(self, session_id: str) -> bool:
         """Delete a session."""
