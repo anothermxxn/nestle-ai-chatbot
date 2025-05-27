@@ -97,7 +97,6 @@ az webapp create \
   --plan $APP_SERVICE_PLAN \
   --name $BACKEND_APP_NAME \
   --runtime "PYTHON|3.11" \
-  --deployment-local-git \
   --output table
 
 # Configure Backend
@@ -119,39 +118,16 @@ az webapp config set \
 
 echo "Backend configuration completed"
 
-# Get Git deployment URL
-echo "Getting deployment URL..."
-BACKEND_GIT_URL=$(az webapp deployment source config-local-git \
+# Configure GitHub deployment
+echo "Configuring GitHub deployment..."
+GITHUB_REPO="https://github.com/anothermxxn/nestle-ai-chatbot.git"
+
+az webapp deployment source config \
   --resource-group $RESOURCE_GROUP \
   --name $BACKEND_APP_NAME \
-  --query url --output tsv)
-
-echo "Git URL: $BACKEND_GIT_URL"
-
-# Deploy Backend Code
-echo "Deploying Backend code..."
-echo "Using existing git repository from project root..."
-
-# Go back to project root where the main git repository is
-cd ..
-
-# Ensure we're on the main branch and everything is committed
-echo "Preparing git repository for deployment..."
-git add .
-git commit -m "Prepare for Azure deployment" || echo "No changes to commit"
-
-# Add Azure remote if not exists
-if ! git remote get-url azure &> /dev/null; then
-    git remote add azure $BACKEND_GIT_URL
-else
-    git remote set-url azure $BACKEND_GIT_URL
-fi
-
-echo "Pushing to Azure..."
-# Push the entire project, Azure will use the backend folder based on deployment settings
-git push azure main --force
-
-cd deploy
+  --repo-url $GITHUB_REPO \
+  --branch main \
+  --manual-integration
 
 # Create Static Web App for Frontend
 echo "Creating Frontend Static Web App..."
