@@ -4,6 +4,7 @@ import { styled, keyframes } from '@mui/material/styles';
 import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
 import ChatWindow from './ChatWindow';
 import { colors, fontFamily, FlexCenter, shadows, StyledAvatar } from './common';
+import useChatSession from '../hooks/useChatSession';
 
 // Animation keyframes for chat window transitions
 const expandToWindow = keyframes`
@@ -210,6 +211,8 @@ const ChatWindowContent = styled(Box)({
  */
 const ChatBot = () => {
   const [state, setState] = useState('circle');
+  const [resetTrigger, setResetTrigger] = useState(0);
+  const { resetSession } = useChatSession();
 
   /**
    * Handles click events on the chat button/collapsed window
@@ -235,10 +238,20 @@ const ChatBot = () => {
 
   /**
    * Completely closes the chat window back to the floating button
+   * Also resets the chat session when closing
    */
-  const handleClose = () => {
+  const handleClose = async () => {
     setState('closing');
     setTimeout(() => setState('circle'), 400);
+    
+    // Reset the session when closing the chat window
+    try {
+      await resetSession();
+      // Increment reset trigger to signal ChatWindow to reset
+      setResetTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('Failed to reset session on close:', error);
+    }
   };
 
   /**
@@ -252,6 +265,7 @@ const ChatBot = () => {
           <ChatWindow 
             onClose={handleClose} 
             onCollapse={handleCollapse}
+            resetTrigger={resetTrigger}
           />
         </ChatWindowContent>
       );

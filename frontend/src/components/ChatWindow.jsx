@@ -7,7 +7,7 @@ import {
   Alert
 } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
-import { Send, ExpandMore, Close, Refresh } from '@mui/icons-material';
+import { Send, ExpandMore, Close } from '@mui/icons-material';
 import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
 import MessageBubble from './MessageBubble';
 import { 
@@ -159,11 +159,12 @@ const MessageInput = styled(TextField)({
 
 /**
  * Main chat window component that handles message display and user input
- * @param {Function} onClose    - Callback function to close the chat window
- * @param {Function} onCollapse - Callback function to collapse the chat window
+ * @param {Function} onClose      - Callback function to close the chat window
+ * @param {Function} onCollapse   - Callback function to collapse the chat window
+ * @param {number}   resetTrigger - Counter that triggers message reset when changed
  * @returns {JSX.Element} The complete chat interface
  */
-const ChatWindow = ({ onClose, onCollapse }) => {
+const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -180,8 +181,8 @@ const ChatWindow = ({ onClose, onCollapse }) => {
   // Session management
   const {
     sendMessage,
-    resetSession,
-    hasActiveSession
+    hasActiveSession,
+    getSessionHistory
   } = useChatSession();
 
   // Reference for auto-scrolling to bottom of messages
@@ -197,11 +198,54 @@ const ChatWindow = ({ onClose, onCollapse }) => {
     scrollToBottom();
   }, [messages]);
 
-  // Handle session reset
-  const handleResetSession = async () => {
-    try {
-      await resetSession();
-      // Reset messages to initial state
+  // Load session history on mount (if not a reset)
+  useEffect(() => {
+    const loadSessionHistory = async () => {
+      if (resetTrigger === 0 && hasActiveSession) {
+        try {
+          const history = await getSessionHistory();
+          if (history && history.messages && history.messages.length > 0) {
+            // Convert backend message format to frontend format
+            const formattedMessages = history.messages.map((msg, index) => ({
+              id: index + 1,
+              type: msg.role === 'user' ? 'user' : 'assistant',
+              content: msg.content,
+              references: msg.metadata?.sources || [],
+              timestamp: new Date(msg.timestamp || Date.now()),
+            }));
+            
+            // Check if we need to add welcome message at the beginning
+            const hasWelcomeMessage = formattedMessages.some(msg => 
+              msg.type === 'assistant' && 
+              msg.content.includes("Hey! I'm Smartie")
+            );
+            
+            if (!hasWelcomeMessage) {
+              // Add welcome message at the beginning
+              const welcomeMessage = {
+                id: 0,
+                type: "assistant",
+                content: "Hey! I'm Smartie, your personal MadeWithNestle assistant. Ask me anything, and I'll quickly search the entire site to find the answers you need!",
+                timestamp: new Date(history.created_at || Date.now()),
+              };
+              setMessages([welcomeMessage, ...formattedMessages.map(msg => ({ ...msg, id: msg.id + 1 }))]);
+            } else {
+              setMessages(formattedMessages);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load session history:', error);
+          // Keep default welcome message if history loading fails
+        }
+      }
+    };
+
+    loadSessionHistory();
+  }, [resetTrigger, hasActiveSession, getSessionHistory]);
+
+  // Reset messages when resetTrigger changes
+  useEffect(() => {
+    if (resetTrigger > 0) {
       setMessages([
         {
           id: 1,
@@ -212,10 +256,10 @@ const ChatWindow = ({ onClose, onCollapse }) => {
         },
       ]);
       setError(null);
-    } catch (err) {
-      handleError(err);
     }
-  };
+  }, [resetTrigger]);
+
+
 
   /**
    * Scrolls the message container to the bottom
@@ -289,14 +333,6 @@ const ChatWindow = ({ onClose, onCollapse }) => {
           <SmartieTitle variant="h6">SMARTIE</SmartieTitle>
         </SmartieHeader>
         <HeaderControls>
-          <StyledIconButton 
-            variant="header" 
-            onClick={handleResetSession} 
-            size="small"
-            title="Reset conversation"
-          >
-            <Refresh sx={{ fontSize: 16 }} />
-          </StyledIconButton>
           <StyledIconButton variant="header" onClick={onCollapse} size="small">
             <ExpandMore sx={{ fontSize: 16 }} />
           </StyledIconButton>
