@@ -19,6 +19,8 @@ import {
   StyledAvatar, 
   StyledIconButton 
 } from './common';
+import apiClient from '../services/api';
+import { createErrorHandler } from '../utils/errorHandler';
 
 // Loading animation for typing indicator
 const loadingBounce = keyframes`
@@ -178,6 +180,11 @@ const ChatWindow = ({ onClose, onCollapse }) => {
   // Reference for auto-scrolling to bottom of messages
   const messagesEndRef = useRef(null);
 
+  // Error handler
+  const handleError = createErrorHandler(setError, {
+    context: { component: 'ChatWindow' }
+  });
+
   // Auto-scroll when messages change
   useEffect(() => {
     scrollToBottom();
@@ -197,11 +204,13 @@ const ChatWindow = ({ onClose, onCollapse }) => {
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
 
+    const messageText = inputValue;
+
     // Create user message
     const userMessage = {
       id: Date.now(),
       type: "user",
-      content: inputValue,
+      content: messageText,
       timestamp: new Date(),
     };
 
@@ -212,22 +221,10 @@ const ChatWindow = ({ onClose, onCollapse }) => {
     setError(null);
 
     try {
-      const response = await fetch("http://localhost:8000/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: inputValue,
-          conversation_id: "web-chat-" + Date.now(),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to get response from server");
-      }
-
-      const data = await response.json();
+      const data = await apiClient.sendChatMessage(
+        messageText,
+        "web-chat-" + Date.now()
+      );
 
       // Create assistant response message
       const assistantMessage = {
@@ -240,8 +237,7 @@ const ChatWindow = ({ onClose, onCollapse }) => {
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
-      setError("Sorry, I encountered an error. Please try again.");
-      console.error("Chat error:", err);
+      handleError(err);
     } finally {
       setIsLoading(false);
     }
