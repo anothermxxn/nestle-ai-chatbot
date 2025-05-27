@@ -65,6 +65,11 @@ const UnderlinedText = styled('span')({
   fontWeight: 600,
 });
 
+const BoldUnderlinedText = styled('span')({
+  fontWeight: 700,
+  textDecoration: 'underline',
+});
+
 const BulletList = styled(Box)({
   marginLeft: 16,
   marginTop: 2,
@@ -201,35 +206,46 @@ const MessageTime = styled(Typography)(({ messagetype }) => ({
  * @returns {JSX.Element} Formatted text segment
  */
 const renderTextSegment = (segment, index) => {
-  switch (segment.type) {
-    case 'bold':
-      return (
-        <BoldText key={index}>
-          {segment.content}
-        </BoldText>
-      );
-    case 'underline':
-      return (
-        <UnderlinedText key={index}>
-          {segment.content}
-        </UnderlinedText>
-      );
-    case 'link':
-      return (
-        <StyledLink 
-          key={index}
-          href={segment.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {segment.content}
-        </StyledLink>
-      );
-    case 'text':
-    default:
-      return segment.content;
+  const { type, content, appliedFormats = [] } = segment;
+  
+  // Determine which formatting to apply
+  const isBold = appliedFormats.includes('bold') || type === 'bold';
+  const isUnderlined = appliedFormats.includes('underline') || type === 'underline';
+  const isLink = type === 'link';
+  
+  // Create the appropriate styled component
+  const createStyledText = (text) => {
+    if (isBold && isUnderlined) {
+      return <BoldUnderlinedText>{text}</BoldUnderlinedText>;
+    } else if (isBold) {
+      return <BoldText>{text}</BoldText>;
+    } else if (isUnderlined) {
+      return <UnderlinedText>{text}</UnderlinedText>;
+    }
+    return text;
+  };
+  
+  if (isLink) {
+    return (
+      <StyledLink 
+        key={index}
+        href={segment.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {createStyledText(content)}
+      </StyledLink>
+    );
   }
+  
+  // For non-link text, apply formatting if needed
+  if (isBold || isUnderlined) {
+    return <span key={index}>{createStyledText(content)}</span>;
+  }
+  
+  // Plain text
+  return content;
 };
 
 /**

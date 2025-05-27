@@ -176,81 +176,137 @@ export const parseMessageContent = (content) => {
 
 /**
  * Parses a text string for bold formatting, underlined formatting, and links
+ * Supports nested formatting like **__bold and underlined__**
  * @param {string} text - The text to parse
  * @returns {Array} Array of text segments with bold, underline, and link formatting
  */
 const parseBoldAndLinks = (text) => {
   if (!text) return [];
 
-  const segments = [];
-  // Combined regex for bold (**text**), underline (__text__), and links ([text](url) or just URLs)
-  const regex = /(\*\*(.*?)\*\*)|(__(.+?)__)|(\[([^\]]+)\]\(([^)]+)\))|(https?:\/\/[^\s]+)/g;
-  let lastIndex = 0;
-  let match;
+  // Process text in multiple passes to handle nested formatting
+  return parseFormattingRecursive(text);
+};
 
-  while ((match = regex.exec(text)) !== null) {
-    // Add text before the match
-    if (match.index > lastIndex) {
-      const beforeText = text.slice(lastIndex, match.index);
-      if (beforeText) {
-        segments.push({
-          type: 'text',
-          content: beforeText
-        });
+/**
+ * Recursively parses text for formatting, handling nested cases
+ * @param {string} text - The text to parse
+ * @param {Array} appliedFormats - Currently applied formatting types
+ * @returns {Array} Array of text segments
+ */
+const parseFormattingRecursive = (text, appliedFormats = []) => {
+  if (!text) return [];
+  
+  // Order matters: process in order of precedence
+  const formatPatterns = [
+    { regex: /(\[([^\]]+)\]\(([^)]+)\))/g, type: 'link' },      // Links first
+    { regex: /(https?:\/\/[^\s]+)/g, type: 'url' },             // Plain URLs
+    { regex: /(\*\*(.*?)\*\*)/g, type: 'bold' },                // Bold
+    { regex: /(__(.+?)__)/g, type: 'underline' }                // Underline
+  ];
+
+  let foundMatch = false;
+  
+  for (const pattern of formatPatterns) {
+    const regex = new RegExp(pattern.regex.source, 'g');
+    let match;
+    let lastIndex = 0;
+    const currentSegments = [];
+    
+    while ((match = regex.exec(text)) !== null) {
+      foundMatch = true;
+      
+      // Add text before the match
+      if (match.index > lastIndex) {
+        const beforeText = text.slice(lastIndex, match.index);
+        if (beforeText) {
+          currentSegments.push(...parseFormattingRecursive(beforeText, appliedFormats));
+        }
       }
+
+      // Handle the matched formatting
+      if (pattern.type === 'link') {
+        currentSegments.push({
+          type: 'link',
+          content: match[2],
+          url: match[3],
+          appliedFormats: [...appliedFormats]
+        });
+      } else if (pattern.type === 'url') {
+        currentSegments.push({
+          type: 'link',
+          content: match[1],
+          url: match[1],
+          appliedFormats: [...appliedFormats]
+        });
+      } else if (pattern.type === 'bold') {
+        const innerContent = match[2];
+        const newFormats = [...appliedFormats, 'bold'];
+        
+        // Recursively parse the inner content for nested formatting
+        const innerSegments = parseFormattingRecursive(innerContent, newFormats);
+        
+        if (innerSegments.length === 1 && innerSegments[0].type === 'text') {
+          // Simple case: just bold text
+          currentSegments.push({
+            type: 'bold',
+            content: innerContent,
+            appliedFormats: newFormats
+          });
+        } else {
+          // Complex case: nested formatting
+          currentSegments.push(...innerSegments);
+        }
+      } else if (pattern.type === 'underline') {
+        const innerContent = match[2];
+        const newFormats = [...appliedFormats, 'underline'];
+        
+        // Recursively parse the inner content for nested formatting
+        const innerSegments = parseFormattingRecursive(innerContent, newFormats);
+        
+        if (innerSegments.length === 1 && innerSegments[0].type === 'text') {
+          // Simple case: just underlined text
+          currentSegments.push({
+            type: 'underline',
+            content: innerContent,
+            appliedFormats: newFormats
+          });
+        } else {
+          // Complex case: nested formatting
+          currentSegments.push(...innerSegments);
+        }
+      }
+
+      lastIndex = regex.lastIndex;
     }
 
-    if (match[1]) {
-      // Bold text (**text**)
-      segments.push({
-        type: 'bold',
-        content: match[2]
-      });
-    } else if (match[3]) {
-      // Underlined text (__text__)
-      segments.push({
-        type: 'underline',
-        content: match[4]
-      });
-    } else if (match[5]) {
-      // Markdown link ([text](url))
-      segments.push({
-        type: 'link',
-        content: match[6],
-        url: match[7]
-      });
-    } else if (match[8]) {
-      // Plain URL
-      segments.push({
-        type: 'link',
-        content: match[8],
-        url: match[8]
-      });
+    // If we found matches for this pattern, process the remaining text and return
+    if (foundMatch) {
+      // Add remaining text after the last match
+      if (lastIndex < text.length) {
+        const remainingText = text.slice(lastIndex);
+        if (remainingText) {
+          currentSegments.push(...parseFormattingRecursive(remainingText, appliedFormats));
+        }
+      }
+      
+      return currentSegments;
     }
-
-    lastIndex = regex.lastIndex;
   }
 
-  // Add remaining text after the last match
-  if (lastIndex < text.length) {
-    const remainingText = text.slice(lastIndex);
-    if (remainingText) {
-      segments.push({
-        type: 'text',
-        content: remainingText
-      });
-    }
-  }
-
-  // If no formatting found, return the entire text
-  if (segments.length === 0) {
-    segments.push({
+  // No formatting found, return as text with applied formats
+  if (appliedFormats.length > 0) {
+    return [{
+      type: appliedFormats[appliedFormats.length - 1], // Use the most recent format
+      content: text,
+      appliedFormats: appliedFormats
+    }];
+  } else {
+    return [{
       type: 'text',
-      content: text
-    });
+      content: text,
+      appliedFormats: []
+    }];
   }
-
-  return segments;
 };
 
 /**
