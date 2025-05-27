@@ -51,15 +51,13 @@ class ApiClient {
   /**
    * Sends a chat message and gets a response
    * @param {string} message - User message
-   * @param {string} conversationId - Conversation identifier
    * @returns {Promise<Object>} Chat response
    */
-  async sendChatMessage(message, conversationId = null) {
-    return this.request('/chat/', {
+  async sendChatMessage(message) {
+    return this.request('/chat/search', {
       method: 'POST',
       body: JSON.stringify({
-        message,
-        conversation_id: conversationId,
+        query: message,
       }),
     });
   }

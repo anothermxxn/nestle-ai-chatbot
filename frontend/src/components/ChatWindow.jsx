@@ -221,17 +221,14 @@ const ChatWindow = ({ onClose, onCollapse }) => {
     setError(null);
 
     try {
-      const data = await apiClient.sendChatMessage(
-        messageText,
-        "web-chat-" + Date.now()
-      );
+      const data = await apiClient.sendChatMessage(messageText);
 
       // Create assistant response message
       const assistantMessage = {
         id: Date.now() + 1,
         type: "assistant",
-        content: data.response,
-        references: data.references || [],
+        content: data.answer,
+        references: data.sources || [],
         timestamp: new Date(),
       };
 
