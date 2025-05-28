@@ -22,8 +22,8 @@ const useChatSession = () => {
       const newSessionId = response.session_id;
       setSessionId(newSessionId);
       
-      // Store session ID in localStorage for persistence
-      localStorage.setItem('chat_session_id', newSessionId);
+      // Store session ID in sessionStorage for persistence
+      sessionStorage.setItem('chat_session_id', newSessionId);
       
       return newSessionId;
     } catch (error) {
@@ -36,15 +36,15 @@ const useChatSession = () => {
   }, []);
 
   /**
-   * Loads an existing session from localStorage or creates a new one
+   * Loads an existing session from sessionStorage or creates a new one
    */
   const initializeSession = useCallback(async () => {
     setIsSessionLoading(true);
     setSessionError(null);
     
     try {
-      // Try to get existing session from localStorage
-      const storedSessionId = localStorage.getItem('chat_session_id');
+      // Try to get existing session from sessionStorage
+      const storedSessionId = sessionStorage.getItem('chat_session_id');
       
       if (storedSessionId) {
         try {
@@ -55,7 +55,7 @@ const useChatSession = () => {
         } catch {
           // Session doesn't exist or expired, create a new one
           console.log('Stored session expired or invalid, creating new session');
-          localStorage.removeItem('chat_session_id');
+          sessionStorage.removeItem('chat_session_id');
         }
       }
       
@@ -82,7 +82,7 @@ const useChatSession = () => {
     try {
       await apiClient.deleteSession(sessionId);
       setSessionId(null);
-      localStorage.removeItem('chat_session_id');
+      sessionStorage.removeItem('chat_session_id');
     } catch (error) {
       console.error('Failed to delete session:', error);
       setSessionError(error.message);
