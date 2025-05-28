@@ -43,7 +43,6 @@ const useChatSession = () => {
     setSessionError(null);
     
     try {
-      // Try to get existing session from sessionStorage
       const storedSessionId = sessionStorage.getItem('chat_session_id');
       
       if (storedSessionId) {
@@ -52,14 +51,12 @@ const useChatSession = () => {
           await apiClient.getSessionHistory(storedSessionId);
           setSessionId(storedSessionId);
           return storedSessionId;
-        } catch {
+        } catch (error) {
           // Session doesn't exist or expired, create a new one
-          console.log('Stored session expired or invalid, creating new session');
+          console.log('Stored session expired or invalid, creating new session. Error:', error.message);
           sessionStorage.removeItem('chat_session_id');
         }
       }
-      
-      // Create new session
       return await createSession();
     } catch (error) {
       console.error('Failed to initialize session:', error);

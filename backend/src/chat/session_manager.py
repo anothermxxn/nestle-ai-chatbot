@@ -204,9 +204,6 @@ class SessionManager:
     
     def get_session(self, session_id: str) -> Optional[ConversationSession]:
         """Get an existing session by ID."""
-        if session_id not in self.sessions:
-            return None
-        
         session = self.sessions[session_id]
         
         # Check if session has expired

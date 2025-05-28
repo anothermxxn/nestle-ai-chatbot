@@ -334,7 +334,7 @@ export const extractReferenceNumbers = (content) => {
  * @returns {string} Cleaned and formatted title
  */
 const cleanTitle = (title) => {
-  if (!title) return '';
+  if (!title || typeof title !== 'string') return '';
 
   // Remove URLs if the title is just a URL
   if (title.startsWith('http://') || title.startsWith('https://')) {
@@ -358,7 +358,7 @@ const cleanTitle = (title) => {
     } catch {
       // If URL parsing fails, try to extract domain
       const domainMatch = title.match(/https?:\/\/(?:www\.)?([^/]+)/);
-      if (domainMatch) {
+      if (domainMatch && domainMatch[1]) {
         return domainMatch[1].replace(/\./g, ' ').toUpperCase();
       }
     }

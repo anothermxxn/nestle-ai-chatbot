@@ -314,18 +314,19 @@ async def get_session_history(session_id: str):
     Get conversation history for a session.
     
     Returns the complete conversation history and context for the specified session.
+    If the session is not found, creates a new empty session.
     """
     try:
         client = get_chat_client()
         session_data = client.get_session_history(session_id)
         
         if not session_data:
-            raise HTTPException(status_code=404, detail="Session not found")
+            logger.info(f"Session {session_id} not found, creating new empty session")
+            new_session_id = client.create_session(session_id)
+            session_data = client.get_session_history(new_session_id)
         
         return session_data
         
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Error getting session history: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get session history: {str(e)}")
