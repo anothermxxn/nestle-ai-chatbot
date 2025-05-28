@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 import uuid
 
-from .models import Entity, Relationship, EntityType, RelationshipType
+from .models import EntityType, RelationshipType, create_brand_entity, create_topic_entity, create_product_entity, create_recipe_entity, create_relationship
 from .cosmos_client import CosmosGraphClient
 from .validation import (
     is_valid_entity_type, is_valid_relationship_type,
@@ -220,22 +220,52 @@ async def create_entity(
                 detail=f"Validation errors: {', '.join(prop_errors)}"
             )
         
-        name = entity_request.properties.get("name") or entity_request.properties.get("title", "")
-        if name:
-            safe_name = name.lower().replace(" ", "_").replace("-", "_")[:20]
-            entity_id = f"{entity_request.entity_type.lower()}_{safe_name}_{uuid.uuid4().hex[:8]}"
-        else:
-            entity_id = f"{entity_request.entity_type.lower()}_{uuid.uuid4().hex[:8]}"
-
         # Create entity
         entity_type_enum = EntityType(entity_request.entity_type)
-        entity = Entity(
-            id=entity_id,
-            entity_type=entity_type_enum,
-            properties=entity_request.properties,
-            is_user_created=entity_request.is_user_created
-        )
+        if entity_type_enum == EntityType.BRAND:
+            entity = create_brand_entity(
+                name=entity_request.properties.get("name", ""),
+                chunk_ids=entity_request.properties.get("chunk_ids", []),
+                **{k: v for k, v in entity_request.properties.items() if k not in ["name", "chunk_ids"]}
+            )
+        elif entity_type_enum == EntityType.TOPIC:
+            entity = create_topic_entity(
+                name=entity_request.properties.get("name", ""),
+                category=entity_request.properties.get("category", "user_defined"),
+                chunk_ids=entity_request.properties.get("chunk_ids", []),
+                **{k: v for k, v in entity_request.properties.items() if k not in ["name", "category", "chunk_ids"]}
+            )
+        elif entity_type_enum == EntityType.PRODUCT:
+            entity = create_product_entity(
+                name=entity_request.properties.get("name", ""),
+                brand=entity_request.properties.get("brand", ""),
+                chunk_ids=entity_request.properties.get("chunk_ids", []),
+                **{k: v for k, v in entity_request.properties.items() if k not in ["name", "brand", "chunk_ids"]}
+            )
+        elif entity_type_enum == EntityType.RECIPE:
+            entity = create_recipe_entity(
+                title=entity_request.properties.get("title", ""),
+                chunk_ids=entity_request.properties.get("chunk_ids", []),
+                **{k: v for k, v in entity_request.properties.items() if k not in ["title", "chunk_ids"]}
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported entity type: {entity_request.entity_type}"
+            )
         
+        entity.is_user_created = entity_request.is_user_created
+        
+        if entity_request.is_user_created:
+            # For user-created entities, generate a unique ID
+            name_part = entity_request.properties.get("name") or entity_request.properties.get("title", "")
+            if name_part:
+                safe_name = name_part.lower().replace(" ", "_").replace("-", "_")[:20]
+                entity.id = f"user_{entity_request.entity_type.lower()}_{safe_name}_{uuid.uuid4().hex[:8]}"
+            else:
+                entity.id = f"user_{entity_request.entity_type.lower()}_{uuid.uuid4().hex[:8]}"
+
+        # Save to database
         success = await graph_client.create_entity(entity)
         if not success:
             raise HTTPException(
