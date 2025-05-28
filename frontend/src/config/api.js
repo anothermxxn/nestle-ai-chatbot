@@ -17,7 +17,7 @@ if (!BACKEND_URL) {
 
 // API URLs
 export const API_CONFIG = {
-  baseURL: `${BACKEND_URL}/api`,
+  baseURL: BACKEND_URL,
   wsURL: BACKEND_URL.replace('http', 'ws'),
   timeout: 30000,
   retryAttempts: 3,
