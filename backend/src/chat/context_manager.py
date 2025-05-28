@@ -1,7 +1,7 @@
 import re
 import logging
 from typing import Dict, List, Optional, Set, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from datetime import datetime
 
 # Dynamic import to handle both local development and Docker environments
