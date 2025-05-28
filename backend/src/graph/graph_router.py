@@ -37,6 +37,7 @@ class RelationshipRequest(BaseModel):
     relationship_type: str = Field(..., description="Type of relationship")
     properties: Dict[str, Any] = Field(default_factory=dict, description="Relationship properties")
     weight: float = Field(default=1.0, description="Relationship weight", ge=0.0, le=1.0)
+    is_user_created: bool = Field(default=True, description="Whether this is a user-created relationship")
 
 class RelationshipResponse(BaseModel):
     """Response model for relationship operations."""
@@ -46,6 +47,7 @@ class RelationshipResponse(BaseModel):
     relationship_type: str
     properties: Dict[str, Any]
     weight: float
+    is_user_created: bool
     created_at: str
     updated_at: str
 
@@ -508,6 +510,245 @@ async def get_entity_relationships(
                 relationship_type=rel.relationship_type.value,
                 properties=rel.properties,
                 weight=rel.weight,
+                is_user_created=rel.is_user_created,
+                created_at=rel.created_at.isoformat(),
+                updated_at=rel.updated_at.isoformat()
+            )
+            for rel in relationships
+        ]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+# Relationship endpoints
+@router.post("/relationships", response_model=RelationshipResponse)
+async def create_relationship_endpoint(
+    relationship_request: RelationshipRequest,
+    graph_client: CosmosGraphClient = Depends(get_graph_client)
+):
+    """
+    Create a new relationship between entities.
+    
+    Args:
+        relationship_request: Relationship creation request
+        graph_client: Graph client instance
+        
+    Returns:
+        RelationshipResponse: Created relationship
+    """
+    try:
+        # Validate relationship type
+        if not is_valid_relationship_type(relationship_request.relationship_type):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid relationship type: {relationship_request.relationship_type}"
+            )
+        
+        # Verify that both entities exist
+        from_entity = await graph_client.get_entity_by_id(relationship_request.from_entity_id)
+        to_entity = await graph_client.get_entity_by_id(relationship_request.to_entity_id)
+        
+        if not from_entity:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Source entity not found: {relationship_request.from_entity_id}"
+            )
+        
+        if not to_entity:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Target entity not found: {relationship_request.to_entity_id}"
+            )
+        
+        # Validate relationship combination
+        errors = validate_relationship(
+            from_entity.entity_type.value,
+            to_entity.entity_type.value,
+            relationship_request.relationship_type
+        )
+        
+        if errors:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid relationship: {', '.join(errors)}"
+            )
+        
+        # Create relationship
+        relationship = create_relationship(
+            from_entity_id=relationship_request.from_entity_id,
+            to_entity_id=relationship_request.to_entity_id,
+            relationship_type=RelationshipType(relationship_request.relationship_type),
+            **relationship_request.properties
+        )
+        
+        # Set weight and user-created flag
+        relationship.weight = relationship_request.weight
+        relationship.is_user_created = relationship_request.is_user_created
+        
+        # Save to database
+        success = await graph_client.create_relationship(relationship)
+        if not success:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to create relationship"
+            )
+        
+        return RelationshipResponse(
+            id=relationship.id,
+            from_entity_id=relationship.from_entity_id,
+            to_entity_id=relationship.to_entity_id,
+            relationship_type=relationship.relationship_type.value,
+            properties=relationship.properties,
+            weight=relationship.weight,
+            is_user_created=relationship.is_user_created,
+            created_at=relationship.created_at.isoformat(),
+            updated_at=relationship.updated_at.isoformat()
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@router.get("/relationships/{relationship_id}", response_model=RelationshipResponse)
+async def get_relationship(
+    relationship_id: str,
+    graph_client: CosmosGraphClient = Depends(get_graph_client)
+):
+    """
+    Get a relationship by ID.
+    
+    Args:
+        relationship_id: Relationship ID
+        graph_client: Graph client instance
+        
+    Returns:
+        RelationshipResponse: Relationship details
+    """
+    try:
+        relationship = await graph_client.get_relationship_by_id(relationship_id)
+        
+        if not relationship:
+            raise HTTPException(status_code=404, detail="Relationship not found")
+        
+        return RelationshipResponse(
+            id=relationship.id,
+            from_entity_id=relationship.from_entity_id,
+            to_entity_id=relationship.to_entity_id,
+            relationship_type=relationship.relationship_type.value,
+            properties=relationship.properties,
+            weight=relationship.weight,
+            is_user_created=relationship.is_user_created,
+            created_at=relationship.created_at.isoformat(),
+            updated_at=relationship.updated_at.isoformat()
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@router.put("/relationships/{relationship_id}")
+async def update_relationship(
+    relationship_id: str,
+    properties: Dict[str, Any] = None,
+    weight: float = None,
+    graph_client: CosmosGraphClient = Depends(get_graph_client)
+):
+    """
+    Update a relationship's properties and/or weight.
+    
+    Args:
+        relationship_id: Relationship ID
+        properties: Properties to update (optional)
+        weight: New weight for the relationship (optional)
+        graph_client: Graph client instance
+        
+    Returns:
+        dict: Success message
+    """
+    try:
+        # Validate weight if provided
+        if weight is not None and (weight < 0.0 or weight > 1.0):
+            raise HTTPException(
+                status_code=400,
+                detail="Weight must be between 0.0 and 1.0"
+            )
+        
+        # Update relationship
+        success = await graph_client.update_relationship(
+            relationship_id=relationship_id,
+            properties=properties or {},
+            weight=weight
+        )
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Relationship not found or update failed")
+        
+        return {"message": "Relationship updated successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@router.delete("/relationships/{relationship_id}")
+async def delete_relationship(
+    relationship_id: str,
+    graph_client: CosmosGraphClient = Depends(get_graph_client)
+):
+    """
+    Delete a relationship.
+    
+    Args:
+        relationship_id: Relationship ID
+        graph_client: Graph client instance
+        
+    Returns:
+        dict: Success message
+    """
+    try:
+        success = await graph_client.delete_relationship(relationship_id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Relationship not found or deletion failed")
+        
+        return {"message": "Relationship deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@router.get("/relationships", response_model=List[RelationshipResponse])
+async def list_relationships(
+    limit: int = 100,
+    graph_client: CosmosGraphClient = Depends(get_graph_client)
+):
+    """
+    List all relationships.
+    
+    Args:
+        limit: Maximum number of relationships to return
+        graph_client: Graph client instance
+        
+    Returns:
+        List[RelationshipResponse]: List of relationships
+    """
+    try:
+        relationships = await graph_client.get_all_relationships(limit)
+        
+        return [
+            RelationshipResponse(
+                id=rel.id,
+                from_entity_id=rel.from_entity_id,
+                to_entity_id=rel.to_entity_id,
+                relationship_type=rel.relationship_type.value,
+                properties=rel.properties,
+                weight=rel.weight,
+                is_user_created=rel.is_user_created,
                 created_at=rel.created_at.isoformat(),
                 updated_at=rel.updated_at.isoformat()
             )

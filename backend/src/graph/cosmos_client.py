@@ -290,6 +290,154 @@ class CosmosGraphClient:
         except Exception as e:
             logger.error(f"Failed to get relationships for entity {entity_id}: {str(e)}")
             return []
+
+    async def get_relationship_by_id(self, relationship_id: str) -> Optional[Relationship]:
+        """
+        Get a relationship by ID.
+        
+        Args:
+            relationship_id (str): The ID of the relationship
+            
+        Returns:
+            Optional[Relationship]: The relationship if found, None otherwise
+        """
+        try:
+            query = "SELECT * FROM c WHERE c.id = @relationship_id"
+            
+            items = list(self.relationships_container.query_items(
+                query=query,
+                parameters=[{"name": "@relationship_id", "value": relationship_id}],
+                enable_cross_partition_query=True
+            ))
+            
+            if items:
+                return Relationship.from_cosmos_document(items[0])
+            else:
+                return None
+                
+        except Exception as e:
+            logger.error(f"Failed to get relationship by ID {relationship_id}: {str(e)}")
+            return None
+
+    async def update_relationship(self, relationship_id: str, 
+                                properties: Dict[str, Any], 
+                                weight: Optional[float] = None) -> bool:
+        """
+        Update a relationship's properties and/or weight.
+        
+        Args:
+            relationship_id (str): The ID of the relationship
+            properties (Dict[str, Any]): Properties to update
+            weight (Optional[float]): New weight for the relationship
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Get existing relationship
+            existing_rel = await self.get_relationship_by_id(relationship_id)
+            if not existing_rel:
+                logger.error(f"Relationship {relationship_id} not found")
+                return False
+            
+            # Update properties
+            updated_properties = existing_rel.properties.copy()
+            updated_properties.update(properties)
+            
+            # Update weight if provided
+            updated_weight = weight if weight is not None else existing_rel.weight
+            
+            # Create updated document
+            updated_document = {
+                "id": relationship_id,
+                "relationship_type": existing_rel.relationship_type.value,
+                "from_entity_id": existing_rel.from_entity_id,
+                "to_entity_id": existing_rel.to_entity_id,
+                "weight": updated_weight,
+                "created_at": existing_rel.created_at.isoformat(),
+                "updated_at": datetime.utcnow().isoformat(),
+                **updated_properties
+            }
+            
+            # Replace in Cosmos DB
+            self.relationships_container.replace_item(
+                item=relationship_id,
+                body=updated_document
+            )
+            
+            logger.info(f"Updated relationship: {relationship_id}")
+            return True
+            
+        except exceptions.CosmosResourceNotFoundError:
+            logger.error(f"Relationship {relationship_id} not found")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to update relationship {relationship_id}: {str(e)}")
+            return False
+
+    async def delete_relationship(self, relationship_id: str) -> bool:
+        """
+        Delete a relationship by ID.
+        
+        Args:
+            relationship_id (str): The ID of the relationship to delete
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Get the relationship first to log the deletion
+            relationship = await self.get_relationship_by_id(relationship_id)
+            if not relationship:
+                logger.warning(f"Relationship {relationship_id} not found")
+                return False
+            
+            # Delete from Cosmos DB
+            self.relationships_container.delete_item(
+                item=relationship_id,
+                partition_key=relationship_id
+            )
+            
+            logger.info(f"Deleted relationship: {relationship_id} ({relationship.from_entity_id} -[{relationship.relationship_type.value}]-> {relationship.to_entity_id})")
+            return True
+            
+        except exceptions.CosmosResourceNotFoundError:
+            logger.warning(f"Relationship {relationship_id} not found")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to delete relationship {relationship_id}: {str(e)}")
+            return False
+
+    async def get_all_relationships(self, limit: int = 100) -> List[Relationship]:
+        """
+        Get all relationships in the database.
+        
+        Args:
+            limit (int): Maximum number of relationships to return
+            
+        Returns:
+            List[Relationship]: List of relationships
+        """
+        try:
+            query = f"SELECT TOP {limit} * FROM c"
+            
+            items = list(self.relationships_container.query_items(
+                query=query,
+                enable_cross_partition_query=True
+            ))
+            
+            relationships = []
+            for item in items:
+                try:
+                    relationships.append(Relationship.from_cosmos_document(item))
+                except Exception as e:
+                    logger.warning(f"Failed to parse relationship: {e}")
+            
+            return relationships
+            
+        except Exception as e:
+            logger.error(f"Failed to get all relationships: {str(e)}")
+            return []
     
     # Query Operations
     async def get_entity_by_id(self, entity_id: str) -> Optional[Entity]:
