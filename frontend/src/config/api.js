@@ -11,6 +11,10 @@ const getBackendURL = () => {
 
 const BACKEND_URL = getBackendURL();
 
+if (!BACKEND_URL) {
+  console.error('Backend URL is not defined. Check your environment variables.');
+}
+
 // API URLs
 export const API_CONFIG = {
   baseURL: `${BACKEND_URL}/api`,

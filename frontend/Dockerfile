@@ -13,8 +13,9 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Set production environment
+# Set production environment and backend URL
 ENV VITE_ENVIRONMENT=production
+ENV VITE_PROD_BACKEND_URL=https://nestle-ai-chatbot-backend.whitewater-4228c4bc.canadaeast.azurecontainerapps.io
 
 # Build the application
 RUN npm run build
