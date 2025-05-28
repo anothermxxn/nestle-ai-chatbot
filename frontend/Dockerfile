@@ -13,9 +13,8 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Set environment variables for build
-ENV VITE_API_URL=https://nestle-ai-chatbot-backend.whitewater-4228c4bc.canadaeast.azurecontainerapps.io
-ENV VITE_WS_URL=wss://nestle-ai-chatbot-backend.whitewater-4228c4bc.canadaeast.azurecontainerapps.io
+# Set production environment
+ENV VITE_ENVIRONMENT=production
 
 # Build the application
 RUN npm run build
