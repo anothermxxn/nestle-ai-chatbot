@@ -4,8 +4,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import uuid
 
-
-
 class EntityType(Enum):
     """Enumeration of all supported entity types."""
     BRAND = "Brand"
@@ -71,6 +69,7 @@ class Relationship:
     to_entity_id: str
     properties: Dict[str, Any]
     weight: float = 1.0
+    is_user_created: bool = False
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
     
@@ -82,6 +81,7 @@ class Relationship:
             "from_entity_id": self.from_entity_id,
             "to_entity_id": self.to_entity_id,
             "weight": self.weight,
+            "is_user_created": self.is_user_created,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
             **self.properties
@@ -91,7 +91,7 @@ class Relationship:
     def from_cosmos_document(cls, doc: Dict[str, Any]) -> "Relationship":
         """Create relationship from Cosmos DB document."""
         properties = {k: v for k, v in doc.items() 
-                     if k not in ["id", "relationship_type", "from_entity_id", "to_entity_id", "weight", "created_at", "updated_at"]}
+                     if k not in ["id", "relationship_type", "from_entity_id", "to_entity_id", "weight", "is_user_created", "created_at", "updated_at"]}
         
         # Parse timestamps
         created_at = datetime.fromisoformat(doc.get("created_at", datetime.utcnow().isoformat()))
@@ -104,6 +104,7 @@ class Relationship:
             to_entity_id=doc["to_entity_id"],
             properties=properties,
             weight=float(doc.get("weight", 1.0)),
+            is_user_created=doc.get("is_user_created", False),
             created_at=created_at,
             updated_at=updated_at
         )
