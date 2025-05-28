@@ -68,20 +68,18 @@ const MessageText = styled(Paper)(({ messagetype }) => ({
 const FormattedText = styled(Box)({
   fontSize: 14,
   lineHeight: 1.5,
-  fontWeight: 200,
 });
 
 const BoldText = styled('span')({
-  fontWeight: 600,
+  fontWeight: "bold",
 });
 
 const UnderlinedText = styled('span')({
   textDecoration: 'underline',
-  fontWeight: 300,
 });
 
 const BoldUnderlinedText = styled('span')({
-  fontWeight: 600,
+  fontWeight: "bold",
   textDecoration: 'underline',
 });
 
