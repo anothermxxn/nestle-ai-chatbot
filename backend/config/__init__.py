@@ -1,7 +1,17 @@
+import os
+import sys
+from pathlib import Path
+
+# Add project root to Python path for local development
+# This ensures backend.config imports work regardless of execution context
+project_root = Path(__file__).parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+# Import all configuration modules
 from .content_types import (
     CONTENT_TYPES,
-    CONTENT_TYPE_KEYWORDS,
-    CONTENT_TYPE_CATEGORIES
+    CONTENT_TYPE_KEYWORDS
 )
 
 from .brands import (

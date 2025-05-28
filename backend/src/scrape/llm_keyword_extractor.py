@@ -5,7 +5,11 @@ import re
 from typing import List, Optional
 from openai import AsyncAzureOpenAI, AzureOpenAI
 
-from config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
+# Dynamic import to handle both local development and Docker environments
+try:
+    from backend.config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
+except ImportError:
+    from config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
 from .keyword_utils import is_meaningful_keyword
 
 class LLMKeywordExtractor:

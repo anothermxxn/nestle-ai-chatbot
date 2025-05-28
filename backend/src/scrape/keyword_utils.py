@@ -1,5 +1,10 @@
 import re
-from config import STOP_WORDS
+
+# Dynamic import to handle both local development and Docker environments
+try:
+    from backend.config import STOP_WORDS
+except ImportError:
+    from config import STOP_WORDS
 
 def is_meaningful_keyword(word: str) -> bool:
     """

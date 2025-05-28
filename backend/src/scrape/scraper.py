@@ -1,7 +1,12 @@
 import asyncio
 import logging
 from typing import List, Dict, Optional
-from config import MAX_PAGES_LARGE
+
+# Dynamic import to handle both local development and Docker environments
+try:
+    from backend.config import MAX_PAGES_LARGE
+except ImportError:
+    from config import MAX_PAGES_LARGE
 
 from .link_collector import LinkCollector
 from .content_processor import ContentProcessor

@@ -5,7 +5,12 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 
 from .context_manager import ChatMessage, SearchContext, ContextExtractor
-from config import CHAT_CONFIG
+
+# Dynamic import to handle both local development and Docker environments
+try:
+    from backend.config import CHAT_CONFIG
+except ImportError:
+    from config import CHAT_CONFIG
 
 logger = logging.getLogger(__name__)
 

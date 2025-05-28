@@ -6,12 +6,22 @@ from .session_manager import SessionManager
 from ..search.search_client import AzureSearchClient
 from ..search.graphrag_client import GraphRAGClient
 from .graphrag_formatter import GraphRAGFormatter
-from config import (
-    AZURE_OPENAI_CONFIG,
-    CHAT_CONFIG,
-    CHAT_PROMPTS,
-    validate_azure_openai_config
-)
+
+# Dynamic import to handle both local development and Docker environments
+try:
+    from backend.config import (
+        AZURE_OPENAI_CONFIG,
+        CHAT_CONFIG,
+        CHAT_PROMPTS,
+        validate_azure_openai_config
+    )
+except ImportError:
+    from config import (
+        AZURE_OPENAI_CONFIG,
+        CHAT_CONFIG,
+        CHAT_PROMPTS,
+        validate_azure_openai_config
+    )
 
 # Configure logging
 logging.basicConfig(

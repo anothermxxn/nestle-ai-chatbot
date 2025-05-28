@@ -5,14 +5,26 @@ from azure.cosmos import CosmosClient, PartitionKey, exceptions
 from azure.cosmos.container import ContainerProxy
 from azure.cosmos.database import DatabaseProxy
 
-from config import (
-    COSMOS_CONFIG, 
-    validate_config, 
-    ENTITY_TYPES, 
-    ENTITIES_CONTAINER_NAME,
-    RELATIONSHIPS_CONTAINER_NAME,
-    CONTAINER_CONFIGS
-)
+# Dynamic import to handle both local development and Docker environments
+try:
+    from backend.config.database import (
+        COSMOS_CONFIG,
+        ENTITY_TYPES, 
+        ENTITIES_CONTAINER_NAME,
+        RELATIONSHIPS_CONTAINER_NAME,
+        CONTAINER_CONFIGS,
+        validate_config
+    )
+except ImportError:
+    from config.database import (
+        COSMOS_CONFIG,
+        ENTITY_TYPES, 
+        ENTITIES_CONTAINER_NAME,
+        RELATIONSHIPS_CONTAINER_NAME,
+        CONTAINER_CONFIGS,
+        validate_config
+    )
+
 from .models import Entity, Relationship, EntityType, RelationshipType
 
 logging.basicConfig(

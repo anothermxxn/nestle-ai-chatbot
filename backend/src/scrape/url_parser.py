@@ -5,8 +5,14 @@ from urllib.parse import urlparse, urljoin
 from urllib.parse import unquote, urlparse
 from html import unescape
 
-from config.content_types import CONTENT_TYPES, CONTENT_TYPE_KEYWORDS
-from config.brands import BRAND_PATTERNS
+# Dynamic import to handle both local development and Docker environments
+try:
+    from backend.config.content_types import CONTENT_TYPES, CONTENT_TYPE_KEYWORDS
+    from backend.config.brands import BRAND_PATTERNS
+except ImportError:
+    # Fallback for Docker environment where backend is the working directory
+    from config.content_types import CONTENT_TYPES, CONTENT_TYPE_KEYWORDS
+    from config.brands import BRAND_PATTERNS
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -174,8 +180,11 @@ def extract_keywords(url_parts: List[str], title: str, content_type: str, brand:
         cleaned = decode_url_part(part).lower()
         keywords.update(re.findall(r"\w+", cleaned))
     
-    # Import our minimal technical stop words
-    from config.scraper import STOP_WORDS
+    # Import our minimal technical stop words with dynamic import
+    try:
+        from backend.config.scraper import STOP_WORDS
+    except ImportError:
+        from config.scraper import STOP_WORDS
     
     # Remove only technical terms and short terms
     keywords = {k for k in keywords if len(k) > 2 and k not in STOP_WORDS}

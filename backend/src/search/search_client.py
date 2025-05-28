@@ -7,13 +7,24 @@ from azure.search.documents.models import VectorizableTextQuery
 from azure.core.credentials import AzureKeyCredential
 import json
 
-from config.database import (
-    SEARCH_CONFIG,
-    AZURE_SEARCH_ENDPOINT,
-    AZURE_SEARCH_ADMIN_KEY,
-    AZURE_SEARCH_INDEX_NAME
-)
-from config import BATCH_SIZE
+# Dynamic import to handle both local development and Docker environments
+try:
+    from backend.config.database import (
+        AZURE_SEARCH_ENDPOINT,
+        AZURE_SEARCH_ADMIN_KEY,
+        AZURE_SEARCH_INDEX_NAME,
+        validate_config
+    )
+    from backend.config import BATCH_SIZE
+except ImportError:
+    from config.database import (
+        AZURE_SEARCH_ENDPOINT,
+        AZURE_SEARCH_ADMIN_KEY,
+        AZURE_SEARCH_INDEX_NAME,
+        validate_config
+    )
+    from config import BATCH_SIZE
+
 from .relevance_scorer import VectorSearchRanker
 
 # Configure logging

@@ -3,11 +3,15 @@ import sys
 import os
 import re
 import math
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from collections import Counter
 from datetime import datetime
 
-from config.content_types import CONTENT_TYPE_KEYWORDS
+# Dynamic import to handle both local development and Docker environments
+try:
+    from backend.config.content_types import CONTENT_TYPE_KEYWORDS
+except ImportError:
+    from config.content_types import CONTENT_TYPE_KEYWORDS
 
 logger = logging.getLogger(__name__)
 

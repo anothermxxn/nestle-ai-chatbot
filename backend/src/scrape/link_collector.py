@@ -8,7 +8,11 @@ from playwright.async_api import async_playwright, Browser, Page
 import aiohttp
 from bs4 import BeautifulSoup
 
-from config import MAX_PAGES_DEFAULT, SCRAPER_CONCURRENCY
+# Dynamic import to handle both local development and Docker environments
+try:
+    from backend.config import MAX_PAGES_DEFAULT, SCRAPER_CONCURRENCY
+except ImportError:
+    from config import MAX_PAGES_DEFAULT, SCRAPER_CONCURRENCY
 
 # Configure logging
 logging.basicConfig(

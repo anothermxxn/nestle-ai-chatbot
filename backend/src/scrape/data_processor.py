@@ -14,38 +14,88 @@ from nltk.util import ngrams
 from .url_parser import parse_url
 from .llm_keyword_extractor import extract_keywords_with_llm
 from .keyword_utils import is_meaningful_keyword
-from config import (
-    # Compound terms
-    ALL_COMPOUND_TERMS,
-    
-    # Content filtering
-    EXCLUDE_SECTION_PATTERNS,
-    MIN_CONTENT_LENGTH,
-    FOOD_INDICATORS,
-    GENERIC_TERMS,
-    STOP_WORDS,
-    
-    # Classification indicators
-    WEB_COOKIE_INDICATORS,
-    FOOD_COOKIE_INDICATORS,
-    SOCIAL_MEDIA_INDICATORS,
-    FOOD_DOMAINS,
-    ERROR_INDICATORS,
-    
-    # Enhanced filtering patterns
-    CONSENT_MANAGEMENT_PATTERNS,
-    PRIVACY_CONTENT_INDICATORS,
-    
-    # Processing settings
-    DEFAULT_CHUNK_SIZE,
-    DEFAULT_CHUNK_OVERLAP,
-    MARKDOWN_CHUNK_SIZE,
-    MARKDOWN_CHUNK_OVERLAP,
-    MAX_KEYWORDS_PER_CHUNK,
-    NGRAM_RANGE,
-    MAX_NGRAMS,
-    MAX_PHRASE_LENGTH,
-)
+
+# Dynamic import to handle both local development and Docker environments
+try:
+    from backend.config import (
+        CONTENT_TYPES,
+        BRAND_PATTERNS,
+        ALL_TOPICS,
+        detect_topics_from_text,
+        normalize_brand_name,
+        get_brand_category,
+        STOP_WORDS,
+        
+        # Compound terms
+        ALL_COMPOUND_TERMS,
+        
+        # Content filtering
+        EXCLUDE_SECTION_PATTERNS,
+        MIN_CONTENT_LENGTH,
+        FOOD_INDICATORS,
+        GENERIC_TERMS,
+        FOOD_DOMAINS,
+        ERROR_INDICATORS,
+        
+        # Classification indicators
+        WEB_COOKIE_INDICATORS,
+        FOOD_COOKIE_INDICATORS,
+        SOCIAL_MEDIA_INDICATORS,
+        
+        # Enhanced filtering patterns
+        CONSENT_MANAGEMENT_PATTERNS,
+        PRIVACY_CONTENT_INDICATORS,
+        
+        # Processing settings
+        DEFAULT_CHUNK_SIZE,
+        DEFAULT_CHUNK_OVERLAP,
+        MARKDOWN_CHUNK_SIZE,
+        MARKDOWN_CHUNK_OVERLAP,
+        MAX_KEYWORDS_PER_CHUNK,
+        NGRAM_RANGE,
+        MAX_NGRAMS,
+        MAX_PHRASE_LENGTH,
+    )
+except ImportError:
+    from config import (
+        CONTENT_TYPES,
+        BRAND_PATTERNS,
+        ALL_TOPICS,
+        detect_topics_from_text,
+        normalize_brand_name,
+        get_brand_category,
+        STOP_WORDS,
+        
+        # Compound terms
+        ALL_COMPOUND_TERMS,
+        
+        # Content filtering
+        EXCLUDE_SECTION_PATTERNS,
+        MIN_CONTENT_LENGTH,
+        FOOD_INDICATORS,
+        GENERIC_TERMS,
+        FOOD_DOMAINS,
+        ERROR_INDICATORS,
+        
+        # Classification indicators
+        WEB_COOKIE_INDICATORS,
+        FOOD_COOKIE_INDICATORS,
+        SOCIAL_MEDIA_INDICATORS,
+        
+        # Enhanced filtering patterns
+        CONSENT_MANAGEMENT_PATTERNS,
+        PRIVACY_CONTENT_INDICATORS,
+        
+        # Processing settings
+        DEFAULT_CHUNK_SIZE,
+        DEFAULT_CHUNK_OVERLAP,
+        MARKDOWN_CHUNK_SIZE,
+        MARKDOWN_CHUNK_OVERLAP,
+        MAX_KEYWORDS_PER_CHUNK,
+        NGRAM_RANGE,
+        MAX_NGRAMS,
+        MAX_PHRASE_LENGTH,
+    )
 
 # Download required NLTK data if not already present
 try:
@@ -176,8 +226,6 @@ def is_food_related_phrase(phrase: str) -> bool:
     is_generic = all(word in GENERIC_TERMS for word in phrase_words)
     
     return has_food_term and not is_generic and len(phrase_words) <= MAX_PHRASE_LENGTH
-
-
 
 def keyword_extraction(url_parts: List[str], title: str, content: str, 
                                content_type: str, brand: str = None) -> List[str]:

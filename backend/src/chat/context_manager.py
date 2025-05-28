@@ -1,11 +1,18 @@
+import re
 import logging
+from typing import Dict, List, Optional, Set, Any
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict
 
-from config.content_types import CONTENT_TYPE_KEYWORDS
-from config.brands import get_all_brand_variations
-from config.topics import detect_topics_from_text, ALL_TOPICS
+# Dynamic import to handle both local development and Docker environments
+try:
+    from backend.config.content_types import CONTENT_TYPE_KEYWORDS
+    from backend.config.brands import get_all_brand_variations
+    from backend.config.topics import detect_topics_from_text, ALL_TOPICS
+except ImportError:
+    from config.content_types import CONTENT_TYPE_KEYWORDS
+    from config.brands import get_all_brand_variations
+    from config.topics import detect_topics_from_text, ALL_TOPICS
 
 logger = logging.getLogger(__name__)
 
