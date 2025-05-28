@@ -11,131 +11,133 @@
 The following files are configured for Azure App Service deployment:
 
 ### Core Files
-- `app.py` - Alternative entry point for Azure
-- `startup.py` - Main startup script
+- `app.py` - **Primary entry point** for Azure App Service
+- `startup.py` - Alternative startup script
 - `requirements.txt` - Python dependencies
-- `runtime.txt` - Python version specification
-- `Procfile` - Process specification (optional)
-- `health_check.py` - Health check script
-
-### Startup Commands
-
-Azure App Service will automatically detect and use one of these startup commands:
-
-1. **Primary**: `python -m uvicorn src.main:app --host 0.0.0.0 --port $PORT`
-2. **Alternative**: `python startup.py`
-3. **Fallback**: `python app.py`
+- `runtime.txt` - Python version specification (Python 3.11)
+- `Procfile` - Process specification
+- `test_deployment.py` - Deployment verification script
 
 ## Deployment Steps
 
 ### Using Azure VS Code Extension
 
-1. **Open VS Code** in the `backend` directory
-2. **Open Command Palette** (`Cmd+Shift+P` on Mac, `Ctrl+Shift+P` on Windows)
-3. **Run**: `Azure App Service: Deploy to Web App`
-4. **Select**: Your subscription and resource group
-5. **Choose**: Create new web app or select existing
-6. **Configure**:
+1. **Open VS Code** in your project root directory
+2. **Install Azure App Service Extension** if not already installed
+3. **Sign in to Azure** using the Azure extension
+4. **Right-click on the `backend` folder** in VS Code Explorer
+5. **Select "Deploy to Web App..."**
+6. **Choose your subscription and resource group**
+7. **Create a new Web App** or select existing one:
    - **Runtime**: Python 3.11
-   - **OS**: Linux
-   - **Pricing Tier**: Choose appropriate tier
+   - **Region**: Choose your preferred region
+   - **Pricing tier**: Choose appropriate tier
 
-### Manual Configuration (if needed)
+### Important: Folder Selection
+- **Always select the `backend` folder** when deploying
+- Do NOT select the root project folder
+- The backend folder contains all necessary deployment files
 
-If automatic detection fails, configure these settings in Azure Portal:
+## Startup Configuration
 
-#### Application Settings
+Azure App Service will automatically detect and use:
+
+### Primary Startup Command
+```bash
+python app.py
 ```
-WEBSITES_PORT=8000
-SCM_DO_BUILD_DURING_DEPLOYMENT=true
-```
 
-#### Startup Command
-```
+### Alternative Commands (if primary fails)
+```bash
+python startup.py
+# or
 python -m uvicorn src.main:app --host 0.0.0.0 --port $PORT
 ```
 
 ## Environment Variables
 
-Ensure these environment variables are set in Azure App Service:
-
-### Required
-- `AZURE_OPENAI_ENDPOINT`
-- `AZURE_OPENAI_API_KEY`
-- `AZURE_SEARCH_ENDPOINT`
-- `AZURE_SEARCH_ADMIN_KEY`
-- `AZURE_SEARCH_INDEX_NAME`
-
-### Optional
-- `COSMOS_ENDPOINT`
-- `COSMOS_KEY`
-- `COSMOS_DATABASE_NAME`
+Azure App Service automatically sets:
+- `PORT` - The port your app should listen on
+- `PYTHONPATH` - Set automatically by our startup scripts
 
 ## Verification
 
-After deployment:
+After deployment, you can verify the deployment by:
 
-1. **Check Logs**: View deployment logs in Azure Portal
-2. **Test Health**: Visit `https://your-app.azurewebsites.net/` 
-3. **Expected Response**:
-   ```json
-   {
-     "status": "healthy",
-     "message": "Nestle AI Chatbot API is running"
-   }
-   ```
+1. **Check the logs** in Azure portal or VS Code
+2. **Visit your app URL** (provided after deployment)
+3. **Test the health endpoint**: `https://your-app.azurewebsites.net/health`
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Import Errors**: All imports have been fixed to use absolute paths
-2. **Port Issues**: App automatically uses `$PORT` environment variable
-3. **Dependencies**: All required packages are in `requirements.txt`
+1. **Import Errors**
+   - Ensure you deployed the `backend` folder, not the root folder
+   - Check that `requirements.txt` includes all dependencies
+
+2. **Port Issues**
+   - Azure automatically sets the PORT environment variable
+   - Our startup scripts handle this automatically
+
+3. **Python Path Issues**
+   - Our `app.py` and `startup.py` scripts automatically configure Python paths
+   - No manual configuration needed
 
 ### Debug Commands
 
-Run locally to test:
+If deployment fails, you can test locally:
+
 ```bash
-# Test imports
+# Test the deployment environment
+python test_deployment.py
+
+# Test the main app
+python app.py
+
+# Test health check
 python health_check.py
-
-# Test startup
-PORT=8000 python startup.py
-
-# Test direct uvicorn
-python -m uvicorn src.main:app --host 0.0.0.0 --port 8000
 ```
 
-### Log Monitoring
+### Log Analysis
 
-Monitor deployment in Azure Portal:
-- **Deployment Center** → **Logs**
-- **Log Stream** for real-time logs
-- **Application Insights** for detailed monitoring
+Check Azure App Service logs for:
+- Import errors
+- Port binding issues
+- Missing dependencies
+- Python path problems
 
 ## File Structure
 
+When deployed, Azure expects this structure:
 ```
-backend/
-├── src/
-│   ├── main.py              # FastAPI application
-│   ├── chat/                # Chat functionality
-│   ├── search/              # Search functionality
-│   ├── graph/               # Graph operations
-│   └── scrape/              # Web scraping
-├── config/                  # Configuration files
-├── app.py                   # Alternative entry point
-├── startup.py               # Main startup script
-├── requirements.txt         # Dependencies
-├── runtime.txt              # Python version
-├── Procfile                 # Process specification
-└── health_check.py          # Health verification
+/home/site/wwwroot/
+├── app.py              # Primary entry point
+├── startup.py          # Alternative entry point
+├── requirements.txt    # Dependencies
+├── runtime.txt         # Python version
+├── Procfile           # Process definition
+├── src/               # Source code
+│   ├── main.py        # FastAPI app
+│   ├── chat/          # Chat modules
+│   ├── search/        # Search modules
+│   └── ...
+├── config/            # Configuration
+└── ...
 ```
 
-## Notes
+## Success Indicators
 
-- All relative imports have been converted to absolute imports
-- The application is configured for both development and production
-- Health checks are available at the root endpoint
-- Logs will show detailed startup information 
+Deployment is successful when you see:
+- ✅ Container started successfully
+- ✅ HTTP pings responding on port 8000
+- ✅ App accessible via the provided URL
+- ✅ Health endpoint returns 200 OK
+
+## Support
+
+If you encounter issues:
+1. Check the Azure App Service logs
+2. Verify all files are in the `backend` folder
+3. Ensure `requirements.txt` is complete
+4. Test locally with `python app.py` 
