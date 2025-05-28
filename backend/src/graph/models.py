@@ -27,6 +27,7 @@ class Entity:
     id: str
     entity_type: EntityType
     properties: Dict[str, Any]
+    is_user_created: bool = False  # Flag to distinguish user-created vs system-created entities
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
     
@@ -35,6 +36,7 @@ class Entity:
         doc = {
             "id": self.id,
             "entity_type": self.entity_type.value,
+            "is_user_created": self.is_user_created,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
             **self.properties
@@ -45,7 +47,7 @@ class Entity:
     def from_cosmos_document(cls, doc: Dict[str, Any]) -> "Entity":
         """Create entity from Cosmos DB document."""
         properties = {k: v for k, v in doc.items() 
-                     if k not in ["id", "entity_type", "created_at", "updated_at"]}
+                     if k not in ["id", "entity_type", "is_user_created", "created_at", "updated_at"]}
         
         # Parse timestamps
         created_at = datetime.fromisoformat(doc.get("created_at", datetime.utcnow().isoformat()))
@@ -55,6 +57,7 @@ class Entity:
             id=doc["id"],
             entity_type=EntityType(doc["entity_type"]),
             properties=properties,
+            is_user_created=doc.get("is_user_created", False),
             created_at=created_at,
             updated_at=updated_at
         )
