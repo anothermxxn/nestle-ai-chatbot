@@ -5,7 +5,7 @@ from azure.cosmos import CosmosClient, PartitionKey, exceptions
 from azure.cosmos.container import ContainerProxy
 from azure.cosmos.database import DatabaseProxy
 
-from backend.config import (
+from config import (
     COSMOS_CONFIG, 
     validate_config, 
     ENTITY_TYPES, 

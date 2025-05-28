@@ -1,10 +1,11 @@
 import asyncio
+import logging
 import json
 import re
 from typing import List, Optional
-from openai import AsyncAzureOpenAI
+from openai import AsyncAzureOpenAI, AzureOpenAI
 
-from backend.config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
+from config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
 from .keyword_utils import is_meaningful_keyword
 
 class LLMKeywordExtractor:

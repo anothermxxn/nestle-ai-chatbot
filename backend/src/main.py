@@ -27,4 +27,8 @@ async def root():
     return {
         "status": "healthy", 
         "message": "Nestle AI Chatbot API is running"
-    } 
+    }
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"} 

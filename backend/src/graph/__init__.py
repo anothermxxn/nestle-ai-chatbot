@@ -1,4 +1,4 @@
-from backend.config import (
+from config import (
     COSMOS_CONFIG,
     ENTITIES_CONTAINER_NAME,
     RELATIONSHIPS_CONTAINER_NAME,

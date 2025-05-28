@@ -1,6 +1,5 @@
 import re
-
-from backend.config import STOP_WORDS
+from config import STOP_WORDS
 
 def is_meaningful_keyword(word: str) -> bool:
     """
