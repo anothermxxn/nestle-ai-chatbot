@@ -1,30 +1,36 @@
 #!/usr/bin/env python3
 """
-Startup script for Azure App Service deployment.
-This script configures the FastAPI application for production deployment.
+Startup script for Azure App Service
 """
-
 import os
 import sys
-import uvicorn
-from pathlib import Path
+import subprocess
 
-# Add the backend directory to Python path
-backend_dir = Path(__file__).parent
-sys.path.insert(0, str(backend_dir))
-
-# Set environment variables for production
-os.environ.setdefault("PYTHONPATH", str(backend_dir))
-
-if __name__ == "__main__":
-    # Get port from environment (Azure App Service sets this)
-    port = int(os.environ.get("PORT", 8000))
+def main():
+    """Main startup function for Azure App Service"""
+    # Get the port from environment variable (Azure sets this)
+    port = os.environ.get('PORT', '8000')
     
-    # Run the application
-    uvicorn.run(
-        "src.main:app",
-        host="0.0.0.0",
-        port=port,
-        log_level="info",
-        access_log=True
-    ) 
+    # Set PYTHONPATH to include the current directory
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    if current_dir not in sys.path:
+        sys.path.insert(0, current_dir)
+    
+    # Start uvicorn server
+    cmd = [
+        sys.executable, '-m', 'uvicorn',
+        'src.main:app',
+        '--host', '0.0.0.0',
+        '--port', port,
+        '--workers', '1'
+    ]
+    
+    print(f"Starting server with command: {' '.join(cmd)}")
+    print(f"Python path: {sys.path}")
+    print(f"Current working directory: {os.getcwd()}")
+    
+    # Execute the command
+    subprocess.run(cmd)
+
+if __name__ == '__main__':
+    main() 

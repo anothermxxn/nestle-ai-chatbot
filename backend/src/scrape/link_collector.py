@@ -5,8 +5,10 @@ from datetime import datetime
 from typing import Set, Optional, Dict
 from urllib.parse import urlparse, urljoin
 from playwright.async_api import async_playwright, Browser, Page
+import aiohttp
+from bs4 import BeautifulSoup
 
-from backend.config import MAX_PAGES_DEFAULT, SCRAPER_CONCURRENCY
+from config import MAX_PAGES_DEFAULT, SCRAPER_CONCURRENCY
 
 # Configure logging
 logging.basicConfig(

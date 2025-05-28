@@ -1,10 +1,11 @@
-import logging
 import uuid
+import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
+from dataclasses import dataclass, field
 
 from .context_manager import ChatMessage, SearchContext, ContextExtractor
-from backend.config import CHAT_CONFIG
+from config import CHAT_CONFIG
 
 logger = logging.getLogger(__name__)
 

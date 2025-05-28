@@ -1,8 +1,10 @@
+import asyncio
 import logging
+from typing import List, Dict, Optional
+from config import MAX_PAGES_LARGE
 
 from .link_collector import LinkCollector
 from .content_processor import ContentProcessor
-from backend.config import MAX_PAGES_LARGE
 
 # Configure logging
 logging.basicConfig(
