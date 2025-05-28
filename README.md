@@ -2,23 +2,6 @@
 
 An AI-based chatbot for the Made with Nestlé website that can handle user queries, generate appropriate responses, and provide reference links where necessary.
 
-## Quick Deployment
-
-Deploy your full-featured Nestle AI Chatbot to Azure with all advanced capabilities:
-
-```bash
-cd deploy
-
-# 1. Deploy infrastructure and backend
-./deploy.sh
-
-# 2. Configure environment variables
-./configure-env.sh
-
-# 3. Deploy frontend
-./deploy-frontend.sh
-```
-
 ## Tech Stack
 
 ### Backend
@@ -37,8 +20,8 @@ cd deploy
 
 ### Cloud Infrastructure
 - **Platform**: Azure
-- **Backend**: Azure App Service
-- **Frontend**: Azure Static Web Apps
+- **Backend**: Azure Container App
+- **Frontend**: Azure Container App
 
 ## Features
 
@@ -59,7 +42,6 @@ nestle-ai-chatbot/
 │   │   ├── graph/          # GraphRAG implementation
 │   │   └── scrape/         # Web scraping utilities
 │   ├── config/             # Configuration files
-│   ├── startup.py          # Azure deployment entry point
 │   └── requirements.txt
 ├── frontend/               # React frontend
 │   ├── src/
@@ -67,11 +49,6 @@ nestle-ai-chatbot/
 │   │   ├── services/       # API services
 │   │   └── config/         # Configuration
 │   └── package.json
-├── deploy/                # Deployment scripts and guides
-│   ├── deploy.sh          # Main deployment script with region selection
-│   ├── configure-env.sh   # Environment configuration helper
-│   ├── deploy-frontend.sh # Frontend deployment script
-│   └── deploy-azure.md    # Detailed deployment guide
 ├── scripts/               # Development and utility scripts
 │   ├── start.sh          # Local development startup script
 │   ├── scrape/           # Web scraping scripts
