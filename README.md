@@ -9,7 +9,7 @@ Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-fronte
 ## Technologies and Frameworks
 
 ### Backend Technologies
-- **Python 3.11+**: Core language
+- **Python 3.11**: Core language
 - **FastAPI**: Backend framework
 - **LangChain**: AI application framework
 - **Uvicorn**: ASGI server for running FastAPI
@@ -17,7 +17,7 @@ Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-fronte
 
 ### Frontend Technologies
 - **JavaScript**: Core language
-- **Node.js 18**:
+- **Node.js 18**: JavaScript runtime
 - **React 19**: Frontend framework
 - **Vite**: Build tool
 - **WebSocket**: Real-time communication
