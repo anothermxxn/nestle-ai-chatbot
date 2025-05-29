@@ -2,9 +2,14 @@ import logging
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 
-from .search_client import AzureSearchClient
-from ..graph.cosmos_client import CosmosGraphClient
-from ..graph.models import EntityType, Entity, Relationship
+try:
+    from backend.src.search.search_client import AzureSearchClient
+    from backend.src.graph.cosmos_client import CosmosGraphClient
+    from backend.src.graph.models import EntityType, Entity, Relationship
+except ImportError:
+    from src.search.search_client import AzureSearchClient
+    from src.graph.cosmos_client import CosmosGraphClient
+    from src.graph.models import EntityType, Entity, Relationship
 
 logger = logging.getLogger(__name__)
 

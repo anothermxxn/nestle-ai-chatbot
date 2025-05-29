@@ -4,7 +4,10 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 
-from .context_manager import ChatMessage, SearchContext, ContextExtractor
+try:
+    from backend.src.chat.context_manager import ChatMessage, SearchContext, ContextExtractor
+except ImportError:
+    from src.chat.context_manager import ChatMessage, SearchContext, ContextExtractor
 
 # Dynamic import to handle both local development and Docker environments
 try:

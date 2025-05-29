@@ -16,6 +16,7 @@ try:
         validate_config
     )
     from backend.config import BATCH_SIZE
+    from backend.src.search.relevance_scorer import VectorSearchRanker
 except ImportError:
     from config.database import (
         AZURE_SEARCH_ENDPOINT,
@@ -24,8 +25,7 @@ except ImportError:
         validate_config
     )
     from config import BATCH_SIZE
-
-from .relevance_scorer import VectorSearchRanker
+    from src.search.relevance_scorer import VectorSearchRanker
 
 # Configure logging
 logging.basicConfig(

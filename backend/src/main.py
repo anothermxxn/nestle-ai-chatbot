@@ -1,9 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from .chat.chat_router import router as chat_router
-from .chat.websocket_router import router as websocket_router
-from .graph.graph_router import router as graph_router
+
+try:
+    from backend.src.chat.chat_router import router as chat_router
+    from backend.src.chat.websocket_router import router as websocket_router
+    from backend.src.graph.graph_router import router as graph_router
+except ImportError:
+    from src.chat.chat_router import router as chat_router
+    from src.chat.websocket_router import router as websocket_router
+    from src.graph.graph_router import router as graph_router
 
 app = FastAPI(
     title="Nestle AI Chatbot",
@@ -34,8 +40,8 @@ else:
         CORSMiddleware,
         allow_origins=[
             DEV_FRONTEND_URL,
-            PROD_FRONTEND_URL.replace("localhost", "127.0.0.1"),
-            PROD_FRONTEND_URL.replace("127.0.0.1", "localhost")
+            DEV_FRONTEND_URL.replace("localhost", "127.0.0.1"),
+            DEV_FRONTEND_URL.replace("127.0.0.1", "localhost")
         ],
         allow_credentials=True,
         allow_methods=["*"],

@@ -3,7 +3,10 @@ from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 import logging
 
-from .chat_client import NestleChatClient
+try:
+    from backend.src.chat.chat_client import NestleChatClient
+except ImportError:
+    from src.chat.chat_client import NestleChatClient
 
 # Configure logging
 logger = logging.getLogger(__name__)

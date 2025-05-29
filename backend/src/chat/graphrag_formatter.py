@@ -2,8 +2,12 @@ import logging
 from typing import Dict, List, Any
 from dataclasses import dataclass
 
-from ..search.graphrag_client import GraphRAGResult
-from ..graph.models import Entity, Relationship
+try:
+    from backend.src.search.graphrag_client import GraphRAGResult
+    from backend.src.graph.models import Entity, Relationship
+except ImportError:
+    from src.search.graphrag_client import GraphRAGResult
+    from src.graph.models import Entity, Relationship
 
 logger = logging.getLogger(__name__)
 

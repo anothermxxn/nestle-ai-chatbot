@@ -2,10 +2,16 @@ import logging
 from typing import Dict, List, Optional
 from openai import AzureOpenAI
 
-from .session_manager import SessionManager
-from ..search.search_client import AzureSearchClient
-from ..search.graphrag_client import GraphRAGClient
-from .graphrag_formatter import GraphRAGFormatter
+try:
+    from backend.src.chat.session_manager import SessionManager
+    from backend.src.search.search_client import AzureSearchClient
+    from backend.src.search.graphrag_client import GraphRAGClient
+    from backend.src.chat.graphrag_formatter import GraphRAGFormatter
+except ImportError:
+    from src.chat.session_manager import SessionManager
+    from src.search.search_client import AzureSearchClient
+    from src.search.graphrag_client import GraphRAGClient
+    from src.chat.graphrag_formatter import GraphRAGFormatter
 
 # Dynamic import to handle both local development and Docker environments
 try:
