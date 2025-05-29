@@ -39,9 +39,10 @@ Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-fronte
 
 ## Known Limitations
 - **UI Design**: The frontend currently displays as a floating chat button at the bottom right corner of a blank page
-- **Language Support**: Currently optimized for English content only
+- **Response Time**: Takes a few seconds to get responses due to compute resource limitations
 - **Content Updates**: Manual process required to update content index
 - **Test Coverage**: No unit tests or end-to-end tests implemented due to time constraints
+- **Language Support**: Currently optimized for English content only
 - **Concurrent Users**: Performance may degrade with high concurrent usage without proper scaling
 
 ## Local Setup Steps
@@ -93,8 +94,8 @@ Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-fronte
    AZURE_EMBEDDING_ENDPOINT="PLACEHOLDER"
    AZURE_EMBEDDING_API_KEY="PLACEHOLDER"
    AZURE_EMBEDDING_API_VERSION="PLACEHOLDER"
-   AZURE_EMBEDDING_MODEL_NAME = "PLACEHOLDER"
-   AZURE_EMBEDDING_DEPLOYMENT = "PLACEHOLDER"
+   AZURE_EMBEDDING_MODEL_NAME="PLACEHOLDER"
+   AZURE_EMBEDDING_DEPLOYMENT="PLACEHOLDER"
 
    # Azure OpenAI Configuration
    AZURE_OPENAI_ENDPOINT="PLACEHOLDER"
@@ -110,7 +111,7 @@ Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-fronte
    AZURE_COSMOS_RELATIONSHIPS_CONTAINER_NAME="nPLACEHOLDER"
    ```
    
-   Create `.env.local` file in the `frontend/` directory:
+   Create `.env` file in the `frontend/` directory:
    ```env
    VITE_ENVIRONMENT="development"
    VITE_DEV_BACKEND_URL="http://localhost:8000"
