@@ -204,8 +204,9 @@ class ApiClient {
    * @returns {Promise<Object>} Deletion response
    */
   async deleteSession(sessionId) {
-    return this.request(`/chat/session/${sessionId}`, {
-      method: 'DELETE',
+    return this.request(`/chat/session/${sessionId}/delete`, {
+      method: "POST",
+      body: JSON.stringify({}),
     });
   }
 }

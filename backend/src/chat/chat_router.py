@@ -334,12 +334,12 @@ async def get_session_history(session_id: str):
         logger.error(f"Error getting session history: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get session history: {str(e)}")
 
-@router.delete("/session/{session_id}", response_model=SessionResponse)
+@router.post("/session/{session_id}/delete", response_model=SessionResponse)
 async def delete_session(session_id: str):
     """
     Delete a conversation session.
     
-    Removes the session and all associated conversation history.
+    This endpoint removes the session and all associated conversation history.
     """
     try:
         client = get_chat_client()
