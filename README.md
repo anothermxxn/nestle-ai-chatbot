@@ -39,6 +39,7 @@ Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-fronte
 - **REST API**: Complete API with interactive documentation
 
 ## Known Limitations
+- **UI Design**: The frontend currently displays as a floating chat button at the bottom right corner of a blank page
 - **Language Support**: Currently optimized for English content only
 - **Content Updates**: Manual process required to update content index
 - **Test Coverage**: No unit tests or end-to-end tests implemented due to time constraints
