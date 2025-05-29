@@ -13,7 +13,7 @@ Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-fronte
 - **FastAPI**: Backend framework
 - **LangChain**: AI application framework
 - **Uvicorn**: ASGI server for running FastAPI
-- **Crawl4AI**: This project uses Crawl4AI (https://github.com/unclecode/crawl4ai) for web data extraction.
+- **Crawl4AI**: This project uses **[Crawl4AI](https://github.com/unclecode/crawl4ai)** for web data extraction.
 
 ### Frontend Technologies
 - **JavaScript**: Core language
