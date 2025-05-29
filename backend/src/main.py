@@ -25,11 +25,7 @@ if ENVIRONMENT == "production" and PROD_FRONTEND_URL:
     # Production CORS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            PROD_FRONTEND_URL,
-            PROD_FRONTEND_URL.replace("https://", "http://"),
-            PROD_FRONTEND_URL.replace("http://", "https://")
-        ],
+        allow_origins=[PROD_FRONTEND_URL],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
@@ -38,11 +34,7 @@ else:
     # Development CORS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            DEV_FRONTEND_URL,
-            DEV_FRONTEND_URL.replace("localhost", "127.0.0.1"),
-            DEV_FRONTEND_URL.replace("127.0.0.1", "localhost")
-        ],
+        allow_origins=[DEV_FRONTEND_URL],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
