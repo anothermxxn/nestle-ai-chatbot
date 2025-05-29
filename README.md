@@ -31,12 +31,11 @@ Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-fronte
 - **Python Virtual Environments**: Local development dependency isolation
 
 ## Features
-- **AI-Powered Chat**: Natural language conversations powered by GPT-4
+- **AI-Powered Chat**: Natural language conversations powered by GPT-4o
 - **Nestle Content**: Access to recipes, products, brands, and cooking tips
 - **Knowledge Graph**: Customizable connected relationships for comprehensive answers
 - **Context Memory**: Remembers conversation history for better responses
 - **Real-Time Responses**: Instant messaging with WebSocket support
-- **REST API**: Complete API with interactive documentation
 
 ## Known Limitations
 - **UI Design**: The frontend currently displays as a floating chat button at the bottom right corner of a blank page
