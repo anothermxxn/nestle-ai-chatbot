@@ -47,6 +47,12 @@ app.include_router(graph_router)
 
 @app.get("/")
 async def root():
+    """
+    Root endpoint that returns API status and environment information.
+
+    Returns:
+        dict: Status, message, and environment information
+    """
     return {
         "status": "healthy", 
         "message": "Nestle AI Chatbot API is running",
@@ -55,4 +61,10 @@ async def root():
 
 @app.get("/health")
 async def health_check():
+    """
+    Health check endpoint for monitoring API availability.
+
+    Returns:
+        dict: Status and environment information
+    """
     return {"status": "healthy", "environment": ENVIRONMENT} 

@@ -30,7 +30,12 @@ class Entity:
     updated_at: datetime = field(default_factory=datetime.utcnow)
     
     def to_cosmos_document(self) -> Dict[str, Any]:
-        """Convert entity to Cosmos DB document format."""
+        """
+        Convert entity to Cosmos DB document format.
+        
+        Returns:
+            Dict[str, Any]: Entity data formatted for Cosmos DB storage
+        """
         doc = {
             "id": self.id,
             "entity_type": self.entity_type.value,
@@ -43,7 +48,15 @@ class Entity:
     
     @classmethod
     def from_cosmos_document(cls, doc: Dict[str, Any]) -> "Entity":
-        """Create entity from Cosmos DB document."""
+        """
+        Create entity from Cosmos DB document.
+        
+        Args:
+            doc (Dict[str, Any]): Cosmos DB document data
+            
+        Returns:
+            Entity: Restored entity object
+        """
         properties = {k: v for k, v in doc.items() 
                      if k not in ["id", "entity_type", "is_user_created", "created_at", "updated_at"]}
         
@@ -74,7 +87,12 @@ class Relationship:
     updated_at: datetime = field(default_factory=datetime.utcnow)
     
     def to_cosmos_document(self) -> Dict[str, Any]:
-        """Convert relationship to Cosmos DB document format."""
+        """
+        Convert relationship to Cosmos DB document format.
+        
+        Returns:
+            Dict[str, Any]: Relationship data formatted for Cosmos DB storage
+        """
         return {
             "id": self.id,
             "relationship_type": self.relationship_type.value,
@@ -89,7 +107,15 @@ class Relationship:
     
     @classmethod
     def from_cosmos_document(cls, doc: Dict[str, Any]) -> "Relationship":
-        """Create relationship from Cosmos DB document."""
+        """
+        Create relationship from Cosmos DB document.
+        
+        Args:
+            doc (Dict[str, Any]): Cosmos DB document data
+            
+        Returns:
+            Relationship: Restored relationship object
+        """
         properties = {k: v for k, v in doc.items() 
                      if k not in ["id", "relationship_type", "from_entity_id", "to_entity_id", "weight", "is_user_created", "created_at", "updated_at"]}
         
@@ -110,7 +136,17 @@ class Relationship:
         )
 
 def create_brand_entity(name: str, chunk_ids: List[str] = None, **kwargs) -> Entity:
-    """Create a Brand entity with proper categorization."""
+    """
+    Create a Brand entity with proper categorization.
+    
+    Args:
+        name (str): Brand name
+        chunk_ids (List[str]): List of chunk IDs associated with this brand
+        **kwargs: Additional properties for the brand
+        
+    Returns:
+        Entity: Brand entity object
+    """
     # Import configuration functions
     from config import normalize_brand_name, get_brand_category
     
@@ -135,7 +171,18 @@ def create_brand_entity(name: str, chunk_ids: List[str] = None, **kwargs) -> Ent
     )
 
 def create_topic_entity(name: str, category: str, chunk_ids: List[str] = None, **kwargs) -> Entity:
-    """Create a Topic entity."""
+    """
+    Create a Topic entity.
+    
+    Args:
+        name (str): Topic name
+        category (str): Topic category
+        chunk_ids (List[str]): List of chunk IDs associated with this topic
+        **kwargs: Additional properties for the topic
+        
+    Returns:
+        Entity: Topic entity object
+    """
     properties = {
         "name": name,
         "category": category,
@@ -151,7 +198,18 @@ def create_topic_entity(name: str, category: str, chunk_ids: List[str] = None, *
     )
 
 def create_product_entity(name: str, brand: str = "", chunk_ids: List[str] = None, **kwargs) -> Entity:
-    """Create a Product entity."""
+    """
+    Create a Product entity.
+    
+    Args:
+        name (str): Product name
+        brand (str): Associated brand name
+        chunk_ids (List[str]): List of chunk IDs associated with this product
+        **kwargs: Additional properties for the product
+        
+    Returns:
+        Entity: Product entity object
+    """
     properties = {
         "name": name,
         "brand": brand,
@@ -167,7 +225,17 @@ def create_product_entity(name: str, brand: str = "", chunk_ids: List[str] = Non
     )
 
 def create_recipe_entity(title: str, chunk_ids: List[str] = None, **kwargs) -> Entity:
-    """Create a Recipe entity."""
+    """
+    Create a Recipe entity.
+    
+    Args:
+        title (str): Recipe title
+        chunk_ids (List[str]): List of chunk IDs associated with this recipe
+        **kwargs: Additional properties for the recipe
+        
+    Returns:
+        Entity: Recipe entity object
+    """
     properties = {
         "title": title,
         "recipe_type": kwargs.get("recipe_type", "general"),
@@ -184,7 +252,18 @@ def create_recipe_entity(title: str, chunk_ids: List[str] = None, **kwargs) -> E
 
 def create_relationship(from_entity_id: str, to_entity_id: str, 
                        relationship_type: RelationshipType, **kwargs) -> Relationship:
-    """Create a relationship between two entities."""
+    """
+    Create a relationship between two entities.
+    
+    Args:
+        from_entity_id (str): Source entity ID
+        to_entity_id (str): Target entity ID
+        relationship_type (RelationshipType): Type of relationship
+        **kwargs: Additional properties for the relationship
+        
+    Returns:
+        Relationship: Relationship object
+    """
     return Relationship(
         id=f"rel_{uuid.uuid4().hex[:8]}",
         relationship_type=relationship_type,

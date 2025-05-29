@@ -25,7 +25,12 @@ class ChatMessage:
     metadata: Optional[Dict[str, Any]] = None
     
     def to_dict(self) -> Dict:
-        """Convert to dictionary for JSON serialization."""
+        """
+        Convert to dictionary for JSON serialization.
+        
+        Returns:
+            Dict: Message data as dictionary
+        """
         return {
             "role": self.role,
             "content": self.content,
@@ -35,7 +40,15 @@ class ChatMessage:
     
     @classmethod
     def from_dict(cls, data: Dict) -> "ChatMessage":
-        """Create from dictionary."""
+        """
+        Create from dictionary.
+        
+        Args:
+            data (Dict): Message data dictionary
+            
+        Returns:
+            ChatMessage: Restored message object
+        """
         return cls(
             role=data["role"],
             content=data["content"],
@@ -53,19 +66,34 @@ class SearchContext:
     conversation_themes: List[str]
     
     def to_dict(self) -> Dict:
-        """Convert to dictionary."""
+        """
+        Convert to dictionary.
+        
+        Returns:
+            Dict: Search context data as dictionary
+        """
         return asdict(self)
     
     @classmethod
     def from_dict(cls, data: Dict) -> "SearchContext":
-        """Create from dictionary."""
+        """
+        Create from dictionary.
+        
+        Args:
+            data (Dict): Search context data dictionary
+            
+        Returns:
+            SearchContext: Restored search context object
+        """
         return cls(**data)
 
 class ContextExtractor:
     """Extracts context information from user input to enhance search and conversation."""
     
     def __init__(self):
-        """Initialize the context extractor with predefined keywords and brands."""
+        """
+        Initialize the context extractor with predefined keywords and brands.
+        """
         # Known Nestle brands (from centralized config)
         self.brands = get_all_brand_variations()
         
@@ -92,7 +120,13 @@ class ContextExtractor:
         self._extract_topics_enhanced(user_input, search_context)
     
     def _extract_brands(self, user_input_lower: str, search_context: SearchContext) -> None:
-        """Extract and update mentioned brands from user input."""
+        """
+        Extract and update mentioned brands from user input.
+        
+        Args:
+            user_input_lower (str): Lowercase user input text
+            search_context (SearchContext): Search context to update
+        """
         for brand in self.brands:
             if brand in user_input_lower:
                 if brand not in search_context.mentioned_brands:
@@ -103,7 +137,13 @@ class ContextExtractor:
                     search_context.mentioned_brands = search_context.mentioned_brands[-10:]
     
     def _extract_content_types(self, user_input_lower: str, search_context: SearchContext) -> None:
-        """Extract and update preferred content types from user input."""
+        """
+        Extract and update preferred content types from user input.
+        
+        Args:
+            user_input_lower (str): Lowercase user input text
+            search_context (SearchContext): Search context to update
+        """
         for content_type, keywords in self.content_type_keywords.items():
             if any(keyword in user_input_lower for keyword in keywords):
                 if content_type not in search_context.preferred_content_types:
@@ -114,7 +154,13 @@ class ContextExtractor:
                     search_context.preferred_content_types = search_context.preferred_content_types[-5:]
     
     def _extract_topics_enhanced(self, user_input: str, search_context: SearchContext) -> None:
-        """Extract and update topics/themes using enhanced detection from user input."""
+        """
+        Extract and update topics/themes using enhanced detection from user input.
+        
+        Args:
+            user_input (str): User input text
+            search_context (SearchContext): Search context to update
+        """
         # Use the new enhanced topic detection
         detected_topics = detect_topics_from_text(user_input, min_keyword_matches=1)
         

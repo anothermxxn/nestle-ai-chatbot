@@ -59,7 +59,13 @@ class ConversationSession:
         self.context_extractor = ContextExtractor()
     
     def add_user_message(self, content: str, metadata: Optional[Dict] = None) -> None:
-        """Add a user message to the conversation."""
+        """
+        Add a user message to the conversation.
+        
+        Args:
+            content (str): Message content
+            metadata (Optional[Dict]): Additional message metadata
+        """
         message = ChatMessage(
             role="user",
             content=content,
@@ -73,7 +79,13 @@ class ConversationSession:
         self.context_extractor.update_search_context(content, self.search_context)
     
     def add_assistant_message(self, content: str, metadata: Optional[Dict] = None) -> None:
-        """Add an assistant message to the conversation."""
+        """
+        Add an assistant message to the conversation.
+        
+        Args:
+            content (str): Assistant response content
+            metadata (Optional[Dict]): Additional message metadata
+        """
         message = ChatMessage(
             role="assistant",
             content=content,
@@ -84,7 +96,12 @@ class ConversationSession:
         self.metadata["total_responses"] += 1
     
     def _add_message(self, message: ChatMessage) -> None:
-        """Add a message and manage history size."""
+        """
+        Add a message and manage history size.
+        
+        Args:
+            message (ChatMessage): Message to add to conversation
+        """
         self.messages.append(message)
         self.last_activity = datetime.now()
         
@@ -93,13 +110,23 @@ class ConversationSession:
             self.messages = self.messages[-self.max_history:]
     
     def get_context_messages(self) -> List[ChatMessage]:
-        """Get recent messages for context (within context window)."""
+        """
+        Get recent messages for context (within context window).
+        
+        Returns:
+            List[ChatMessage]: Recent messages within context window
+        """
         if not self.messages:
             return []
         return self.messages[-self.context_window:]
     
     def get_conversation_summary(self) -> str:
-        """Generate a summary of the current conversation context."""
+        """
+        Generate a summary of the current conversation context.
+        
+        Returns:
+            str: Summary of conversation context
+        """
         if not self.messages:
             return "New conversation - no previous context."
         
@@ -123,7 +150,12 @@ class ConversationSession:
         return " | ".join(summary_parts) if summary_parts else "General conversation about Nestle products."
     
     def get_enhanced_search_params(self) -> Dict[str, Any]:
-        """Get search parameters enhanced with conversation context."""
+        """
+        Get search parameters enhanced with conversation context.
+        
+        Returns:
+            Dict[str, Any]: Enhanced search parameters
+        """
         params = {}
         
         # Suggest content type based on conversation
@@ -150,7 +182,12 @@ class ConversationSession:
         return params
     
     def to_dict(self) -> Dict:
-        """Convert session to dictionary for storage."""
+        """
+        Convert session to dictionary for storage.
+        
+        Returns:
+            Dict: Session data as dictionary
+        """
         return {
             "session_id": self.session_id,
             "created_at": self.created_at.isoformat(),
@@ -164,7 +201,15 @@ class ConversationSession:
     
     @classmethod
     def from_dict(cls, data: Dict) -> "ConversationSession":
-        """Create session from dictionary."""
+        """
+        Create session from dictionary.
+        
+        Args:
+            data (Dict): Session data dictionary
+            
+        Returns:
+            ConversationSession: Restored session object
+        """
         session = cls(
             session_id=data["session_id"],
             max_history=data.get("max_history", CHAT_CONFIG["max_conversation_history"]),
@@ -199,14 +244,30 @@ class SessionManager:
         self.session_timeout = timedelta(hours=timeout_hours)
     
     def create_session(self, session_id: str = None) -> ConversationSession:
-        """Create a new conversation session."""
+        """
+        Create a new conversation session.
+        
+        Args:
+            session_id (str): Optional custom session ID
+            
+        Returns:
+            ConversationSession: New session object
+        """
         session = ConversationSession(session_id=session_id)
         self.sessions[session.session_id] = session
         logger.info(f"Created new session: {session.session_id}")
         return session
     
     def get_session(self, session_id: str) -> Optional[ConversationSession]:
-        """Get an existing session by ID."""
+        """
+        Get an existing session by ID.
+        
+        Args:
+            session_id (str): Session ID to retrieve
+            
+        Returns:
+            Optional[ConversationSession]: Session object or None if not found/expired
+        """
         session = self.sessions[session_id]
         
         # Check if session has expired
@@ -218,7 +279,15 @@ class SessionManager:
         return session
     
     def get_or_create_session(self, session_id: str = None) -> ConversationSession:
-        """Get existing session or create new one."""
+        """
+        Get existing session or create new one.
+        
+        Args:
+            session_id (str): Optional session ID
+            
+        Returns:
+            ConversationSession: Existing or new session object
+        """
         logger.info(f"get_or_create_session called with session_id: {session_id}")
         logger.info(f"Currently have {len(self.sessions)} active sessions")
         
@@ -235,7 +304,15 @@ class SessionManager:
         return new_session
     
     def delete_session(self, session_id: str) -> bool:
-        """Delete a session."""
+        """
+        Delete a session.
+        
+        Args:
+            session_id (str): Session ID to delete
+            
+        Returns:
+            bool: True if deleted, False if not found
+        """
         if session_id in self.sessions:
             del self.sessions[session_id]
             logger.info(f"Deleted session: {session_id}")
@@ -243,7 +320,12 @@ class SessionManager:
         return False
     
     def cleanup_expired_sessions(self) -> int:
-        """Remove expired sessions and return count of removed sessions."""
+        """
+        Remove expired sessions and return count of removed sessions.
+        
+        Returns:
+            int: Number of sessions removed
+        """
         now = datetime.now()
         expired_sessions = [
             session_id for session_id, session in self.sessions.items()
@@ -259,11 +341,21 @@ class SessionManager:
         return len(expired_sessions)
     
     def get_active_sessions_count(self) -> int:
-        """Get count of currently active sessions."""
+        """
+        Get count of currently active sessions.
+        
+        Returns:
+            int: Number of active sessions
+        """
         return len(self.sessions)
     
     def get_session_stats(self) -> Dict[str, Any]:
-        """Get statistics about all sessions."""
+        """
+        Get statistics about all sessions.
+        
+        Returns:
+            Dict[str, Any]: Session statistics including total sessions, messages, and age info
+        """
         if not self.sessions:
             return {
                 "total_sessions": 0,
