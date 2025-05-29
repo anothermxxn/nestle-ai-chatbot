@@ -1,121 +1,175 @@
-# Nestlé AI Chatbot
+# Nestle AI Chatbot
 
-An AI-based chatbot for the Made with Nestlé website that can handle user queries, generate appropriate responses, and provide reference links where necessary.
+An AI-powered chatbot that provides intelligent search capabilities over Nestle content, including recipes, product information, cooking tips, and nutrition guidance.
 
-## Tech Stack
+## Live Demo
 
-### Backend
-- **Language**: Python
-- **Framework**: FastAPI
-- **Services**: 
-  - Azure OpenAI (GPT-4 & Embeddings)
-  - Azure AI Search (Vector Database)
-  - Azure Cosmos DB (Graph Database)
-  - Playwright (Web Scraping)
+Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-frontend.whitewater-4228c4bc.canadaeast.azurecontainerapps.io/)**
 
-### Frontend
-- **Language**: JavaScript
-- **Framework**: Vite + React
-- **UI Library**: Material-UI
+## Technologies and Frameworks
+
+### Backend Technologies
+- **Python 3.11+**: Core language
+- **FastAPI**: Backend framework
+- **LangChain**: AI application framework
+- **Uvicorn**: ASGI server for running FastAPI
+- **Crawl4AI**: This project uses Crawl4AI (https://github.com/unclecode/crawl4ai) for web data extraction.
+
+### Frontend Technologies
+- **JavaScript**: Core language
+- **Node.js 18**:
+- **React 19**: Frontend framework
+- **Vite**: Build tool
+- **WebSocket**: Real-time communication
+- **Material-UI v7**: UI library
 
 ### Cloud Infrastructure
-- **Platform**: Azure
-- **Backend**: Azure Container App
-- **Frontend**: Azure Container App
+- **Azure AI Search**: Content indexing, semantic search, and vector storage
+- **Azure OpenAI**: GPT models and embedding models for AI responses
+- **Azure Cosmos DB**: NoSQL database for graph entities and relationships
+- **Azure Container Apps**: Application hosting and deployment
+- **Python Virtual Environments**: Local development dependency isolation
 
 ## Features
+- **AI-Powered Chat**: Natural language conversations powered by GPT-4
+- **Nestle Content**: Access to recipes, products, brands, and cooking tips
+- **Knowledge Graph**: Customizable connected relationships for comprehensive answers
+- **Context Memory**: Remembers conversation history for better responses
+- **Real-Time Responses**: Instant messaging with WebSocket support
+- **REST API**: Complete API with interactive documentation
 
-- **AI-Powered Chat**: GPT-4 powered responses with context awareness
-- **Semantic Search**: Vector-based search across Nestlé content
-- **GraphRAG**: Graph-enhanced retrieval for better context
-- **Responsive UI**: Modern, mobile-friendly interface
-- **Real-time**: WebSocket support for instant responses
-- **Rich Content**: Support for recipes, products, and brand information
+## Known Limitations
+- **Language Support**: Currently optimized for English content only
+- **Content Updates**: Manual process required to update content index
+- **Test Coverage**: No unit tests or end-to-end tests implemented due to time constraints
+- **Concurrent Users**: Performance may degrade with high concurrent usage without proper scaling
 
-## Project Structure
-```
-nestle-ai-chatbot/
-├── backend/                 # FastAPI backend
-│   ├── src/
-│   │   ├── chat/           # Chat endpoints and logic
-│   │   ├── search/         # Vector search implementation
-│   │   ├── graph/          # GraphRAG implementation
-│   │   └── scrape/         # Web scraping utilities
-│   ├── config/             # Configuration files
-│   └── requirements.txt
-├── frontend/               # React frontend
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── services/       # API services
-│   │   └── config/         # Configuration
-│   └── package.json
-├── scripts/               # Development and utility scripts
-│   ├── start.sh          # Local development startup script
-│   ├── scrape/           # Web scraping scripts
-│   ├── search/           # Search indexing scripts
-│   └── graph/            # Graph database scripts
-├── data/                 # Data storage
-│   ├── raw/              # Raw scraped data
-│   └── processed/        # Processed data for indexing
-```
+## Local Setup Steps
 
-## Local Development
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd nestle-ai-chatbot
+   ```
 
-### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- Azure account with OpenAI, Search, and Cosmos DB services
+2. **Backend Setup**
+   ```bash
+   cd backend
+   python -m venv venv
+   
+   # Activate virtual environment
+   # On Windows:
+   venv\Scripts\activate
+   # On macOS/Linux:
+   source venv/bin/activate
+   
+   # Install dependencies
+   pip install -r requirements.txt
+   ```
 
-### Setup
-```bash
-# Backend
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+3. **Frontend Setup**
+   ```bash
+   cd frontend
 
-# Frontend
-cd frontend
-npm install
+   # Install dependencies
+   npm install
+   ```
 
-# Start both services
-cd .. && ./scripts/start.sh
-```
+4. **Configuration**
+   
+   Create `.env` file in the `backend/` directory:
+   ```env
+   ENVIRONMENT="development"
+   DEV_FRONTEND_URL="http://localhost:5173"
+   PROD_FRONTEND_URL="PLACEHOLDER"
 
-### Environment Variables
+   # Azure AI Search Configuration
+   AZURE_SEARCH_ENDPOINT="PLACEHOLDER"
+   AZURE_SEARCH_ADMIN_KEY="PLACEHOLDER"
+   AZURE_SEARCH_INDEX_NAME="PLACEHOLDER"
+   AZURE_SEARCH_API_VERSION="PLACEHOLDER"
 
-#### Backend:
-```env
-# Azure AI Search Configuration
-AZURE_SEARCH_ENDPOINT="https://your-search-service.search.windows.net"
-AZURE_SEARCH_ADMIN_KEY="your-search-admin-key"
-AZURE_SEARCH_INDEX_NAME="nestle-ai-chatbot-index"
-AZURE_SEARCH_API_VERSION="2024-07-01"
+   # Azure Embedding Model Configuration
+   AZURE_EMBEDDING_ENDPOINT="PLACEHOLDER"
+   AZURE_EMBEDDING_API_KEY="PLACEHOLDER"
+   AZURE_EMBEDDING_API_VERSION="PLACEHOLDER"
+   AZURE_EMBEDDING_MODEL_NAME = "PLACEHOLDER"
+   AZURE_EMBEDDING_DEPLOYMENT = "PLACEHOLDER"
 
-# Azure Embedding Model Configuration
-AZURE_EMBEDDING_ENDPOINT="https://your-openai-service.openai.azure.com"
-AZURE_EMBEDDING_API_KEY="your-embedding-api-key"
-AZURE_EMBEDDING_API_VERSION="2023-05-15"
-AZURE_EMBEDDING_MODEL_NAME="text-embedding-3-small"
-AZURE_EMBEDDING_DEPLOYMENT="text-embedding-3-small"
+   # Azure OpenAI Configuration
+   AZURE_OPENAI_ENDPOINT="PLACEHOLDER"
+   AZURE_OPENAI_API_KEY="PLACEHOLDER"
+   AZURE_OPENAI_API_VERSION="PLACEHOLDER"
+   AZURE_OPENAI_DEPLOYMENT="PLACEHOLDER"
 
-# Azure OpenAI Configuration
-AZURE_OPENAI_ENDPOINT="https://your-openai-service.cognitiveservices.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview"
-AZURE_OPENAI_API_KEY="your-openai-api-key"
-AZURE_OPENAI_API_VERSION="2025-01-01-preview"
-AZURE_OPENAI_DEPLOYMENT="gpt-4o"
+   # Azure Cosmos DB Configuration
+   AZURE_COSMOS_ENDPOINT="PLACEHOLDER"
+   AZURE_COSMOS_KEY="PLACEHOLDER"
+   AZURE_COSMOS_DATABASE_NAME="PLACEHOLDER"
+   AZURE_COSMOS_ENTITIES_CONTAINER_NAME="PLACEHOLDER"
+   AZURE_COSMOS_RELATIONSHIPS_CONTAINER_NAME="nPLACEHOLDER"
+   ```
+   
+   Create `.env.local` file in the `frontend/` directory:
+   ```env
+   VITE_ENVIRONMENT="development"
+   VITE_DEV_BACKEND_URL="http://localhost:8000"
+   VITE_PROD_BACKEND_URL="PLACEHOLDER"
+   ```
 
-# Azure Cosmos DB Configuration
-AZURE_COSMOS_ENDPOINT="https://your-cosmos-db.documents.azure.com:443/"
-AZURE_COSMOS_KEY="your-cosmos-db-key"
-AZURE_COSMOS_DATABASE_NAME="nestle-ai-chatbot-cosmos"
-AZURE_COSMOS_ENTITIES_CONTAINER_NAME="nestle-ai-chatbot-entities"
-AZURE_COSMOS_RELATIONSHIPS_CONTAINER_NAME="nestle-ai-chatbot-relationships"
-```
+5. **Resources Setup**
 
-#### Frontend:
-```env
-# API endpoints (for local development)
-VITE_API_URL=http://localhost:8000
-VITE_WS_URL=ws://localhost:8000
-```
+   a) **Scrape and Process Content**
+   ```bash
+   cd scripts/scrape
+   
+   # Scrape content from website
+   python run_scraper.py
+   
+   # Process scraped content into chunks
+   python process_data.py
+   ```
+
+   b) **Create Azure AI Search Index**
+   ```bash
+   cd scripts/search
+   python create_index.py
+   ```
+
+   c) **Index Content with Embeddings**
+   ```bash
+   cd scripts/search
+   
+   # Generate embeddings and upload to search index
+   python setup.py
+   ```
+
+   d) **Setup Graph Database**
+   ```bash
+   cd scripts/graph
+   
+   # Initialize Cosmos DB containers and populate with entities
+   python setup.py
+   ```
+
+6. **Run the Application**
+   
+   Use the provided start script to run both backend and frontend:
+   ```bash
+   # From the project root directory
+   cd scripts
+   ./start.sh
+   ```
+   
+   The script will:
+   - Check that dependencies are installed
+   - Start the backend server
+   - Start the frontend server
+   - Display status and URLs
+   - Handle graceful shutdown with Ctrl+C
+
+## Additional Documentation
+
+For more detailed information:
+- **[GraphRAG Integration](./docs/graphrag-integration.md)** - Advanced GraphRAG features
+- **[API Specification](./docs/api-specification.yaml)** - Complete OpenAPI documentation
