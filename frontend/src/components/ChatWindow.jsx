@@ -165,15 +165,7 @@ const MessageInput = styled(TextField)({
  * @returns {JSX.Element} The complete chat interface
  */
 const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      type: "assistant",
-      content:
-        "Hey! I'm Smartie, your personal MadeWithNestle assistant. Ask me anything, and I'll quickly search the entire site to find the answers you need!",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -193,19 +185,33 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
     context: { component: 'ChatWindow' }
   });
 
-  // Auto-scroll when messages change
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  const createWelcomeMessage = (id = 1, timestamp = new Date()) => ({
+    id,
+    type: "assistant",
+    content: "Hey! I'm Smartie, your personal MadeWithNestle assistant. Ask me anything, and I'll quickly search the entire site to find the answers you need!",
+    timestamp,
+  });
 
-  // Load session history on mount (if not a reset)
+  // Reset messages when chat is actually closed
+  useEffect(() => {
+    if (resetTrigger > 0 && !isInitialMount.current) {
+      setMessages([createWelcomeMessage()]);
+      setError(null);
+    }
+  }, [resetTrigger]);
+
+  // Load session history on mount
   useEffect(() => {
     const loadSessionHistory = async () => {
-      if (resetTrigger === 0 && hasActiveSession) {
+      if (!hasActiveSession || !isInitialMount.current) {
+        setIsInitializing(false);
+        return;
+      }
+
         try {
           const history = await getSessionHistory();
-          if (history && history.messages && history.messages.length > 0) {
-            // Convert backend message format to frontend format
+        
+        if (history?.messages?.length > 0) {
             const formattedMessages = history.messages.map((msg, index) => ({
               id: index + 1,
               type: msg.role === 'user' ? 'user' : 'assistant',
@@ -214,59 +220,32 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
               timestamp: new Date(msg.timestamp || Date.now()),
             }));
             
-            // Check if we need to add welcome message at the beginning
-            const hasWelcomeMessage = formattedMessages.some(msg => 
-              msg.type === 'assistant' && 
-              msg.content.includes("Hey! I'm Smartie")
+          // Add welcome message if needed
+          const hasWelcome = formattedMessages.some(msg => 
+            msg.type === 'assistant' && msg.content.includes("Hey! I'm Smartie")
             );
             
-            if (!hasWelcomeMessage) {
-              // Add welcome message at the beginning
-              const welcomeMessage = {
-                id: 0,
-                type: "assistant",
-                content: "Hey! I'm Smartie, your personal MadeWithNestle assistant. Ask me anything, and I'll quickly search the entire site to find the answers you need!",
-                timestamp: new Date(history.created_at || Date.now()),
-              };
+          if (hasWelcome) {
+            setMessages(formattedMessages);
+          } else {
+            const welcomeMessage = createWelcomeMessage(0, new Date(history.created_at || Date.now()));
               setMessages([welcomeMessage, ...formattedMessages.map(msg => ({ ...msg, id: msg.id + 1 }))]);
+          }
             } else {
-              setMessages(formattedMessages);
-            }
+          // No history, show welcome message
+          setMessages([createWelcomeMessage()]);
           }
         } catch (error) {
           console.error('Failed to load session history:', error);
-          // Keep default welcome message if history loading fails
-        }
+        setMessages([createWelcomeMessage()]);
+      } finally {
+        // Complete initialization after next render
+        setTimeout(() => setIsInitializing(false), 0);
       }
     };
 
     loadSessionHistory();
-  }, [resetTrigger, hasActiveSession, getSessionHistory]);
-
-  // Reset messages when resetTrigger changes
-  useEffect(() => {
-    if (resetTrigger > 0) {
-      setMessages([
-        {
-          id: 1,
-          type: "assistant",
-          content:
-            "Hey! I'm Smartie, your personal MadeWithNestle assistant. Ask me anything, and I'll quickly search the entire site to find the answers you need!",
-          timestamp: new Date(),
-        },
-      ]);
-      setError(null);
-    }
-  }, [resetTrigger]);
-
-
-
-  /**
-   * Scrolls the message container to the bottom
-   */
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, [hasActiveSession, getSessionHistory]);
 
   /**
    * Handles sending a new message to the chat API
