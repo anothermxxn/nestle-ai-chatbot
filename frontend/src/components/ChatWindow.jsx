@@ -169,6 +169,7 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   // Session management
   const {
@@ -177,10 +178,12 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
     getSessionHistory
   } = useChatSession();
 
-  // Reference for auto-scrolling to bottom of messages
+  // Reference for auto-scrolling
   const messagesEndRef = useRef(null);
+  const latestMessageRef = useRef(null);
+  const isInitialMount = useRef(true);
+  const previousMessageCount = useRef(0);
 
-  // Error handler
   const handleError = createErrorHandler(setError, {
     context: { component: 'ChatWindow' }
   });
@@ -191,6 +194,35 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
     content: "Hey! I'm Smartie, your personal MadeWithNestle assistant. Ask me anything, and I'll quickly search the entire site to find the answers you need!",
     timestamp,
   });
+
+  // Auto-scroll 
+  useEffect(() => {
+    if (messages.length > 0) {
+      const isNewMessage = messages.length > previousMessageCount.current;
+      
+      if (isInitializing || isInitialMount.current) {
+        // Instant scroll for initial load and expand from collapsed
+        messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+        if (!isInitializing) {
+          isInitialMount.current = false;
+        }
+      } else if (isNewMessage && !isInitializing) {
+        // Scroll to beginning of latest message for new messages
+        if (latestMessageRef.current) {
+          latestMessageRef.current.scrollIntoView({ 
+            behavior: "smooth",
+            block: "start",
+            inline: "nearest"
+          });
+        } else {
+          // Fallback to end scroll if ref not available
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+      }
+      
+      previousMessageCount.current = messages.length;
+    }
+  }, [messages, isInitializing]);
 
   // Reset messages when chat is actually closed
   useEffect(() => {
@@ -208,35 +240,35 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
         return;
       }
 
-        try {
-          const history = await getSessionHistory();
+      try {
+        const history = await getSessionHistory();
         
         if (history?.messages?.length > 0) {
-            const formattedMessages = history.messages.map((msg, index) => ({
-              id: index + 1,
-              type: msg.role === 'user' ? 'user' : 'assistant',
-              content: msg.content,
-              references: msg.metadata?.sources || [],
-              timestamp: new Date(msg.timestamp || Date.now()),
-            }));
-            
+          const formattedMessages = history.messages.map((msg, index) => ({
+            id: index + 1,
+            type: msg.role === 'user' ? 'user' : 'assistant',
+            content: msg.content,
+            references: msg.metadata?.sources || [],
+            timestamp: new Date(msg.timestamp || Date.now()),
+          }));
+          
           // Add welcome message if needed
           const hasWelcome = formattedMessages.some(msg => 
             msg.type === 'assistant' && msg.content.includes("Hey! I'm Smartie")
-            );
-            
+          );
+          
           if (hasWelcome) {
             setMessages(formattedMessages);
           } else {
             const welcomeMessage = createWelcomeMessage(0, new Date(history.created_at || Date.now()));
-              setMessages([welcomeMessage, ...formattedMessages.map(msg => ({ ...msg, id: msg.id + 1 }))]);
+            setMessages([welcomeMessage, ...formattedMessages.map(msg => ({ ...msg, id: msg.id + 1 }))]);
           }
-            } else {
+        } else {
           // No history, show welcome message
           setMessages([createWelcomeMessage()]);
-          }
-        } catch (error) {
-          console.error('Failed to load session history:', error);
+        }
+      } catch (error) {
+        console.error('Failed to load session history:', error);
         setMessages([createWelcomeMessage()]);
       } finally {
         // Complete initialization after next render
@@ -323,12 +355,7 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
 
       {/* Messages Display Area */}
       <MessagesContainer>
-        {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
-        ))}
-
-        {/* Loading indicator when waiting for response */}
-        {isLoading && (
+        {isInitializing ? (
           <LoadingContainer>
             <LoadingDots>
               <LoadingDot />
@@ -336,19 +363,38 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
               <LoadingDot delay={-0.16} />
             </LoadingDots>
           </LoadingContainer>
+        ) : (
+          <>
+            {messages.map((message, index) => (
+              <MessageBubble 
+                key={message.id} 
+                message={message}
+                ref={index === messages.length - 1 ? latestMessageRef : null}
+              />
+            ))}
+
+            {/* Loading indicator when waiting for response */}
+            {isLoading && (
+              <LoadingContainer>
+                <LoadingDots>
+                  <LoadingDot />
+                  <LoadingDot delay={-0.32} />
+                  <LoadingDot delay={-0.16} />
+                </LoadingDots>
+              </LoadingContainer>
+            )}
+
+            {/* Error display */}
+            {error && (
+              <Alert severity="error" sx={{ margin: "8px 0", fontSize: 14 }}>
+                {error}
+              </Alert>
+            )}
+
+            {/* Invisible element for auto-scrolling */}
+            <Box ref={messagesEndRef} />
+          </>
         )}
-
-        {/* Error display */}
-        {error && (
-          <Alert severity="error" sx={{ margin: "8px 0", fontSize: 14 }}>
-            {error}
-          </Alert>
-        )}
-
-
-
-        {/* Invisible element for auto-scrolling */}
-        <Box ref={messagesEndRef} />
       </MessagesContainer>
 
       {/* Message Input Area */}

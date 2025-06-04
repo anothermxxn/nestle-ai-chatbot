@@ -1,5 +1,6 @@
 import { Box, Typography, Paper, Chip, Tooltip, Link } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import { forwardRef } from 'react';
 import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
 import { colors, fontFamily, StyledAvatar } from './common';
 import { parseMessageContent, formatReferenceTooltip } from '../utils/messageFormatter';
@@ -541,7 +542,7 @@ const deduplicateReferences = (references) => {
  * @param {Date} message.timestamp    - When the message was created
  * @returns {JSX.Element} The styled message bubble component
  */
-const MessageBubble = ({ message }) => {
+const MessageBubble = forwardRef(({ message }, ref) => {
   const { type, content, references, timestamp } = message;
 
   // Deduplicate references on the frontend as a backup
@@ -591,7 +592,7 @@ const MessageBubble = ({ message }) => {
   const contentSegments = parseMessageContent(content);
 
   return (
-    <MessageContainer messagetype={type}>
+    <MessageContainer messagetype={type} ref={ref}>
       {/* Show avatar for assistant messages */}
       {type === 'assistant' && (
         <AssistantAvatar size="large">
@@ -640,6 +641,8 @@ const MessageBubble = ({ message }) => {
       </MessageContent>
     </MessageContainer>
   );
-};
+});
+
+MessageBubble.displayName = 'MessageBubble';
 
 export default MessageBubble; 
