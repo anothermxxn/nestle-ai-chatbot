@@ -61,7 +61,6 @@ const ChatWindowContainer = styled(Paper)({
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',
-  border: `1px solid ${colors.nestleGray}`,
   fontFamily,
   fontWeight: 600,
   [mediaQueries.mobile]: {
@@ -74,7 +73,6 @@ const ChatWindowContainer = styled(Paper)({
 
 const ChatHeader = styled(NestleHeader)({
   padding: '14px 16px',
-  borderBottom: `1px solid ${colors.nestleGray}`,
   background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.nestleGray} 100%)`,
   position: 'relative',
   [mediaQueries.mobile]: {
@@ -178,7 +176,6 @@ const LoadingDot = styled(Box)(({ delay = 0 }) => ({
 const InputArea = styled(Box)({
   padding: '12px',
   background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.nestleGray} 100%)`,
-  borderTop: `1px solid ${colors.nestleGray}`,
   [mediaQueries.mobile]: {
     padding: '10px',
   },
@@ -187,7 +184,7 @@ const InputArea = styled(Box)({
 const InputContainer = styled(FlexCenter)({
   gap: 8,
   background: colors.nestleGray,
-  border: `1px solid ${colors.gray200}`,
+  border: `1px solid ${colors.nestleCream}`,
   borderRadius: 8,
   padding: '4px 6px',
   width: '100%',
