@@ -29,9 +29,7 @@ export const ENDPOINTS = {
   // Chat endpoints
   CHAT: '/chat',
   CHAT_SEARCH: '/chat/search',
-  CHAT_QUICK_SEARCH: '/chat/quick-search',
   CHAT_HEALTH: '/chat/health',
-  CHAT_EXAMPLES: '/chat/examples',
   
   // Graph endpoints
   GRAPH_HEALTH: '/graph/health',

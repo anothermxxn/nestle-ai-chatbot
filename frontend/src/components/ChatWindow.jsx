@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Box, 
   Paper, 
@@ -114,14 +114,12 @@ const HeaderControls = styled(FlexCenter)({
 const MessagesContainer = styled(Box)({
   flex: 1,
   overflowY: 'auto',
-  padding: 16,
+  padding: 12,
   background: colors.nestleGray,
   display: 'flex',
   flexDirection: 'column',
-  gap: 12,
   [mediaQueries.mobile]: {
-    padding: 12,
-    gap: 10,
+    padding: 10,
   },
   '&::-webkit-scrollbar': {
     width: 6,
@@ -257,20 +255,20 @@ const MessageInput = styled(TextField)({
  * @param {Function} onClose      - Callback function to close the chat window
  * @param {Function} onCollapse   - Callback function to collapse the chat window
  * @param {number}   resetTrigger - Counter that triggers message reset when changed
+ * @param {Object}   style        - Style object for the chat window
  * @returns {JSX.Element} The complete chat interface
  */
-const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
-  const [messages, setMessages] = useState([]);
+const ChatWindow = ({ onClose, onCollapse, resetTrigger, style }) => {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  // Session management
+  // Conversation management
   const {
+    conversationHistory,
     sendMessage,
-    hasActiveSession,
-    getSessionHistory
+    resetConversation
   } = useChatSession();
 
   // Reference for auto-scrolling
@@ -283,17 +281,32 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
     context: { component: 'ChatWindow' }
   });
 
-  const createWelcomeMessage = (id = 1, timestamp = new Date()) => ({
-    id,
-    type: "assistant",
-    content: "Hey! I'm Smartie, your personal MadeWithNestle assistant. Ask me anything, and I'll quickly search the entire site to find the answers you need!",
-    timestamp,
-  });
+  // Convert conversation history to display format
+  const displayMessages = useMemo(() => {
+    const messages = conversationHistory.map((msg, index) => ({
+      id: index + 2,
+      type: msg.role,
+      content: msg.content,
+      references: msg.metadata?.sources || [],
+      timestamp: new Date(msg.timestamp),
+    }));
+
+    // Always add welcome message as the first message
+    const welcomeMessage = {
+      id: 1,
+      type: "assistant",
+      content: "Hey! I'm Smartie, your personal MadeWithNestle assistant. Ask me anything, and I'll quickly search the entire site to find the answers you need!",
+      references: [],
+      timestamp: new Date(),
+    };
+
+    return [welcomeMessage, ...messages];
+  }, [conversationHistory]);
 
   // Auto-scroll 
   useEffect(() => {
-    if (messages.length > 0) {
-      const isNewMessage = messages.length > previousMessageCount.current;
+    if (displayMessages.length > 0) {
+      const isNewMessage = displayMessages.length > previousMessageCount.current;
       
       if (isInitializing || isInitialMount.current) {
         // Instant scroll for initial load and expand from collapsed
@@ -315,101 +328,41 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
         }
       }
       
-        previousMessageCount.current = messages.length;
+        previousMessageCount.current = displayMessages.length;
     }
-  }, [messages, isInitializing]);
+  }, [displayMessages, isInitializing]);
 
-  // Reset messages when chat is actually closed
+  // Reset conversation when chat is closed/reopened cycle completes
+  const previousResetTrigger = useRef(0);
   useEffect(() => {
-    if (resetTrigger > 0 && !isInitialMount.current) {
-      setMessages([createWelcomeMessage()]);
+    if (resetTrigger > previousResetTrigger.current && !isInitialMount.current) {
+      resetConversation();
       setError(null);
     }
-  }, [resetTrigger]);
+    previousResetTrigger.current = resetTrigger;
+  }, [resetTrigger, resetConversation]);
 
-  // Load session history on mount
+  // Initialize component
   useEffect(() => {
-    const loadSessionHistory = async () => {
-      if (!hasActiveSession || !isInitialMount.current) {
-        setIsInitializing(false);
-        return;
-      }
-
-      try {
-        const history = await getSessionHistory();
-        
-        if (history?.messages?.length > 0) {
-          const formattedMessages = history.messages.map((msg, index) => ({
-            id: index + 1,
-            type: msg.role === 'user' ? 'user' : 'assistant',
-            content: msg.content,
-            references: msg.metadata?.sources || [],
-            timestamp: new Date(msg.timestamp || Date.now()),
-          }));
-          
-          // Add welcome message if needed
-          const hasWelcome = formattedMessages.some(msg => 
-            msg.type === 'assistant' && msg.content.includes("Hey! I'm Smartie")
-          );
-          
-          if (hasWelcome) {
-            setMessages(formattedMessages);
-          } else {
-            const welcomeMessage = createWelcomeMessage(0, new Date(history.created_at || Date.now()));
-            setMessages([welcomeMessage, ...formattedMessages.map(msg => ({ ...msg, id: msg.id + 1 }))]);
-          }
-        } else {
-          // No history, show welcome message
-          setMessages([createWelcomeMessage()]);
-        }
-      } catch (error) {
-        console.error('Failed to load session history:', error);
-        setMessages([createWelcomeMessage()]);
-      } finally {
-        // Complete initialization after next render
-        setTimeout(() => setIsInitializing(false), 0);
-      }
-    };
-
-    loadSessionHistory();
-  }, [hasActiveSession, getSessionHistory]);
+    // Complete initialization after next render
+    setTimeout(() => setIsInitializing(false), 0);
+    isInitialMount.current = false;
+  }, []);
 
   /**
    * Handles sending a new message to the chat API
    * Manages loading states and error handling
    */
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading || !hasActiveSession) return;
+    if (!inputValue.trim() || isLoading) return;
 
     const messageText = inputValue;
-
-    // Create user message
-    const userMessage = {
-      id: Date.now(),
-      type: "user",
-      content: messageText,
-      timestamp: new Date(),
-    };
-
-    // Update UI with user message
-    setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
     setIsLoading(true);
     setError(null);
 
     try {
-      const data = await sendMessage(messageText);
-
-      // Create assistant response message
-      const assistantMessage = {
-        id: Date.now() + 1,
-        type: "assistant",
-        content: data.answer,
-        references: data.sources || [],
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
+      await sendMessage(messageText);
     } catch (err) {
       handleError(err);
     } finally {
@@ -429,7 +382,7 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
   };
 
   return (
-    <ChatWindowContainer elevation={8}>
+    <ChatWindowContainer elevation={8} style={style}>
       {/* Chat Header */}
       <ChatHeader>
         <FlexBetween sx={{ width: '100%' }}>
@@ -465,11 +418,11 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
           </LoadingContainer>
         ) : (
           <>
-            {messages.map((message, index) => (
+            {displayMessages.map((message, index) => (
               <MessageBubble 
                 key={message.id} 
                 message={message}
-                ref={index === messages.length - 1 ? latestMessageRef : null}
+                ref={index === displayMessages.length - 1 ? latestMessageRef : null}
               />
             ))}
 

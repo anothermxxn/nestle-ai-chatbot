@@ -2,175 +2,240 @@ import { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
 
 /**
- * Custom hook for managing chat sessions with context memory
- * Sessions are removed when the page is refreshed or closed
- * @returns {Object} Session management state and methods
+ * Custom hook for managing chat conversation sessions with backend session management
+ * @returns {Object} Chat session management state and methods
  */
 const useChatSession = () => {
   const [sessionId, setSessionId] = useState(null);
-  const [isSessionLoading, setIsSessionLoading] = useState(false);
-  const [sessionError, setSessionError] = useState(null);
+  const [conversationHistory, setConversationHistory] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   /**
-   * Helper to clear session storage
+   * Storage key for session ID persistence
    */
-  const clearSessionStorage = useCallback(() => {
-    sessionStorage.removeItem('chatSessionId');
+  const SESSION_ID_STORAGE_KEY = 'nestleChatSessionId';
+  const RELOAD_FLAG_KEY = 'nestleChatReloadFlag';
+
+  /**
+   * Helper to detect if this is a page reload
+   */
+  const isPageReload = useCallback(() => {
+    const reloadFlag = sessionStorage.getItem(RELOAD_FLAG_KEY);
+    return reloadFlag === 'true';
   }, []);
 
   /**
-   * Creates a new chat session
+   * Helper to set reload detection flag
+   */
+  const setReloadFlag = useCallback(() => {
+    sessionStorage.setItem(RELOAD_FLAG_KEY, 'true');
+  }, []);
+
+  /**
+   * Helper to clear reload detection flag
+   */
+  const clearReloadFlag = useCallback(() => {
+    sessionStorage.removeItem(RELOAD_FLAG_KEY);
+  }, []);
+
+  /**
+   * Load session ID from storage
+   */
+  const loadSessionId = useCallback(() => {
+    try {
+      // If this is a page reload, clear the session and start fresh
+      if (isPageReload()) {
+        sessionStorage.removeItem(SESSION_ID_STORAGE_KEY);
+        clearReloadFlag();
+        return null;
+      }
+
+      const stored = sessionStorage.getItem(SESSION_ID_STORAGE_KEY);
+      if (stored) {
+        setSessionId(stored);
+        return stored;
+      }
+    } catch (error) {
+      console.warn('Failed to load session ID from storage:', error);
+    }
+    return null;
+  }, [isPageReload, clearReloadFlag]);
+
+  /**
+   * Save session ID to storage
+   */
+  const saveSessionId = useCallback((id) => {
+    try {
+      if (id) {
+        sessionStorage.setItem(SESSION_ID_STORAGE_KEY, id);
+      } else {
+        sessionStorage.removeItem(SESSION_ID_STORAGE_KEY);
+      }
+    } catch (error) {
+      console.warn('Failed to save session ID to storage:', error);
+    }
+  }, []);
+
+  /**
+   * Create a new session
    */
   const createSession = useCallback(async () => {
-    setIsSessionLoading(true);
-    setSessionError(null);
-    
     try {
       const response = await apiClient.createSession();
       const newSessionId = response.session_id;
+      
       setSessionId(newSessionId);
-      sessionStorage.setItem('chatSessionId', newSessionId);
+      saveSessionId(newSessionId);
+      
       return newSessionId;
     } catch (error) {
       console.error('Failed to create session:', error);
-      setSessionError(error.message);
-      return null;
-    } finally {
-      setIsSessionLoading(false);
-    }
-  }, []);
-
-  /**
-   * Deletes the current session
-   */
-  const deleteSession = useCallback(async () => {
-    if (!sessionId) return;
-    
-    setIsSessionLoading(true);
-    setSessionError(null);
-    
-    try {
-      await apiClient.deleteSession(sessionId);
-      setSessionId(null);
-      clearSessionStorage();
-    } catch (error) {
-      console.error('Failed to delete session:', error);
-      setSessionError(error.message);
-    } finally {
-      setIsSessionLoading(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId]);
-
-  /**
-   * Resets the session (deletes current and creates new)
-   */
-  const resetSession = useCallback(async () => {
-    if (sessionId) {
-      await deleteSession();
-    }
-    return await createSession();
-  }, [sessionId, deleteSession, createSession]);
-
-  /**
-   * Gets session history
-   */
-  const getSessionHistory = useCallback(async () => {
-    if (!sessionId) return null;
-    
-    try {
-      return await apiClient.getSessionHistory(sessionId);
-    } catch (error) {
-      console.error('Failed to get session history:', error);
-      setSessionError(error.message);
-      return null;
-    }
-  }, [sessionId]);
-
-  /**
-   * Sends a chat message with session context
-   */
-  const sendMessage = useCallback(async (message) => {
-    if (!sessionId) {
-      throw new Error('No active session. Please initialize a session first.');
-    }
-    
-    try {
-      return await apiClient.sendChatMessage(message, sessionId);
-    } catch (error) {
-      console.error('Failed to send message:', error);
+      setError(error.message);
       throw error;
     }
-  }, [sessionId]);
+  }, [saveSessionId]);
 
   /**
-   * Cleanup session before page unload
+   * Load conversation history for current session
    */
-  const cleanupSession = useCallback(async () => {
-    if (sessionId) {
-      try {
-        if (navigator.sendBeacon) {
-          const url = `${apiClient.baseURL}/chat/session/${sessionId}/delete`;
-          const success = navigator.sendBeacon(url, JSON.stringify({}));
-          if (!success) {
-            console.warn("sendBeacon failed, session may not be cleaned up");
-          }
-        } else {
-          await apiClient.deleteSession(sessionId);
-        }
-      } catch (error) {
-        console.error("Failed to cleanup session on page unload:", error);
-      }
-    }
-  }, [sessionId]);
+  const loadConversationHistory = useCallback(async (sessionIdToLoad) => {
+    if (!sessionIdToLoad) return [];
 
-  // Initialize session on mount
+    try {
+      const response = await apiClient.getConversationHistory(sessionIdToLoad);
+      const history = response.messages || [];
+      setConversationHistory(history);
+      return history;
+    } catch (error) {
+      console.warn('Failed to load conversation history:', error);
+      // If session not found, clear it and start fresh
+      if (error.message.includes('404') || error.message.includes('not found')) {
+        setSessionId(null);
+        saveSessionId(null);
+        setConversationHistory([]);
+      }
+      return [];
+    }
+  }, [saveSessionId]);
+
+  /**
+   * Sends a chat message using session management
+   */
+  const sendMessage = useCallback(async (message) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      let currentSessionId = sessionId;
+      
+      // Create session if none exists
+      if (!currentSessionId) {
+        currentSessionId = await createSession();
+      }
+      
+      const userMessage = {
+        role: 'user',
+        content: message,
+        timestamp: new Date().toISOString()
+      };
+      
+      setConversationHistory(prev => [...prev, userMessage]);
+      
+      const response = await apiClient.sendChatMessage(message, currentSessionId);
+      
+      // Update session ID if it was created by the backend
+      if (response.session_id && response.session_id !== currentSessionId) {
+        setSessionId(response.session_id);
+        saveSessionId(response.session_id);
+        currentSessionId = response.session_id;
+      }
+      
+      const assistantMessage = {
+        role: 'assistant',
+        content: response.answer,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          sources: response.sources,
+          search_results_count: response.search_results_count,
+          filters_applied: response.filters_applied,
+          graphrag_enhanced: response.graphrag_enhanced
+        }
+      };
+      
+      setConversationHistory(prev => [...prev, assistantMessage]);
+      
+      return response;
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      setError(error.message);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sessionId, createSession, saveSessionId]);
+
+  /**
+   * Reset conversation session
+   */
+  const resetConversation = useCallback(async () => {
+    try {
+      // Delete current session if it exists
+      if (sessionId) {
+        await apiClient.deleteSession(sessionId);
+      }
+    } catch (error) {
+      console.warn('Failed to delete session:', error);
+    } finally {
+      // Clear local state regardless
+      setSessionId(null);
+      setConversationHistory([]);
+      saveSessionId(null);
+    }
+  }, [sessionId, saveSessionId]);
+
+  /**
+   * Initialize session on mount
+   */
   useEffect(() => {
     const initializeSession = async () => {
-      const existingSessionId = sessionStorage.getItem('chatSessionId');
+      // Set the reload flag so we can detect if the user refreshes the page
+      setReloadFlag();
       
-      if (existingSessionId) {
-        try {
-          const history = await apiClient.getSessionHistory(existingSessionId);
-          if (history) {
-            setSessionId(existingSessionId);
-            return;
-          }
-        } catch (error) {
-          console.warn('Failed to restore existing session, creating new one:', error);
-        }
-        clearSessionStorage();
+      // Load session ID (will be null if this is a reload)
+      const storedSessionId = loadSessionId();
+      
+      if (storedSessionId) {
+        // Load conversation history for existing session
+        await loadConversationHistory(storedSessionId);
       }
-      
-      await createSession();
     };
 
     initializeSession();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [createSession]);
+  }, [loadSessionId, loadConversationHistory, setReloadFlag]);
 
-  // Cleanup on page unload
+  /**
+   * Set up beforeunload handler to clear reload flag
+   */
   useEffect(() => {
     const handleBeforeUnload = () => {
-      cleanupSession();
-      clearSessionStorage();
+      clearReloadFlag();
     };
     
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cleanupSession]);
+  }, [clearReloadFlag]);
 
   return {
     sessionId,
-    isSessionLoading,
-    sessionError,
-    createSession,
-    deleteSession,
-    getSessionHistory,
+    conversationHistory,
+    isLoading,
+    error,
     sendMessage,
-    hasActiveSession: !!sessionId,
-    resetSession
+    resetConversation,
+    createSession,
+    hasActiveConversation: conversationHistory.length > 0,
+    messageCount: conversationHistory.length
   };
 };
 

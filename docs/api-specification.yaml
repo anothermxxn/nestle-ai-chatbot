@@ -188,50 +188,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ChatResponse'
 
-  /chat/quick-search:
-    get:
-      tags: [Search]
-      summary: Quick search
-      description: Perform a quick search across all content types
-      parameters:
-        - name: q
-          in: query
-          required: true
-          description: Search query
-          schema:
-            type: string
-            example: "chocolate chip cookies"
-        - name: content_type
-          in: query
-          required: false
-          description: Filter by content type
-          schema:
-            type: string
-            enum: [recipe, brand, topic, general]
-        - name: brand
-          in: query
-          required: false
-          description: Filter by brand
-          schema:
-            type: string
-            example: "NESTLE"
-        - name: top
-          in: query
-          required: false
-          description: Number of results to return
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 20
-            default: 5
-      responses:
-        '200':
-          description: Quick search results
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SearchResponse'
-
   /chat/health:
     get:
       tags: [Chat]
@@ -260,34 +216,6 @@ paths:
                       session_manager:
                         type: string
                         example: "active"
-
-  /chat/examples:
-    get:
-      tags: [Chat]
-      summary: Get example queries
-      description: Get example queries to help users understand what they can ask
-      responses:
-        '200':
-          description: List of example queries
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  examples:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        category:
-                          type: string
-                          example: "Recipes"
-                        query:
-                          type: string
-                          example: "Show me chocolate chip cookie recipes"
-                        description:
-                          type: string
-                          example: "Find recipes containing chocolate chips"
 
   # Session Management Endpoints
   /chat/session:

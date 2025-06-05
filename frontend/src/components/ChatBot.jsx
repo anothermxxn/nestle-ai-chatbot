@@ -3,7 +3,6 @@ import { Box, Typography } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
 import ChatWindow from './ChatWindow';
 import { colors, fontFamily, FlexCenter, shadows, mediaQueries } from './common';
-import useChatSession from '../hooks/useChatSession';
 
 import nestleLogo from '../assets/logo.jpg';
 import nestleLogoCircle from '../assets/logoCircle.jpg';
@@ -466,7 +465,6 @@ const ChatWindowContent = styled(Box)({
 const ChatBot = () => {
   const [state, setState] = useState('circle');
   const [resetTrigger, setResetTrigger] = useState(0);
-  const { resetSession } = useChatSession();
 
   /**
    * Handles click events on the chat button/collapsed window
@@ -492,20 +490,13 @@ const ChatBot = () => {
 
   /**
    * Completely closes the chat window back to the floating button
-   * Also resets the chat session when closing
    */
-  const handleClose = async () => {
+  const handleClose = () => {
     setState('closing');
     setTimeout(() => setState('circle'), 400);
     
-    // Reset the session when closing the chat window
-    try {
-      await resetSession();
-      // Increment reset trigger to signal ChatWindow to reset
-      setResetTrigger(prev => prev + 1);
-    } catch (error) {
-      console.error('Failed to reset session on close:', error);
-    }
+    // Signal ChatWindow to reset the conversation
+    setResetTrigger(prev => prev + 1);
   };
 
   /**
@@ -513,17 +504,44 @@ const ChatBot = () => {
    * @returns {JSX.Element} Content for the current state
    */
   const renderContent = () => {
-    if (state === 'open') {
+    // Keep ChatWindow mounted for all states except circle/closing to preserve conversation
+    const shouldShowChatWindow = ['open', 'collapsing', 'collapsed', 'expanding-from-rectangle'].includes(state);
+    
+    if (shouldShowChatWindow) {
       return (
         <ChatWindowContent>
           <ChatWindow 
             onClose={handleClose} 
             onCollapse={handleCollapse}
             resetTrigger={resetTrigger}
+            style={{
+              display: state === 'open' ? 'flex' : 'none'
+            }}
           />
+          {/* Show collapsed UI overlay when needed */}
+          {(state === 'collapsing' || state === 'collapsed') && (
+            <CollapsedContent>
+              <CollapsedNestleLogo 
+                src={nestleLogoCircle} 
+                alt="Nestlé Logo"
+                loading="lazy"
+              />
+              <SmartieText size="small">SMARTIE - CLICK TO EXPAND</SmartieText>
+            </CollapsedContent>
+          )}
+          {/* Show expanding UI overlay when needed */}
+          {state === 'expanding-from-rectangle' && (
+            <ExpandingContent>
+              <ExpandingNestleLogo 
+                src={nestleLogo} 
+                alt="Nestlé Logo"
+                loading="lazy"
+              />
+            </ExpandingContent>
+          )}
         </ChatWindowContent>
       );
-    } else if (state === 'expanding' || state === 'expanding-from-rectangle') {
+    } else if (state === 'expanding') {
       return (
         <ExpandingContent>
           <ExpandingNestleLogo 
@@ -532,17 +550,6 @@ const ChatBot = () => {
             loading="lazy"
           />
         </ExpandingContent>
-      );
-    } else if (state === 'collapsing') {
-      return (
-        <CollapsedContent>
-          <CollapsedNestleLogo 
-            src={nestleLogoCircle} 
-            alt="Nestlé Logo"
-            loading="lazy"
-          />
-          <SmartieText size="small">SMARTIE - CLICK TO EXPAND</SmartieText>
-        </CollapsedContent>
       );
     } else if (state === 'closing') {
       return (
@@ -553,17 +560,6 @@ const ChatBot = () => {
             loading="lazy"
           />
         </CircleContent>
-      );
-    } else if (state === 'collapsed') {
-      return (
-        <CollapsedContent>
-          <CollapsedNestleLogo 
-            src={nestleLogoCircle} 
-            alt="Nestlé Logo"
-            loading="lazy"
-          />
-          <SmartieText size="small">SMARTIE - CLICK TO EXPAND</SmartieText>
-        </CollapsedContent>
       );
     } else {
       return (

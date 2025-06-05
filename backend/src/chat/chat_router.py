@@ -2,11 +2,14 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 import logging
+from datetime import datetime
 
 try:
     from backend.src.chat.chat_client import NestleChatClient
+    from backend.src.chat.session_manager import session_manager
 except ImportError:
     from src.chat.chat_client import NestleChatClient
+    from src.chat.session_manager import session_manager
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -24,11 +27,16 @@ def get_chat_client():
         chat_client = NestleChatClient()
     return chat_client
 
+def handle_chat_error(error: Exception, context: str):
+    """Handle chat API errors consistently."""
+    logger.error(f"Error in {context}: {str(error)}")
+    raise HTTPException(status_code=500, detail=f"Internal server error: {str(error)}")
+
 # Request/Response Models
 class ChatRequest(BaseModel):
-    """Request model for chat queries."""
+    """Request model for chat queries with session management."""
     query: str = Field(..., description="User's question or search query", min_length=1)
-    session_id: Optional[str] = Field(None, description="Session ID for conversation context")
+    session_id: Optional[str] = Field(None, description="Session ID for conversation history (if None, new session created)")
     content_type: Optional[str] = Field(None, description="Filter by content type (e.g., 'recipe', 'brand')")
     brand: Optional[str] = Field(None, description="Filter by brand (e.g., 'NESTEA')")
     keywords: Optional[List[str]] = Field(None, description="Filter by keywords")
@@ -40,267 +48,37 @@ class ChatResponse(BaseModel):
     sources: List[Dict] = Field(..., description="Source documents used for the answer")
     search_results_count: int = Field(..., description="Number of search results used")
     query: str = Field(..., description="Original query")
+    session_id: str = Field(..., description="Session ID for this conversation")
     filters_applied: Dict = Field(..., description="Filters that were applied")
     graphrag_enhanced: bool = Field(..., description="Whether GraphRAG was successfully used for enhanced context")
     combined_relevance_score: Optional[float] = Field(0.0, description="Combined relevance score from GraphRAG")
     retrieval_metadata: Optional[Dict] = Field({}, description="Metadata about the retrieval process")
 
-class RecipeRequest(BaseModel):
-    """Request model for recipe suggestions."""
-    ingredient: str = Field(..., description="Ingredient to search recipes for", min_length=1)
-
-class ProductRequest(BaseModel):
-    """Request model for product information."""
-    product_name: str = Field(..., description="Name of the product", min_length=1)
-
-class CookingTipsRequest(BaseModel):
-    """Request model for cooking tips."""
-    topic: str = Field(..., description="Cooking topic or technique", min_length=1)
-
-class NutritionRequest(BaseModel):
-    """Request model for nutrition information."""
-    food_item: str = Field(..., description="Food item or product name", min_length=1)
-
-@router.post("/search", response_model=ChatResponse)
-async def chat_search(request: ChatRequest):
-    """
-    Perform a conversational search and get an AI-generated answer.
-    
-    This endpoint combines Azure AI Search with Azure OpenAI to provide
-    contextually relevant answers about Nestle products, recipes, and cooking tips.
-    
-    The RAG (Retrieval-Augmented Generation) pattern is used:
-    1. Search for relevant content using Azure AI Search
-    2. Format results as sources for the LLM
-    3. Generate a grounded response using Azure OpenAI
-    """
-    try:
-        client = get_chat_client()
-        
-        response = await client.search_and_chat(
-            query=request.query,
-            session_id=request.session_id,
-            content_type=request.content_type,
-            brand=request.brand,
-            keywords=request.keywords,
-            top_search_results=request.top_search_results
-        )
-        
-        if "error" in response:
-            raise HTTPException(status_code=500, detail=response["error"])
-            
-        return ChatResponse(**response)
-        
-    except Exception as e:
-        logger.error(f"Error in chat_search: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-@router.post("/recipes", response_model=ChatResponse)
-async def get_recipe(request: RecipeRequest):
-    """
-    Get recipe suggestions for a specific ingredient.
-    
-    This endpoint focuses on finding recipes that include the specified ingredient,
-    returning AI-generated suggestions with cooking instructions and tips.
-    """
-    try:
-        client = get_chat_client()
-        response = await client.get_recipe(request.ingredient)
-        
-        if "error" in response:
-            raise HTTPException(status_code=500, detail=response["error"])
-            
-        return ChatResponse(**response)
-        
-    except Exception as e:
-        logger.error(f"Error in get_recipe: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-@router.post("/products", response_model=ChatResponse)
-async def get_product(request: ProductRequest):
-    """
-    Get information about a specific Nestle product.
-    
-    This endpoint provides detailed information about Nestle products,
-    including descriptions, uses, and related recipes.
-    """
-    try:
-        client = get_chat_client()
-        response = await client.get_product(request.product_name)
-        
-        if "error" in response:
-            raise HTTPException(status_code=500, detail=response["error"])
-            
-        return ChatResponse(**response)
-        
-    except Exception as e:
-        logger.error(f"Error in get_product: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-@router.post("/cooking-tips", response_model=ChatResponse)
-async def get_cooking_tips(request: CookingTipsRequest):
-    """
-    Get cooking tips and advice for a specific topic.
-    
-    This endpoint provides cooking tips, techniques, and advice
-    related to baking, preparation, and culinary techniques.
-    """
-    try:
-        client = get_chat_client()
-        response = await client.get_cooking_tips(request.topic)
-        
-        if "error" in response:
-            raise HTTPException(status_code=500, detail=response["error"])
-            
-        return ChatResponse(**response)
-        
-    except Exception as e:
-        logger.error(f"Error in get_cooking_tips: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-@router.post("/nutrition", response_model=ChatResponse)
-async def get_nutrition_info(request: NutritionRequest):
-    """
-    Get nutritional information about a food item or Nestle product.
-    
-    This endpoint provides nutritional facts, calorie information,
-    and health benefits for various food items and products.
-    """
-    try:
-        client = get_chat_client()
-        response = await client.ask_about_nutrition(request.food_item)
-        
-        if "error" in response:
-            raise HTTPException(status_code=500, detail=response["error"])
-            
-        return ChatResponse(**response)
-        
-    except Exception as e:
-        logger.error(f"Error in get_nutrition_info: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-@router.get("/quick-search")
-async def quick_search(
-    q: str = Query(..., description="Quick search query", min_length=1),
-    type: Optional[str] = Query(None, description="Content type filter"),
-    brand: Optional[str] = Query(None, description="Brand filter"),
-    limit: int = Query(5, description="Number of results", ge=1, le=20)
-):
-    """
-    Quick search endpoint for simple queries.
-    
-    This is a simplified endpoint for quick searches without the full request body.
-    Useful for testing and simple integrations.
-    """
-    try:
-        client = get_chat_client()
-        
-        response = await client.search_and_chat(
-            query=q,
-            content_type=type,
-            brand=brand,
-            top_search_results=limit
-        )
-        
-        if "error" in response:
-            raise HTTPException(status_code=500, detail=response["error"])
-            
-        return response
-        
-    except Exception as e:
-        logger.error(f"Error in quick_search: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-@router.get("/health")
-async def health_check():
-    """
-    Health check endpoint for the chat service.
-    
-    Returns the status of the chat client and its dependencies.
-    This endpoint performs a lightweight test to verify all components are working.
-    """
-    try:
-        client = get_chat_client()
-        
-        # Test a simple query to verify everything is working
-        test_response = await client.search_and_chat(
-            query="test",
-            top_search_results=1
-        )
-        
-        return {
-            "status": "healthy",
-            "chat_client": "operational",
-            "search_client": "operational",
-            "test_query_successful": "error" not in test_response,
-            "version": "1.0.0"
-        }
-        
-    except Exception as e:
-        logger.error(f"Health check failed: {str(e)}")
-        return {
-            "status": "unhealthy",
-            "error": str(e)
-        }
-
-@router.get("/examples")
-async def get_example_queries():
-    """
-    Get example queries for testing the chat functionality.
-    
-    Returns a list of sample queries that can be used to test
-    different aspects of the chat system.
-    """
-    return {
-        "general_queries": [
-            "What is KitKat?",
-            "How do I make chocolate chip cookies?",
-            "Tell me about Nescafe products"
-        ],
-        "recipe_queries": [
-            "Show me chocolate dessert recipes",
-            "How to bake cookies with vanilla",
-            "Coffee-flavored desserts"
-        ],
-        "product_queries": [
-            "Information about Quality Street",
-            "Smarties candy details",
-            "Nescafe instant coffee varieties"
-        ],
-        "cooking_tips": [
-            "Tips for melting chocolate",
-            "How to brew better coffee",
-            "Cookie baking techniques"
-        ],
-        "nutrition_queries": [
-            "Nutrition facts for dark chocolate",
-            "Calories in KitKat",
-            "Health benefits of coffee"
-        ]
-    }
-
-# Session Management Endpoints
-
 class SessionRequest(BaseModel):
-    """Request model for session creation."""
-    session_id: Optional[str] = Field(None, description="Custom session ID")
+    """Request model for creating a new session."""
+    metadata: Optional[Dict] = Field(None, description="Optional session metadata")
 
 class SessionResponse(BaseModel):
     """Response model for session operations."""
     session_id: str = Field(..., description="Session ID")
     message: str = Field(..., description="Operation result message")
 
-@router.post("/session", response_model=SessionResponse)
-async def create_session(request: SessionRequest = None):
+class ConversationHistoryResponse(BaseModel):
+    """Response model for conversation history."""
+    session_id: str = Field(..., description="Session ID")
+    messages: List[Dict] = Field(..., description="Conversation messages")
+    total_messages: int = Field(..., description="Total number of messages in conversation")
+
+@router.post("/sessions", response_model=SessionResponse)
+async def create_session(request: SessionRequest = SessionRequest()):
     """
     Create a new conversation session.
     
-    This endpoint creates a new session for maintaining conversation context
-    across multiple chat interactions.
+    Returns a session ID that should be used for subsequent chat requests
+    to maintain conversation context.
     """
     try:
-        client = get_chat_client()
-        session_id = client.create_session(request.session_id if request else None)
+        session_id = session_manager.create_session(metadata=request.metadata)
         
         return SessionResponse(
             session_id=session_id,
@@ -308,42 +86,40 @@ async def create_session(request: SessionRequest = None):
         )
         
     except Exception as e:
-        logger.error(f"Error creating session: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create session: {str(e)}")
+        handle_chat_error(e, "create_session")
 
-@router.get("/session/{session_id}")
-async def get_session_history(session_id: str):
+@router.get("/sessions/{session_id}/history", response_model=ConversationHistoryResponse)
+async def get_conversation_history(
+    session_id: str,
+    limit: int = Query(20, description="Maximum number of recent messages", ge=1, le=100)
+):
     """
     Get conversation history for a session.
-    
-    Returns the complete conversation history and context for the specified session.
-    If the session is not found, creates a new empty session.
     """
     try:
-        client = get_chat_client()
-        session_data = client.get_session_history(session_id)
+        messages = session_manager.get_conversation_history(session_id, limit)
         
-        if not session_data:
-            logger.info(f"Session {session_id} not found, creating new empty session")
-            new_session_id = client.create_session(session_id)
-            session_data = client.get_session_history(new_session_id)
+        if not session_manager.get_session(session_id):
+            raise HTTPException(status_code=404, detail="Session not found")
         
-        return session_data
+        return ConversationHistoryResponse(
+            session_id=session_id,
+            messages=messages,
+            total_messages=len(messages)
+        )
         
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error getting session history: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get session history: {str(e)}")
+        handle_chat_error(e, "get_conversation_history")
 
-@router.post("/session/{session_id}/delete", response_model=SessionResponse)
+@router.delete("/sessions/{session_id}", response_model=SessionResponse)
 async def delete_session(session_id: str):
     """
-    Delete a conversation session.
-    
-    This endpoint removes the session and all associated conversation history.
+    Delete a conversation session and its history.
     """
     try:
-        client = get_chat_client()
-        success = client.delete_session(session_id)
+        success = session_manager.delete_session(session_id)
         
         if not success:
             raise HTTPException(status_code=404, detail="Session not found")
@@ -356,22 +132,108 @@ async def delete_session(session_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting session: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete session: {str(e)}")
+        handle_chat_error(e, "delete_session")
 
 @router.get("/sessions/stats")
-async def get_sessions_stats():
+async def get_session_stats():
     """
-    Get statistics about all active sessions.
+    Get statistics about current sessions.
+    """
+    try:
+        stats = session_manager.get_session_stats()
+        return {
+            "session_statistics": stats,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        handle_chat_error(e, "get_session_stats")
+
+@router.post("/search", response_model=ChatResponse)
+async def chat_search(request: ChatRequest):
+    """
+    Perform a conversational search and get an AI-generated answer.
     
-    Returns information about active sessions and overall usage statistics.
+    This endpoint uses session-based conversation management:
+    1. If no session_id provided, creates a new session
+    2. Adds user message to session history
+    3. Retrieves conversation context from session
+    4. Performs RAG search and generates response
+    5. Adds assistant response to session history
+    
+    The session ID should be used for subsequent requests to maintain context.
     """
     try:
         client = get_chat_client()
-        stats = client.get_all_sessions_stats()
         
-        return stats
+        # Create or get session
+        if not request.session_id:
+            session_id = session_manager.create_session()
+            logger.info(f"Created new session for chat: {session_id}")
+        else:
+            session_id = request.session_id
+            if not session_manager.get_session(session_id):
+                raise HTTPException(status_code=404, detail="Session not found")
+        
+        # Add user message to session
+        session_manager.add_message(session_id, "user", request.query)
+        
+        # Get conversation context from session
+        conversation_context = session_manager.get_conversation_context(session_id)
+        
+        # Perform search and chat
+        response = await client.search_and_chat(
+            query=request.query,
+            conversation_history=conversation_context,
+            content_type=request.content_type,
+            brand=request.brand,
+            keywords=request.keywords,
+            top_search_results=request.top_search_results
+        )
+        
+        if "error" in response:
+            raise HTTPException(status_code=500, detail=response["error"])
+        
+        # Add assistant response to session
+        session_manager.add_message(session_id, "assistant", response["answer"])
+        
+        # Add session_id to response
+        response["session_id"] = session_id
+        
+        return ChatResponse(**response)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        handle_chat_error(e, "chat_search")
+
+@router.get("/health")
+async def health_check():
+    """
+    Health check endpoint to verify the service is running.
+    """
+    try:
+        get_chat_client()  # Verify client can be created
+        session_stats = session_manager.get_session_stats()
+        
+        return {
+            "status": "healthy",
+            "service": "Nestle Chat API",
+            "version": "1.0.0",
+            "timestamp": datetime.now().isoformat(),
+            "dependencies": {
+                "azure_openai": "connected",
+                "azure_search": "connected",
+                "session_manager": "active"
+            },
+            "session_stats": session_stats
+        }
         
     except Exception as e:
-        logger.error(f"Error getting session stats: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get session stats: {str(e)}") 
+        logger.error(f"Health check failed: {str(e)}")
+        return {
+            "status": "unhealthy",
+            "service": "Nestle Chat API", 
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }

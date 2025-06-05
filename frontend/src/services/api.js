@@ -1,6 +1,6 @@
 /**
  * API client for communicating with the Nestle AI Chatbot backend
- * Handles HTTP requests and WebSocket connections
+ * Handles HTTP requests and session management
  */
 
 import { API_CONFIG } from '../config/api';
@@ -8,7 +8,7 @@ import { API_CONFIG } from '../config/api';
 const API_BASE_URL = API_CONFIG.baseURL;
 
 /**
- * HTTP API client class for REST endpoints
+ * HTTP API client class for REST endpoints with session management
  */
 class ApiClient {
   constructor() {
@@ -48,14 +48,33 @@ class ApiClient {
   }
 
   /**
-   * Sends a chat message and gets a response
-   * @param {string} message - User message
-   * @param {string} sessionId - Optional session ID for conversation context
-   * @returns {Promise<Object>} Chat response
+   * Creates a new conversation session
+   * @param {Object} metadata - Optional session metadata
+   * @returns {Promise<Object>} Session creation response with session_id
    */
-  async sendChatMessage(message, sessionId = null) {
+  async createSession(metadata = null) {
+    const requestBody = {};
+    if (metadata) {
+      requestBody.metadata = metadata;
+    }
+    
+    return this.request('/chat/sessions', {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+    });
+  }
+
+  /**
+   * Sends a chat message with session management
+   * @param {string} message - User message
+   * @param {string} sessionId - Session ID (if null, new session will be created)
+   * @param {Object} filters - Optional filters (content_type, brand, keywords, top_search_results)
+   * @returns {Promise<Object>} Chat response with session_id
+   */
+  async sendChatMessage(message, sessionId = null, filters = {}) {
     const requestBody = {
       query: message,
+      ...filters,
     };
     
     if (sessionId) {
@@ -69,90 +88,42 @@ class ApiClient {
   }
 
   /**
-   * Performs a search query with optional filters
+   * Gets conversation history for a session
+   * @param {string} sessionId - Session ID
+   * @param {number} limit - Maximum number of messages to retrieve
+   * @returns {Promise<Object>} Conversation history
+   */
+  async getConversationHistory(sessionId, limit = 20) {
+    return this.request(`/chat/sessions/${sessionId}/history?limit=${limit}`);
+  }
+
+  /**
+   * Deletes a conversation session
+   * @param {string} sessionId - Session ID
+   * @returns {Promise<Object>} Deletion response
+   */
+  async deleteSession(sessionId) {
+    return this.request(`/chat/sessions/${sessionId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Gets session statistics
+   * @returns {Promise<Object>} Session statistics
+   */
+  async getSessionStats() {
+    return this.request('/chat/sessions/stats');
+  }
+
+  /**
+   * Performs a search query with optional filters (legacy method for backward compatibility)
    * @param {string} query - Search query
-   * @param {Object} filters - Optional filters
+   * @param {Object} filters - Optional filters (content_type, brand, keywords, top_search_results)
    * @returns {Promise<Object>} Search response
    */
   async searchChat(query, filters = {}) {
-    return this.request('/chat/search', {
-      method: 'POST',
-      body: JSON.stringify({
-        query,
-        ...filters,
-      }),
-    });
-  }
-
-  /**
-   * Gets recipe suggestions for an ingredient
-   * @param {string} ingredient - Ingredient name
-   * @returns {Promise<Object>} Recipe response
-   */
-  async getRecipes(ingredient) {
-    return this.request('/chat/recipes', {
-      method: 'POST',
-      body: JSON.stringify({
-        ingredient,
-      }),
-    });
-  }
-
-  /**
-   * Gets product information
-   * @param {string} productName - Product name
-   * @returns {Promise<Object>} Product response
-   */
-  async getProduct(productName) {
-    return this.request('/chat/products', {
-      method: 'POST',
-      body: JSON.stringify({
-        product_name: productName,
-      }),
-    });
-  }
-
-  /**
-   * Gets cooking tips for a topic
-   * @param {string} topic - Cooking topic
-   * @returns {Promise<Object>} Cooking tips response
-   */
-  async getCookingTips(topic) {
-    return this.request('/chat/cooking-tips', {
-      method: 'POST',
-      body: JSON.stringify({
-        topic,
-      }),
-    });
-  }
-
-  /**
-   * Gets nutrition information
-   * @param {string} foodItem - Food item name
-   * @returns {Promise<Object>} Nutrition response
-   */
-  async getNutrition(foodItem) {
-    return this.request('/chat/nutrition', {
-      method: 'POST',
-      body: JSON.stringify({
-        food_item: foodItem,
-      }),
-    });
-  }
-
-  /**
-   * Performs a quick search
-   * @param {string} query - Search query
-   * @param {Object} params - Query parameters
-   * @returns {Promise<Object>} Quick search response
-   */
-  async quickSearch(query, params = {}) {
-    const searchParams = new URLSearchParams({
-      q: query,
-      ...params,
-    });
-    
-    return this.request(`/chat/quick-search?${searchParams}`);
+    return this.sendChatMessage(query, null, filters);
   }
 
   /**
@@ -161,14 +132,6 @@ class ApiClient {
    */
   async checkHealth() {
     return this.request('/chat/health');
-  }
-
-  /**
-   * Gets example queries
-   * @returns {Promise<Object>} Example queries
-   */
-  async getExamples() {
-    return this.request('/chat/examples');
   }
 }
 

@@ -1,6 +1,5 @@
 import logging
 from typing import Dict, List, Any
-from dataclasses import dataclass
 
 try:
     from backend.src.search.graphrag_client import GraphRAGResult
@@ -10,14 +9,6 @@ except ImportError:
     from src.graph.models import Entity, Relationship
 
 logger = logging.getLogger(__name__)
-
-@dataclass
-class GraphContext:
-    """Structured graph context for LLM prompts."""
-    entities_summary: str
-    relationships_summary: str
-    enhanced_sources: str
-    metadata: Dict[str, Any]
 
 class GraphRAGFormatter:
     """
@@ -40,48 +31,6 @@ class GraphRAGFormatter:
             "RELATED_TO": "is related to",
             "FEATURED_IN": "is featured in"
         }
-    
-    def format_graphrag_context(self, graphrag_result: GraphRAGResult, query: str) -> GraphContext:
-        """
-        Format GraphRAG results into structured context for LLM.
-        
-        Args:
-            graphrag_result (GraphRAGResult): Results from GraphRAG search
-            query (str): Original user query
-            
-        Returns:
-            GraphContext: Formatted context for LLM
-        """
-        try:
-            entities_summary = self._format_entities_summary(graphrag_result.related_entities)
-            relationships_summary = self._format_relationships_summary(
-                graphrag_result.contextual_relationships
-            )
-            
-            enhanced_sources = self._format_enhanced_sources(graphrag_result.vector_results)
-            
-            metadata = {
-                "total_entities": len(graphrag_result.related_entities),
-                "total_relationships": len(graphrag_result.contextual_relationships),
-                "combined_score": graphrag_result.combined_score,
-                "retrieval_metadata": graphrag_result.retrieval_metadata
-            }
-            
-            return GraphContext(
-                entities_summary=entities_summary,
-                relationships_summary=relationships_summary,
-                enhanced_sources=enhanced_sources,
-                metadata=metadata
-            )
-            
-        except Exception as e:
-            logger.error(f"Failed to format GraphRAG context: {str(e)}")
-            return GraphContext(
-                entities_summary="",
-                relationships_summary="",
-                enhanced_sources=self._format_basic_sources(graphrag_result.vector_results),
-                metadata={"error": str(e)}
-            )
     
     def _format_entities_summary(self, entities: List[Entity]) -> str:
         """Format entities into a readable summary."""
@@ -202,8 +151,6 @@ class GraphRAGFormatter:
         
         return "\n\n=================\n\n".join(formatted_sources)
     
-
-    
     def _get_entity_name_from_id(self, entity_id: str) -> str:
         """Extract a readable name from entity ID."""
         # Simple heuristic: remove prefixes and convert underscores to spaces
@@ -216,35 +163,44 @@ class GraphRAGFormatter:
     def create_graph_enhanced_prompt(
         self,
         query: str,
-        graph_context: GraphContext,
+        graphrag_result: GraphRAGResult,
         base_prompt_template: str
     ) -> str:
         """
-        Create a graph-enhanced prompt for the LLM.
+        Create a graph-enhanced prompt for the LLM from GraphRAGResult.
         
         Args:
             query (str): User query
-            graph_context (GraphContext): Formatted graph context
+            graphrag_result (GraphRAGResult): GraphRAG search results
             base_prompt_template (str): Base prompt template
             
         Returns:
             str: Enhanced prompt with graph context
         """
         try:
-            # Prepare graph context sections
+            # Format graph context sections
             context_sections = []
-            if graph_context.entities_summary:
-                context_sections.append(f"ENTITIES: {graph_context.entities_summary}")
-            if graph_context.relationships_summary:
-                context_sections.append(f"RELATIONSHIPS: {graph_context.relationships_summary}")
+            
+            # Format entities summary
+            entities_summary = self._format_entities_summary(graphrag_result.related_entities)
+            if entities_summary:
+                context_sections.append(f"ENTITIES: {entities_summary}")
+            
+            # Format relationships summary
+            relationships_summary = self._format_relationships_summary(graphrag_result.contextual_relationships)
+            if relationships_summary:
+                context_sections.append(f"RELATIONSHIPS: {relationships_summary}")
             
             # Combine context
             graph_context_text = "\n\n".join(context_sections) if context_sections else ""
             
+            # Format enhanced sources
+            enhanced_sources = self._format_enhanced_sources(graphrag_result.vector_results)
+            
             # Create enhanced prompt
             enhanced_prompt = base_prompt_template.format(
                 query=query,
-                sources=graph_context.enhanced_sources,
+                sources=enhanced_sources,
                 graph_context=graph_context_text
             )
             
@@ -252,24 +208,25 @@ class GraphRAGFormatter:
             
         except Exception as e:
             logger.error(f"Failed to create graph-enhanced prompt: {str(e)}")
-            # Fallback to basic prompt
+            # Fallback to basic sources formatting
+            fallback_sources = self._format_basic_sources(graphrag_result.vector_results)
             return base_prompt_template.format(
                 query=query,
-                sources=graph_context.enhanced_sources,
+                sources=fallback_sources,
                 graph_context=""
             )
     
     def format_relationship_aware_response(
         self,
         response: str,
-        graph_context: GraphContext
+        graphrag_result: GraphRAGResult
     ) -> Dict[str, Any]:
         """
         Format the LLM response with relationship-aware enhancements.
         
         Args:
             response (str): LLM response
-            graph_context (GraphContext): Graph context used
+            graphrag_result (GraphRAGResult): GraphRAG search results
             
         Returns:
             Dict[str, Any]: Enhanced response with graph metadata
@@ -278,13 +235,11 @@ class GraphRAGFormatter:
             enhanced_response = {
                 "answer": response,
                 "graph_enhanced": True,
-                "entities_referenced": graph_context.metadata.get("total_entities", 0),
-                "relationships_used": graph_context.metadata.get("total_relationships", 0),
-                "combined_relevance_score": graph_context.metadata.get("combined_score", 0.0),
-                "retrieval_metadata": graph_context.metadata.get("retrieval_metadata", {})
+                "entities_referenced": len(graphrag_result.related_entities),
+                "relationships_used": len(graphrag_result.contextual_relationships),
+                "combined_relevance_score": graphrag_result.combined_score,
+                "retrieval_metadata": graphrag_result.retrieval_metadata
             }
-            
-
             
             return enhanced_response
             

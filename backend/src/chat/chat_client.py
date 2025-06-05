@@ -1,17 +1,22 @@
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TYPE_CHECKING
+from datetime import datetime
 from openai import AzureOpenAI
 
+if TYPE_CHECKING:
+    from .session_manager import ConversationMessage
+    from .context_manager import SearchContext, ContextExtractor
+
 try:
-    from backend.src.chat.session_manager import SessionManager
     from backend.src.search.search_client import AzureSearchClient
     from backend.src.search.graphrag_client import GraphRAGClient
     from backend.src.chat.graphrag_formatter import GraphRAGFormatter
+    from backend.src.chat.context_manager import SearchContext, ContextExtractor
 except ImportError:
-    from src.chat.session_manager import SessionManager
     from src.search.search_client import AzureSearchClient
     from src.search.graphrag_client import GraphRAGClient
     from src.chat.graphrag_formatter import GraphRAGFormatter
+    from src.chat.context_manager import SearchContext, ContextExtractor
 
 # Dynamic import to handle both local development and Docker environments
 try:
@@ -43,38 +48,29 @@ class NestleChatClient:
     """
     
     def __init__(self):
-        """Initialize the chat client."""
-        if not validate_azure_openai_config():
-            raise ValueError("Invalid Azure OpenAI configuration")
+        """Initialize the Nestle Chat Client."""
+        # Initialize Azure AI Search client
+        self.search_client = AzureSearchClient()
         
-        self.search_client = AzureSearchClient(enable_enhanced_ranking=True)
+        # Initialize GraphRAG client for hybrid search
+        self.graphrag_client = GraphRAGClient()
         
-        try:
-            self.graphrag_client = GraphRAGClient()
-            self.graphrag_formatter = GraphRAGFormatter()
-            logger.info("GraphRAG components initialized successfully")
-        except Exception as e:
-            logger.warning(f"Failed to initialize GraphRAG components: {str(e)}")
-            self.graphrag_client = None
-            self.graphrag_formatter = None
+        # Initialize GraphRAG component for enhanced context
+        self.graphrag_formatter = GraphRAGFormatter()
         
-        self.session_manager = SessionManager(
-            session_timeout_hours=CHAT_CONFIG["session_timeout_hours"]
+        
+        # Initialize Azure OpenAI client
+        self.openai_client = AzureOpenAI(
+            api_key=AZURE_OPENAI_CONFIG["api_key"],
+            azure_endpoint=AZURE_OPENAI_CONFIG["endpoint"],
+            api_version=AZURE_OPENAI_CONFIG["api_version"]
         )
         
+        # Store deployment name for LLM calls
         self.deployment_name = AZURE_OPENAI_CONFIG["deployment"]
         
-        try:
-            self.openai_client = AzureOpenAI(
-                api_key=AZURE_OPENAI_CONFIG["api_key"],
-                azure_endpoint=AZURE_OPENAI_CONFIG["endpoint"],
-                api_version=AZURE_OPENAI_CONFIG["api_version"]
-            )
-            logger.info("Successfully initialized chat client")
-        except Exception as e:
-            logger.error(f"Failed to initialize OpenAI client: {str(e)}")
-            raise
-    
+        logger.info("NestleChatClient initialized successfully")
+
     def _normalize_url(self, url: str) -> str:
         """
         Normalize URL for comparison to handle edge cases.
@@ -231,170 +227,97 @@ class NestleChatClient:
         
         return "\n=================\n".join(formatted_sources)
     
-    def _prepare_search_params(self, query: str, session, content_type: Optional[str], 
-                              brand: Optional[str], keywords: Optional[List[str]], 
-                              top_search_results: int) -> Dict:
+    async def _perform_search(self, search_params: Dict, top_search_results: int):
         """
-        Prepare search parameters with context enhancement.
+        Perform hybrid search using both vector search and GraphRAG.
         
         Args:
-            query (str): Search query
-            session: Session object for context
-            content_type (Optional[str]): Content type filter
-            brand (Optional[str]): Brand filter
-            keywords (Optional[List[str]]): Keywords filter
+            search_params (Dict): Search parameters including query and filters
             top_search_results (int): Number of results
             
         Returns:
-            Dict: Enhanced search parameters
+            Tuple[List[Dict], GraphRAGResult]: Search results and graph context
         """
-        search_params = {
-            "query": query,
-            "top": top_search_results,
-            "content_type": content_type,
-            "brand": brand,
-            "keywords": keywords,
-            "enable_ranking": True,
-            "text_query": query
-        }
-        
-        enhanced_params = session.get_enhanced_search_params()
-        
-        if not content_type and enhanced_params.get("content_type"):
-            search_params["content_type"] = enhanced_params["content_type"]
-            logger.info(f"Applied context content type: {enhanced_params['content_type']}")
-        
-        if not brand and enhanced_params.get("suggested_brand"):
-            search_params["brand"] = enhanced_params["suggested_brand"]
-            logger.info(f"Applied context brand: {enhanced_params['suggested_brand']}")
-        
-        if not keywords and enhanced_params.get("suggested_keywords"):
-            search_params["keywords"] = enhanced_params["suggested_keywords"]
-            logger.info(f"Applied context keywords: {enhanced_params['suggested_keywords']}")
-        
-        return search_params
-
-    async def _perform_search(self, query: str, search_params: Dict, top_search_results: int):
-        """
-        Perform search using GraphRAG or fallback to regular search.
-        
-        Args:
-            query (str): Search query
-            search_params (Dict): Search parameters
-            top_search_results (int): Number of results
-            
-        Returns:
-            Tuple[List[Dict], Optional[GraphContext]]: Search results and graph context
-        """
-        if self.graphrag_client and self.graphrag_formatter:
-            logger.info("Using GraphRAG for enhanced context retrieval")
+        try:
+            logger.info("Using hybrid search")
             graphrag_result = await self.graphrag_client.hybrid_search(
-                query=query,
+                query=search_params.get("query"),
+                top_results=top_search_results,
                 content_type=search_params.get("content_type"),
                 brand=search_params.get("brand"),
-                keywords=search_params.get("keywords"),
-                top_results=top_search_results,
-                graph_expansion_depth=1
+                keywords=search_params.get("keywords")
             )
-            search_results = graphrag_result.vector_results
-            graph_context = self.graphrag_formatter.format_graphrag_context(graphrag_result, query)
-            return search_results, graph_context
-        else:
-            logger.warning("GraphRAG components not available, falling back to regular vector search")
-            search_results = await self.search_client.search(**search_params)
-            return search_results, None
-
-    def _create_no_results_response(self, query: str, session, search_params: Dict) -> Dict:
-        """
-        Create response when no search results are found.
-        
-        Args:
-            query (str): Original query
-            session: Session object
-            search_params (Dict): Search parameters used
             
-        Returns:
-            Dict: No results response
-        """
-        response = {
-            "answer": CHAT_PROMPTS["no_results_message"],
-            "sources": [],
-            "search_results_count": 0,
-            "query": query,
-            "filters_applied": {
-                "content_type": search_params.get("content_type"),
-                "brand": search_params.get("brand"),
-                "keywords": search_params.get("keywords")
-            },
-            "graphrag_enhanced": False,
-            "combined_relevance_score": 0.0,
-            "retrieval_metadata": {}
-        }
+            if graphrag_result and graphrag_result.vector_results:
+                logger.info(f"GraphRAG returned {len(graphrag_result.vector_results)} results")
+                return graphrag_result.vector_results, graphrag_result
+            else:
+                logger.info("GraphRAG returned no results, falling back to vector search")
+                
+        except Exception as e:
+            logger.warning(f"GraphRAG search failed: {str(e)}, falling back to vector search")
         
-        session.add_assistant_message(
-            response["answer"],
-            {"search_results_count": 0, "filters_applied": response["filters_applied"]}
+        # Fallback to vector search
+        logger.info("Using vector search")
+        search_results = await self.search_client.search(
+            query=search_params.get("query"),
+            top=top_search_results,
+            content_type=search_params.get("content_type"),
+            brand=search_params.get("brand"),
+            keywords=search_params.get("keywords")
         )
-        
-        return response
+        return search_results, None
 
-    def _create_prompt(self, query: str, search_results: List[Dict], graph_context, conversation_history) -> str:
+    def _create_prompt(self, query: str, search_results: List[Dict], graphrag_result, conversation_history) -> str:
         """
         Create the prompt for the LLM based on search results, graph context, and conversation history.
         
         Args:
             query (str): User query
             search_results (List[Dict]): Search results
-            graph_context: Graph context object or None
+            graphrag_result: GraphRAGResult object or None
             conversation_history: List of previous messages for context
             
         Returns:
             str: Formatted prompt for LLM
         """
+        prompt_template = CHAT_PROMPTS["system_prompt"]
+        
         # Format conversation context
         conversation_context = ""
-        
         if conversation_history:
             conversation_context = "\n\nCONVERSATION HISTORY:\n"
             for msg in conversation_history:
                 role = "User" if msg.role == "user" else "Assistant"
                 conversation_context += f"{role}: {msg.content}\n"
             conversation_context += f"\nCurrent question: {query}\n"
+        if conversation_context:
+            prompt_template = prompt_template.replace(
+                "USER QUESTION: {query}",
+                conversation_context
+            )
         
-        if graph_context:
-            if conversation_context:
-                # Create a modified system prompt template that includes conversation context
-                modified_system_prompt = CHAT_PROMPTS["system_prompt"].replace(
-                    "USER QUESTION: {query}",
-                    f"{conversation_context}\nUSER QUESTION: {{query}}"
+        if graphrag_result:
+            try:
+                final_prompt = self.graphrag_formatter.create_graph_enhanced_prompt(
+                    query, graphrag_result, prompt_template
                 )
-            else:
-                modified_system_prompt = CHAT_PROMPTS["system_prompt"]
-            
-            # Create the graph enhanced prompt with the modified template
-            final_prompt = self.graphrag_formatter.create_graph_enhanced_prompt(
-                query, graph_context, modified_system_prompt
-            )
-            
-            return final_prompt
-        else:
-            sources_formatted = self._format_search_results(search_results)
-            prompt_template = CHAT_PROMPTS["system_prompt"]
-            
-            if conversation_context:
-                # Insert conversation context before the current question
-                prompt_template = prompt_template.replace(
-                    "USER QUESTION: {query}",
-                    f"{conversation_context}\nUSER QUESTION: {{query}}"
-                )
-            
-            final_prompt = prompt_template.format(
-                query=query, 
-                sources=sources_formatted,
-                graph_context="No graph context available."
-            )
-            
-            return final_prompt
+                
+                return final_prompt
+                
+            except Exception as e:
+                logger.error(f"Failed to create graph-enhanced prompt: {str(e)}")
+        
+        # Fallback to regular sources formatting
+        sources_formatted = self._format_search_results(search_results)
+        
+        final_prompt = prompt_template.format(
+            query=query, 
+            sources=sources_formatted,
+            graph_context="No graph context available."
+        )
+        
+        return final_prompt
 
     async def _generate_llm_response(self, prompt: str) -> str:
         """
@@ -419,86 +342,10 @@ class NestleChatClient:
         answer = response.choices[0].message.content
         return answer if answer else CHAT_PROMPTS["generation_error_message"]
 
-    def _create_final_response(self, answer: str, search_results: List[Dict], 
-                              source_links: List[Dict], query: str, session, 
-                              search_params: Dict, graph_context) -> Dict:
-        """
-        Create the final response with all metadata.
-        
-        Args:
-            answer (str): Generated answer
-            search_results (List[Dict]): Search results
-            source_links (List[Dict]): Formatted source links
-            query (str): Original query
-            session: Session object
-            search_params (Dict): Search parameters
-            graph_context: Graph context object or None
-            
-        Returns:
-            Dict: Complete response
-        """
-        context_summary = session.get_conversation_summary()
-        
-        base_response = {
-            "answer": answer,
-            "sources": search_results,
-            "source_links": source_links,
-            "search_results_count": len(search_results),
-            "query": query,
-            "session_id": session.session_id,
-            "conversation_context": context_summary,
-            "context_enhanced_search": True,
-            "filters_applied": {
-                "content_type": search_params.get("content_type"),
-                "brand": search_params.get("brand"),
-                "keywords": search_params.get("keywords")
-            },
-            "session_stats": {
-                "total_messages": len(session.messages),
-                "total_queries": session.metadata["total_queries"],
-                "total_responses": session.metadata["total_responses"]
-            }
-        }
-        
-        if graph_context:
-            enhanced_response = self.graphrag_formatter.format_relationship_aware_response(
-                answer, graph_context
-            )
-            
-            session.add_assistant_message(answer, {
-                "search_results_count": len(search_results),
-                "filters_applied": base_response["filters_applied"],
-                "context_enhanced": True,
-                "graphrag_enhanced": True,
-                "entities_referenced": enhanced_response.get("entities_referenced", 0),
-                "relationships_used": enhanced_response.get("relationships_used", 0)
-            })
-            
-            base_response.update({
-                "graphrag_enhanced": True,
-                "combined_relevance_score": enhanced_response.get("combined_relevance_score", 0.0),
-                "retrieval_metadata": enhanced_response.get("retrieval_metadata", {})
-            })
-        else:
-            session.add_assistant_message(answer, {
-                "search_results_count": len(search_results),
-                "filters_applied": base_response["filters_applied"],
-                "context_enhanced": True,
-                "graphrag_enhanced": False,
-                "graphrag_fallback": True
-            })
-            
-            base_response.update({
-                "graphrag_enhanced": False,
-                "graphrag_fallback": True
-            })
-        
-        return base_response
-
     async def search_and_chat(
         self,
         query: str,
-        session_id: Optional[str] = None,
+        conversation_history: Optional[List['ConversationMessage']] = None,
         content_type: Optional[str] = None,
         brand: Optional[str] = None,
         keywords: Optional[List[str]] = None,
@@ -509,63 +356,53 @@ class NestleChatClient:
         
         Args:
             query (str): User's question or search query
-            session_id (Optional[str]): Conversation session ID (creates new if None)
+            conversation_history (Optional[List['ConversationMessage']]): Previous conversation messages as ConversationMessage objects
             content_type (Optional[str]): Filter by content type (e.g., "recipe")
             brand (Optional[str]): Filter by brand (e.g., "Nestle")
             keywords (Optional[List[str]]): Filter by keywords
             top_search_results (int): Number of search results to use as context
             
         Returns:
-            Dict: Response containing answer, sources, metadata, and session info
+            Dict: Response containing answer, sources, metadata
         """
         try:
             logger.info(f"Processing context-aware chat query: {query}")
             
-            session = self.session_manager.get_or_create_session(session_id)
+            # Extract search context from conversation history
+            search_context = self._extract_search_context_from_history(conversation_history)
             
             # Check if this is within the chatbot's knowledge domain
             search_params = self._prepare_search_params(
-                query, session, content_type, brand, keywords, top_search_results
+                query, search_context, content_type, brand, keywords, top_search_results
             )
             
-            domain_response = await self._check_domain_and_respond(query, session, search_params)
+            domain_response = await self._check_domain_and_respond(query, search_params)
             if domain_response:
                 return domain_response
             
-            # Get conversation context
-            conversation_history = []
-            if len(session.messages) > 0:
-                recent_messages = session.get_context_messages()
-                conversation_history = recent_messages[-4:]  # Last 4 messages for context
-            
-            # Add the current user message
-            session.add_user_message(query, {"vector_search_enabled": True, "context_enabled": True})
+            # Convert conversation history to ChatMessage format for prompt creation
+            formatted_conversation_history = self._format_conversation_history(conversation_history)
             
             # Perform search
-            search_results, graph_context = await self._perform_search(
-                query, search_params, top_search_results
+            search_results, graphrag_result = await self._perform_search(
+                search_params, top_search_results
             )
             
             # Handle results
             if not search_results:
-                return self._create_no_results_response(query, session, search_params)
-            prompt = self._create_prompt(query, search_results, graph_context, conversation_history)
+                return self._create_no_results_response(query, search_params)
+            
+            prompt = self._create_prompt(query, search_results, graphrag_result, formatted_conversation_history)
             source_links = self._format_links(search_results)
             
             # Create final response
             answer = await self._generate_llm_response(prompt)
             return self._create_final_response(
-                answer, search_results, source_links, query, session, search_params, graph_context
+                answer, search_results, source_links, query, search_params, graphrag_result
             )
             
         except Exception as e:
             logger.error(f"Error in context-aware search_and_chat: {str(e)}")
-            
-            try:
-                session = self.session_manager.get_or_create_session(session_id)
-                session_info = {"session_id": session.session_id}
-            except:
-                session_info = {"session_id": None}
             
             return {
                 "answer": CHAT_PROMPTS["error_message"],
@@ -580,89 +417,127 @@ class NestleChatClient:
                 "graphrag_enhanced": False,
                 "combined_relevance_score": 0.0,
                 "retrieval_metadata": {},
-                "error": str(e),
-                **session_info
+                "error": str(e)
             }
     
-    def create_session(self, session_id: Optional[str] = None) -> str:
+    def _extract_search_context_from_history(self, conversation_history: Optional[List['ConversationMessage']]) -> 'SearchContext':
         """
-        Create a new conversation session.
+        Extract search context from conversation history.
         
         Args:
-            session_id (Optional[str]): Custom session ID, generates one if None
+            conversation_history (Optional[List['ConversationMessage']]): Previous conversation messages as ConversationMessage objects
             
         Returns:
-            str: Session ID
+            SearchContext: Extracted search context
         """
-        session = self.session_manager.create_session(session_id)
-        return session.session_id
+        search_context = SearchContext(
+            recent_topics=[],
+            preferred_content_types=[],
+            mentioned_brands=[],
+            mentioned_products=[],
+            conversation_themes=[]
+        )
+        
+        if not conversation_history:
+            return search_context
+        
+        context_extractor = ContextExtractor()
+        
+        # Process recent conversation messages
+        recent_messages = conversation_history[-4:] if len(conversation_history) > 4 else conversation_history
+        
+        for msg in recent_messages:
+            # Only process user messages for context
+            if msg.role == 'user':
+                context_extractor.update_search_context(msg.content, search_context)
+        
+        return search_context
     
-    def get_session_history(self, session_id: str) -> Optional[Dict]:
+    def _format_conversation_history(self, conversation_history: Optional[List['ConversationMessage']]):
         """
-        Get conversation history for a session.
+        Convert conversation history to ChatMessage format.
         
         Args:
-            session_id (str): Session ID
+            conversation_history (Optional[List['ConversationMessage']]): ConversationMessage objects
             
         Returns:
-            Optional[Dict]: Session data or None if not found
+            List: Formatted conversation history for prompt creation
         """
-        session = self.session_manager.get_session(session_id)
-        if not session:
-            return None
+        if not conversation_history:
+            return []
+        
+        from .context_manager import ChatMessage
+        
+        formatted_history = []
+        # Use recent messages for context
+        recent_messages = conversation_history[-4:] if len(conversation_history) > 4 else conversation_history
+        
+        for msg in recent_messages:
+            try:
+                chat_msg = ChatMessage(
+                    role=msg.role,
+                    content=msg.content,
+                    timestamp=msg.timestamp,
+                    metadata=msg.metadata
+                )
+                formatted_history.append(chat_msg)
+            except Exception as e:
+                logger.warning(f"Failed to format conversation message: {e}")
+                continue
+        
+        return formatted_history
+    
+    def _prepare_search_params(self, query: str, search_context: 'SearchContext', 
+                               content_type: Optional[str], brand: Optional[str], 
+                               keywords: Optional[List[str]], top_search_results: int) -> Dict:
+        """
+        Prepare search parameters using context extraction.
+        
+        Args:
+            query (str): User query
+            search_context (SearchContext): Extracted search context
+            content_type (Optional[str]): Content type filter
+            brand (Optional[str]): Brand filter  
+            keywords (Optional[List[str]]): Keywords filter
+            top_search_results (int): Number of results
+            
+        Returns:
+            Dict: Search parameters
+        """
+        context_enhanced = False
+        
+        # Use context to enhance content_type if not provided
+        if not content_type and search_context.preferred_content_types:
+            content_type = search_context.preferred_content_types[-1]
+            context_enhanced = True
+        
+        # Use context to enhance brand if not provided
+        if not brand and len(search_context.mentioned_brands) >= 2:
+            brand_counts = {}
+            for brand_name in search_context.mentioned_brands:
+                brand_counts[brand_name] = brand_counts.get(brand_name, 0) + 1
+            most_mentioned = max(brand_counts.items(), key=lambda x: x[1])
+            if most_mentioned[1] >= 2:
+                brand = most_mentioned[0].upper()
+                context_enhanced = True
+        
+        # Use context to enhance keywords if not provided
+        if not keywords and search_context.recent_topics:
+            context_extractor = ContextExtractor()
+            recent_topic_names = search_context.recent_topics[-3:]
+            keywords = context_extractor.map_topic_names_to_keywords(recent_topic_names)[:5]
+            context_enhanced = True
         
         return {
-            "session_id": session.session_id,
-            "created_at": session.created_at.isoformat(),
-            "last_activity": session.last_activity.isoformat(),
-            "message_count": len(session.messages),
-            "messages": [msg.to_dict() for msg in session.messages],
-            "conversation_summary": session.get_conversation_summary(),
-            "search_context": session.search_context.to_dict(),
-            "metadata": session.metadata
+            "query": query,
+            "content_type": content_type,
+            "brand": brand,
+            "keywords": keywords,
+            "top_search_results": top_search_results,
+            "context_enhanced": context_enhanced
         }
     
-    def delete_session(self, session_id: str) -> bool:
-        """
-        Delete a conversation session.
-        
-        Args:
-            session_id (str): Session ID to delete
-            
-        Returns:
-            bool: True if deleted, False if not found
-        """
-        return self.session_manager.delete_session(session_id)
-    
-    def get_all_sessions_stats(self) -> Dict:
-        """
-        Get statistics about all active sessions.
-        
-        Returns:
-            Dict: Session statistics
-        """
-        return self.session_manager.get_session_stats()
-    
-    def cleanup_expired_sessions(self) -> int:
-        """
-        Clean up expired sessions.
-        
-        Returns:
-            int: Number of sessions cleaned up
-        """
-        return self.session_manager.cleanup_expired_sessions()
-    
-    async def get_recipe(self, ingredient: str, session_id: Optional[str] = None) -> Dict:
-        """
-        Get recipe suggestions for a specific ingredient with conversation context.
-        
-        Args:
-            ingredient (str): Ingredient to search for
-            session_id (Optional[str]): Session ID for context
-            
-        Returns:
-    
-    async def _check_domain_and_respond_stateless(self, query: str, search_params: Dict) -> Optional[Dict]:
+    async def _check_domain_and_respond(self, query: str, search_params: Dict) -> Optional[Dict]:
         """
         Check if query is within domain using LLM-based classification.
         LLM responds with either "YES" (in domain) or "NO" (out of domain).
@@ -707,39 +582,71 @@ class NestleChatClient:
         except Exception as e:
             logger.error(f"Domain classification failed: {str(e)}")
             return None
-        """
-        Get cooking tips and advice with conversation context.
-        
-        Args:
-            topic (str): Cooking topic or technique
-            session_id (Optional[str]): Session ID for context
-            
-        Returns:
-            Dict: Cooking tips with answers
-        """
-        query = f"cooking tips for {topic}"
-        return await self.search_and_chat(
-            query=query,
-            session_id=session_id,
-            keywords=["cooking", "tips", "baking"],
-            top_search_results=5
-        )
     
-    async def ask_about_nutrition(self, food_item: str, session_id: Optional[str] = None) -> Dict:
+    def _create_no_results_response(self, query: str, search_params: Dict) -> Dict:
         """
-        Get nutritional information about a food item or Nestle product with conversation context.
+        Create response when no search results are found.
         
         Args:
-            food_item (str): Food item or product name
-            session_id (Optional[str]): Session ID for context
+            query (str): User query
+            search_params (Dict): Search parameters
             
         Returns:
-            Dict: Nutritional information with answers
+            Dict: No results response
         """
-        query = f"nutrition information for {food_item}"
-        return await self.search_and_chat(
-            query=query,
-            session_id=session_id,
-            keywords=["nutrition", "calories"],
-            top_search_results=5
-        ) 
+        return {
+            "answer": CHAT_PROMPTS["no_results_message"],
+            "sources": [],
+            "search_results_count": 0,
+            "query": query,
+            "filters_applied": search_params,
+            "graphrag_enhanced": False,
+            "combined_relevance_score": 0.0,
+            "retrieval_metadata": {
+                "search_attempted": True,
+                "no_results_reason": "No matching content found"
+            }
+        }
+    
+    def _create_final_response(self, answer: str, search_results: List[Dict], 
+                                       source_links: List[Dict], query: str, 
+                                       search_params: Dict, graphrag_result) -> Dict:
+        """
+        Create the final response structure.
+        
+        Args:
+            answer (str): Generated answer
+            search_results (List[Dict]): Search results
+            source_links (List[Dict]): Formatted source links
+            query (str): Original query
+            search_params (Dict): Search parameters
+            graphrag_result: GraphRAGResult object or None
+            
+        Returns:
+            Dict: Final response structure
+        """
+        graphrag_enhanced = graphrag_result is not None
+        combined_relevance_score = 0.0
+        
+        if graphrag_enhanced and hasattr(graphrag_result, 'combined_score'):
+            combined_relevance_score = graphrag_result.combined_score
+        
+        return {
+            "answer": answer,
+            "sources": source_links,
+            "search_results_count": len(search_results),
+            "query": query,
+            "filters_applied": {
+                "content_type": search_params.get("content_type"),
+                "brand": search_params.get("brand"),
+                "keywords": search_params.get("keywords")
+            },
+            "graphrag_enhanced": graphrag_enhanced,
+            "combined_relevance_score": combined_relevance_score,
+            "retrieval_metadata": {
+                "search_method": "hybrid_vector_keyword",
+                "total_results": len(search_results),
+                "enhanced_context": search_params.get("context_enhanced"),
+                "graphrag_metadata": graphrag_result.retrieval_metadata if graphrag_result else {}
+            }
+        } 
