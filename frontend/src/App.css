@@ -1,9 +1,47 @@
 .app {
   min-height: 100vh;
   position: relative;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 .blank-background {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: linear-gradient(135deg, #F5F2E8 0%, #ffffff 30%, #F5F2E8 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.blank-background::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 25% 25%, rgba(99, 81, 61, 0.06) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(212, 175, 55, 0.04) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(213, 0, 0, 0.03) 0%, transparent 50%),
+    linear-gradient(45deg, transparent 48%, rgba(99, 81, 61, 0.02) 50%, transparent 52%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.blank-background::after {
+  content: 'Made With Nestlé';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-5deg);
+  font-size: clamp(2.5rem, 6vw, 6rem);
+  font-weight: 700;
+  color: rgba(99, 81, 61, 0.06);
+  text-align: center;
+  letter-spacing: 0.15em;
+  pointer-events: none;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  z-index: 1;
+  text-shadow: 
+    1px 1px 0 rgba(212, 175, 55, 0.02),
+    -1px -1px 0 rgba(212, 175, 55, 0.02);
 }

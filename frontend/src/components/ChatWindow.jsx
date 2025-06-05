@@ -8,7 +8,6 @@ import {
 } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
 import { Send, ExpandMore, Close } from '@mui/icons-material';
-import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
 import MessageBubble from './MessageBubble';
 import { 
   colors, 
@@ -16,11 +15,25 @@ import {
   FlexBetween, 
   FlexCenter, 
   shadows, 
-  StyledAvatar, 
-  StyledIconButton 
+  StyledIconButton,
+  NestleHeader
 } from './common';
 import useChatSession from '../hooks/useChatSession';
 import { createErrorHandler } from '../utils/errorHandler';
+
+import nestleLogoCircle from '../assets/logoCircle.jpg';
+
+// Nestlé Logo for header avatar
+const HeaderNestleLogo = styled('img')({
+  width: 32,
+  height: 32,
+  borderRadius: '50%',
+  objectFit: 'cover',
+  border: `1px solid ${colors.primary}`,
+  background: colors.white,
+  padding: 2,
+  boxShadow: '0 2px 8px rgba(99, 81, 61, 0.2)',
+});
 
 // Loading animation for typing indicator
 const loadingBounce = keyframes`
@@ -38,31 +51,36 @@ const loadingBounce = keyframes`
 const ChatWindowContainer = styled(Paper)({
   width: 400,
   height: 600,
-  borderRadius: 8,
-  boxShadow: shadows.heavy,
+  borderRadius: 12,
+  boxShadow: shadows.nestle,
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',
-  border: `1px solid ${colors.gray200}`,
+  border: `1px solid ${colors.nestleGray}`,
   fontFamily,
   fontWeight: 600,
 });
 
-const ChatHeader = styled(FlexBetween)({
-  background: colors.primary,
-  color: colors.white,
-  padding: '12px 16px',
+const ChatHeader = styled(NestleHeader)({
+  padding: '14px 16px',
+  borderBottom: `1px solid ${colors.nestleGray}`,
+  background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.nestleGray} 100%)`,
+  position: 'relative',
 });
 
-const SmartieHeader = styled(FlexCenter)({
+const SmartieHeader = styled(Box)({
+  display: 'flex',
+  alignItems: 'center',
   gap: 12,
+  flex: 1,
 });
 
 const SmartieTitle = styled(Typography)({
-  fontWeight: 'bold',
+  fontWeight: 700,
   fontSize: 16,
-  letterSpacing: '0.5px',
-  color: colors.white,
+  letterSpacing: '0.8px',
+  color: colors.nestleCream,
+  fontFamily,
 });
 
 const HeaderControls = styled(FlexCenter)({
@@ -73,7 +91,7 @@ const MessagesContainer = styled(Box)({
   flex: 1,
   overflowY: 'auto',
   padding: 16,
-  background: colors.gray50,
+  background: colors.nestleGray,
   display: 'flex',
   flexDirection: 'column',
   gap: 12,
@@ -81,11 +99,16 @@ const MessagesContainer = styled(Box)({
     width: 6,
   },
   '&::-webkit-scrollbar-track': {
-    background: colors.gray100,
+    background: colors.nestleGray,
+    borderRadius: 3,
   },
   '&::-webkit-scrollbar-thumb': {
-    background: colors.gray300,
+    background: colors.primary,
     borderRadius: 3,
+    '&:hover': {
+      background: colors.nestleCream,
+      opacity: 0.8,
+    },
   },
 });
 
@@ -96,36 +119,42 @@ const LoadingContainer = styled(Box)({
 });
 
 const LoadingDots = styled(Box)({
-  background: colors.gray200,
+  background: colors.white,
   padding: '12px 16px',
   borderRadius: 18,
   display: 'flex',
   gap: 4,
   alignItems: 'center',
+  border: `1px solid ${colors.gray200}`,
+  boxShadow: shadows.light,
 });
 
 const LoadingDot = styled(Box)(({ delay = 0 }) => ({
   width: 6,
   height: 6,
-  background: colors.gray500,
+  background: colors.nestleCream,
   borderRadius: '50%',
   animation: `${loadingBounce} 1.4s infinite ease-in-out`,
   animationDelay: `${delay}s`,
 }));
 
 const InputArea = styled(Box)({
-  padding: '10px',
-  background: colors.white,
-  borderTop: `1px solid ${colors.gray200}`,
+  padding: '12px',
+  background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.nestleGray} 100%)`,
+  borderTop: `1px solid ${colors.nestleGray}`,
 });
 
 const InputContainer = styled(FlexCenter)({
-  gap: 6,
-  background: colors.gray50,
+  gap: 8,
+  background: colors.nestleGray,
   border: `1px solid ${colors.gray200}`,
-  borderRadius: 6,
-  padding: '2px 4px',
+  borderRadius: 8,
+  padding: '4px 6px',
   width: '100%',
+  transition: 'border-color 0.2s ease',
+  '&:focus-within': {
+    borderColor: colors.primary,
+  },
 });
 
 const MessageInput = styled(TextField)({
@@ -145,14 +174,27 @@ const MessageInput = styled(TextField)({
     '&.Mui-focused fieldset': {
       border: 'none',
     },
+    '&.Mui-disabled fieldset': {
+      border: 'none',
+    },
   },
   '& .MuiOutlinedInput-input': {
-    padding: '6px 12px',
-    color: colors.gray500,
+    padding: '8px 12px',
+    color: colors.nestleCream,
     '&::placeholder': {
-      color: colors.gray400,
+      color: colors.gray500,
       fontWeight: 500,
       opacity: 1,
+    },
+    '&.Mui-disabled': {
+      color: colors.nestleCream,
+      WebkitTextFillColor: colors.nestleCream,
+      '&::placeholder': {
+        color: colors.gray500,
+        fontWeight: 500,
+        opacity: 1,
+        WebkitTextFillColor: colors.gray500,
+      },
     },
   },
 });
@@ -213,14 +255,14 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
             behavior: "smooth",
             block: "start",
             inline: "nearest"
-          });
+            });
         } else {
           // Fallback to end scroll if ref not available
           messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }
       }
       
-      previousMessageCount.current = messages.length;
+        previousMessageCount.current = messages.length;
     }
   }, [messages, isInitializing]);
 
@@ -337,20 +379,25 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
     <ChatWindowContainer elevation={8}>
       {/* Chat Header */}
       <ChatHeader>
-        <SmartieHeader>
-          <StyledAvatar size="medium">
-            <SmartToyOutlinedIcon />
-          </StyledAvatar>
-          <SmartieTitle variant="h6">SMARTIE</SmartieTitle>
-        </SmartieHeader>
-        <HeaderControls>
-          <StyledIconButton variant="header" onClick={onCollapse} size="small">
-            <ExpandMore sx={{ fontSize: 16 }} />
-          </StyledIconButton>
-          <StyledIconButton variant="header" onClick={onClose} size="small">
-            <Close sx={{ fontSize: 16 }} />
-          </StyledIconButton>
-        </HeaderControls>
+        <FlexBetween sx={{ width: '100%' }}>
+          <SmartieHeader>
+            <HeaderNestleLogo 
+              src={nestleLogoCircle} 
+              alt="Nestlé Logo"
+              loading="lazy"
+            />
+            <SmartieTitle variant="h6">SMARTIE</SmartieTitle>
+          </SmartieHeader>
+          
+          <HeaderControls>
+            <StyledIconButton variant="header" onClick={onCollapse} size="small">
+              <ExpandMore sx={{ fontSize: 18 }} />
+            </StyledIconButton>
+            <StyledIconButton variant="header" onClick={onClose} size="small">
+              <Close sx={{ fontSize: 18 }} />
+            </StyledIconButton>
+          </HeaderControls>
+        </FlexBetween>
       </ChatHeader>
 
       {/* Messages Display Area */}
@@ -416,7 +463,7 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger }) => {
             disabled={!inputValue.trim() || isLoading}
             size="small"
           >
-            <Send sx={{ fontSize: 14 }} />
+            <Send sx={{ fontSize: 16 }} />
           </StyledIconButton>
         </InputContainer>
       </InputArea>

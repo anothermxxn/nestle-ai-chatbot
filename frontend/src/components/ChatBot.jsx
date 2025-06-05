@@ -1,10 +1,71 @@
 import { useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
-import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
 import ChatWindow from './ChatWindow';
-import { colors, fontFamily, FlexCenter, shadows, StyledAvatar } from './common';
+import { colors, fontFamily, FlexCenter, shadows } from './common';
 import useChatSession from '../hooks/useChatSession';
+
+import nestleLogo from '../assets/logo.jpg';
+import nestleLogoCircle from '../assets/logoCircle.jpg';
+
+// Nestlé Logo for floating button
+const FloatingNestleLogo = styled('img')({
+  width: '100%',
+  height: '100%',
+  borderRadius: '50%',
+  objectFit: 'cover',
+  border: `2px solid ${colors.primary}`,
+});
+
+// Nestlé Logo for collapsed state
+const CollapsedNestleLogo = styled('img')({
+  width: 32,
+  height: 32,
+  borderRadius: '50%',
+  objectFit: 'cover',
+  border: `1px solid ${colors.primary}`,
+  background: colors.white,
+  padding: 2,
+  boxShadow: '0 2px 8px rgba(99, 81, 61, 0.3)',
+});
+
+// Nestlé Logo for closing animation
+const ClosingNestleLogo = styled('img')({
+  width: 60,
+  height: 60,
+  borderRadius: '50%',
+  objectFit: 'cover',
+  border: `2px solid ${colors.primary}`,
+  background: colors.white,
+  boxShadow: '0 2px 8px rgba(99, 81, 61, 0.3)',
+});
+
+// Nestlé Logo for loading/expanding animation
+const ExpandingNestleLogo = styled('img')({
+  width: 120,
+  height: 120,
+  borderRadius: '50%',
+  objectFit: 'cover',
+  border: `3px solid ${colors.primary}`,
+  background: colors.white,
+  padding: 8,
+  boxShadow: '0 8px 32px rgba(99, 81, 61, 0.3)',
+  animation: 'pulse 1.5s ease-in-out infinite',
+  '@keyframes pulse': {
+    '0%': {
+      transform: 'scale(1)',
+      opacity: 1,
+    },
+    '50%': {
+      transform: 'scale(1.05)',
+      opacity: 0.8,
+    },
+    '100%': {
+      transform: 'scale(1)',
+      opacity: 1,
+    },
+  },
+});
 
 // Animation keyframes for chat window transitions
 const expandToWindow = keyframes`
@@ -16,7 +77,7 @@ const expandToWindow = keyframes`
   to {
     width: 400px;
     height: 600px;
-    border-radius: 8px;
+    border-radius: 12px;
   }
 `;
 
@@ -24,12 +85,12 @@ const collapseToRectangle = keyframes`
   from {
     width: 400px;
     height: 600px;
-    border-radius: 8px;
+    border-radius: 12px;
   }
   to {
     width: 400px;
     height: 50px;
-    border-radius: 8px;
+    border-radius: 12px;
   }
 `;
 
@@ -37,12 +98,12 @@ const expandFromRectangle = keyframes`
   from {
     width: 400px;
     height: 50px;
-    border-radius: 8px;
+    border-radius: 12px;
   }
   to {
     width: 400px;
     height: 600px;
-    border-radius: 8px;
+    border-radius: 12px;
   }
 `;
 
@@ -50,7 +111,7 @@ const collapseToCircle = keyframes`
   from {
     width: 400px;
     height: 600px;
-    border-radius: 8px;
+    border-radius: 12px;
   }
   to {
     width: 70px;
@@ -88,14 +149,14 @@ const AnimatedContainer = styled(Box, {
     position: 'fixed',
     bottom: '20px',
     right: '20px',
-    background: colors.primary,
-    border: `1px solid ${colors.white}`,
-    boxShadow: shadows.medium,
+    background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.nestleGray} 100%)`,
+    border: `1px solid ${colors.primary}`,
+    boxShadow: shadows.nestle,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
   };
 
   switch (chatState) {
@@ -107,8 +168,8 @@ const AnimatedContainer = styled(Box, {
         borderRadius: '50%',
         cursor: 'pointer',
         '&:hover': {
-          transform: 'scale(1.05)',
-          boxShadow: '0 6px 25px rgba(0, 0, 0, 0.2)',
+          transform: 'scale(1.08)',
+          boxShadow: shadows.gold,
         },
       };
     
@@ -126,7 +187,7 @@ const AnimatedContainer = styled(Box, {
         ...baseStyles,
         width: '400px',
         height: '600px',
-        borderRadius: '8px',
+        borderRadius: '12px',
       };
     
     case 'collapsing':
@@ -134,7 +195,7 @@ const AnimatedContainer = styled(Box, {
         ...baseStyles,
         width: '400px',
         height: '600px',
-        borderRadius: '8px',
+        borderRadius: '12px',
         animation: `${collapseToRectangle} 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
       };
     
@@ -143,8 +204,12 @@ const AnimatedContainer = styled(Box, {
         ...baseStyles,
         width: '400px',
         height: '50px',
-        borderRadius: '8px',
+        borderRadius: '12px',
         cursor: 'pointer',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: shadows.gold,
+        },
       };
     
     case 'expanding-from-rectangle':
@@ -152,7 +217,7 @@ const AnimatedContainer = styled(Box, {
         ...baseStyles,
         width: '400px',
         height: '50px',
-        borderRadius: '8px',
+        borderRadius: '12px',
         animation: `${expandFromRectangle} 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
       };
     
@@ -161,7 +226,7 @@ const AnimatedContainer = styled(Box, {
         ...baseStyles,
         width: '400px',
         height: '600px',
-        borderRadius: '8px',
+        borderRadius: '12px',
         animation: `${collapseToCircle} 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
       };
     
@@ -175,19 +240,30 @@ const AnimatedContainer = styled(Box, {
   }
 });
 
-const CircleContent = styled(FlexCenter)({
+const CircleContent = styled(Box)({
+  width: '100%',
+  height: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+});
+
+const ExpandingContent = styled(FlexCenter)({
   color: colors.white,
   width: '100%',
   height: '100%',
   flexDirection: 'column',
+  gap: 12,
 });
 
 const SmartieText = styled(Typography)(({ size = 'normal' }) => ({
-  fontSize: size === 'small' ? 12 : 9,
-  fontWeight: 'bold',
-  letterSpacing: '0.5px',
+  fontSize: size === 'small' ? 10 : 7,
+  fontWeight: 700,
+  letterSpacing: '0.8px',
   textAlign: 'center',
-  color: colors.white,
+  color: colors.nestleCream,
+  fontFamily,
+  textShadow: '0 1px 2px rgba(0,0,0,0.3)',
 }));
 
 const CollapsedContent = styled(FlexCenter)({
@@ -269,19 +345,56 @@ const ChatBot = () => {
           />
         </ChatWindowContent>
       );
+    } else if (state === 'expanding' || state === 'expanding-from-rectangle') {
+      return (
+        <ExpandingContent>
+          <ExpandingNestleLogo 
+            src={nestleLogo} 
+            alt="Nestlé Logo"
+            loading="lazy"
+          />
+        </ExpandingContent>
+      );
+    } else if (state === 'collapsing') {
+      return (
+        <CollapsedContent>
+          <CollapsedNestleLogo 
+            src={nestleLogoCircle} 
+            alt="Nestlé Logo"
+            loading="lazy"
+          />
+          <SmartieText size="small">SMARTIE - CLICK TO EXPAND</SmartieText>
+        </CollapsedContent>
+      );
+    } else if (state === 'closing') {
+      return (
+        <CircleContent>
+          <ClosingNestleLogo 
+            src={nestleLogoCircle} 
+            alt="Nestlé Logo"
+            loading="lazy"
+          />
+        </CircleContent>
+      );
     } else if (state === 'collapsed') {
       return (
         <CollapsedContent>
-          <StyledAvatar size="small">
-            <SmartToyOutlinedIcon />
-          </StyledAvatar>
+          <CollapsedNestleLogo 
+            src={nestleLogoCircle} 
+            alt="Nestlé Logo"
+            loading="lazy"
+          />
           <SmartieText size="small">SMARTIE - CLICK TO EXPAND</SmartieText>
         </CollapsedContent>
       );
     } else {
       return (
         <CircleContent>
-          <SmartToyOutlinedIcon fontSize="large" />
+          <FloatingNestleLogo 
+            src={nestleLogoCircle} 
+            alt="Nestlé Logo"
+            loading="lazy"
+          />
         </CircleContent>
       );
     }

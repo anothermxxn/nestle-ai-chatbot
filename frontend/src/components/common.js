@@ -1,67 +1,55 @@
 import { styled } from '@mui/material/styles';
-import { Box, Avatar, IconButton } from '@mui/material';
+import { Box, IconButton } from '@mui/material';
 
-// Common theme colors
+// Nestlé brand colors
 export const colors = {
-  primary: '#1e4d8b',
+  primary: '#726050',
+  nestleWhite: '#e7ecea',
+  nestleCream: '#afa89b',
+  nestleGray: '#242525',
+  nestleBlue: '#16678c',
+  // UI colors
   white: '#ffffff',
-  gray50: '#f8fafc',
-  gray100: '#f1f5f9',
-  gray200: '#e2e8f0',
-  gray300: '#cbd5e1',
-  gray400: '#94a3b8',
-  gray500: '#64748b',
-  gray600: '#475569',
+  gray100: '#f5f5f5',
+  gray200: '#eeeeee',
+  gray500: '#9e9e9e',
+  gray600: '#757575',
+  gray800: '#424242',
 };
 
-// Common font family
-export const fontFamily = "'Avenir Next', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-
-// Common styled components
-export const StyledAvatar = styled(Avatar)(({ size = 'medium' }) => {
-  const sizeMap = {
-    small: { width: 24, height: 24, fontSize: 14 },
-    medium: { width: 32, height: 32, fontSize: 18 },
-    large: { width: 36, height: 36, fontSize: 20 },
-  };
-  
-  return {
-    width: sizeMap[size].width,
-    height: sizeMap[size].height,
-    background: colors.primary,
-    color: colors.white,
-    fontSize: sizeMap[size].fontSize,
-    fontFamily,
-    fontWeight: 600,
-  };
-});
+// Nestlé brand font family
+export const fontFamily = "'Helvetica Neue', Helvetica, Arial, sans-serif";
 
 export const StyledIconButton = styled(IconButton)(({ variant = 'default' }) => ({
   padding: 4,
-  borderRadius: 4,
+  borderRadius: 6,
   fontFamily,
+  transition: 'all 0.2s ease',
   ...(variant === 'header' && {
-    color: colors.white,
+    color: colors.nestleCream,
     '&:hover': {
-      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      backgroundColor: 'rgba(175, 168, 155, 0.15)',
+      transform: 'scale(1.05)',
     },
   }),
   ...(variant === 'send' && {
-    width: 28,
-    height: 28,
-    background: colors.gray500,
+    width: 32,
+    height: 32,
+    background: colors.primary,
     color: colors.white,
+    border: `1px solid ${colors.nestleCream}`,
     '&:hover': {
-      background: colors.gray600,
-      transform: 'scale(1.05)',
-    },
-    '&:focus': {
       background: colors.primary,
-      outline: 'none',
+      color: colors.nestleGray,
+      opacity: 1,
+      transform: 'scale(1.08)',
+      boxShadow: `0 4px 12px ${colors.nestleCream}40`,
     },
     '&:disabled': {
-      background: colors.gray400,
-      color: colors.white,
+      background: colors.nestleGray,
+      color: colors.nestleCream,
+      border: `1px solid ${colors.nestleCream}`,
+      opacity: 1,
     },
   }),
 }));
@@ -78,15 +66,15 @@ export const FlexBetween = styled(Box)({
   justifyContent: 'space-between',
 });
 
-// Common animations
-export const commonTransitions = {
-  smooth: 'all 0.2s ease',
-  bounce: 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-};
+export const NestleHeader = styled(Box)({
+  background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.nestleGray} 100%)`,
+  color: colors.white,
+  fontFamily,
+});
 
-// Common shadows
+// Shadows
 export const shadows = {
-  light: '0 1px 3px rgba(0, 0, 0, 0.1)',
-  medium: '0 4px 20px rgba(0, 0, 0, 0.15)',
-  heavy: '0 8px 32px rgba(0, 0, 0, 0.15)',
+  light: '0 1px 3px rgba(99, 81, 61, 0.12)',
+  nestle: '0 6px 24px rgba(99, 81, 61, 0.2)',
+  gold: '0 4px 16px rgba(212, 175, 55, 0.25)',
 }; 

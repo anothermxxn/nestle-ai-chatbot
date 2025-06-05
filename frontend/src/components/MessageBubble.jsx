@@ -1,9 +1,11 @@
 import { Box, Typography, Paper, Chip, Tooltip, Link } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { forwardRef } from 'react';
-import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
-import { colors, fontFamily, StyledAvatar } from './common';
+import { colors, fontFamily } from './common';
 import { parseMessageContent, formatReferenceTooltip } from '../utils/messageFormatter';
+
+// Import Nestlé logo
+import nestleLogoCircle from '../assets/logoCircle.jpg';
 
 // Styled components
 const MessageContainer = styled(Box)(({ messagetype }) => ({
@@ -19,15 +21,27 @@ const MessageContainer = styled(Box)(({ messagetype }) => ({
   marginLeft: messagetype === 'user' ? 'auto' : 0,
 }));
 
-const AssistantAvatar = styled(StyledAvatar)({
+const AssistantAvatar = styled('div')({
   position: 'absolute',
   top: 0,
   left: 0,
   zIndex: 1,
-  '& .MuiSvgIcon-root': {
-    fontSize: 28,
-    margin: '4px',
-  },
+  width: 36,
+  height: 36,
+  borderRadius: '50%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: colors.white,
+  border: `1px solid ${colors.primary}`,
+  boxShadow: '0 2px 8px rgba(99, 81, 61, 0.2)',
+});
+
+const NestleAvatarLogo = styled('img')({
+  width: 28,
+  height: 28,
+  borderRadius: '50%',
+  objectFit: 'cover',
 });
 
 const MessageContent = styled(Box)(({ messagetype }) => ({
@@ -38,25 +52,31 @@ const MessageContent = styled(Box)(({ messagetype }) => ({
 }));
 
 const MessageText = styled(Paper)(({ messagetype }) => ({
-  padding: '8px 12px',
-  borderRadius: 8,
+  padding: '10px 14px',
+  borderRadius: 12,
   fontSize: 14,
-  lineHeight: 1.4,
+  lineHeight: 1.5,
   wordWrap: 'break-word',
   fontWeight: 500,
+  fontFamily,
   background: messagetype === 'user' 
-    ? colors.gray100 
+    ? colors.nestleGray
     : messagetype === 'system' 
     ? colors.gray200 
-    : colors.primary,
+    : colors.white,
   color: messagetype === 'user' 
-    ? colors.primary 
+    ? colors.nestleCream 
     : messagetype === 'system' 
     ? colors.gray600 
-    : colors.white,
-  borderBottomRightRadius: messagetype === 'user' ? 4 : 8,
-  borderBottomLeftRadius: messagetype === 'assistant' ? 4 : 8,
-  boxShadow: 'none',
+    : colors.nestleCream,
+  border: messagetype === 'user' 
+    ? `1px solid ${colors.nestleCream}` 
+    : 'none',
+  borderBottomRightRadius: messagetype === 'user' ? 4 : 12,
+  borderBottomLeftRadius: messagetype === 'assistant' ? 4 : 12,
+  boxShadow: messagetype === 'user' 
+    ? 'none'
+    : '0 4px 12px rgba(114, 96, 80, 0.2)',
   ...(messagetype === 'system' && {
     textAlign: 'center',
     fontStyle: 'italic',
@@ -68,11 +88,12 @@ const MessageText = styled(Paper)(({ messagetype }) => ({
 
 const FormattedText = styled(Box)({
   fontSize: 14,
-  lineHeight: 1.5,
+  lineHeight: 1.6,
+  fontFamily,
 });
 
 const BoldText = styled('span')({
-  fontWeight: "bold",
+  fontWeight: 700,
 });
 
 const UnderlinedText = styled('span')({
@@ -80,35 +101,35 @@ const UnderlinedText = styled('span')({
 });
 
 const BoldUnderlinedText = styled('span')({
-  fontWeight: "bold",
+  fontWeight: 700,
   textDecoration: 'underline',
 });
 
 const BulletList = styled(Box)({
   marginLeft: 16,
-  marginTop: 2,
-  marginBottom: 2,
+  marginTop: 4,
+  marginBottom: 4,
 });
 
 const BulletItem = styled(Box)({
   display: 'flex',
   alignItems: 'flex-start',
-  marginBottom: 1,
+  marginBottom: 2,
   '&::before': {
     content: '"•"',
-    color: colors.white,
+    color: colors.nestleCream,
     fontWeight: 'bold',
     width: 12,
     marginRight: 8,
-    marginTop: 1,
+    marginTop: 2,
     flexShrink: 0,
   },
 });
 
 const NumberedList = styled(Box)({
   marginLeft: 16,
-  marginTop: 2,
-  marginBottom: 2,
+  marginTop: 4,
+  marginBottom: 4,
 });
 
 const NumberedItem = styled(Box)(({ number }) => ({
@@ -117,27 +138,28 @@ const NumberedItem = styled(Box)(({ number }) => ({
   marginBottom: 2,
   '&::before': {
     content: `"${number}."`,
-    color: colors.white,
+    color: colors.nestleCream,
     fontWeight: 'bold',
     minWidth: 24,
     marginRight: 8,
-    marginTop: 1,
+    marginTop: 2,
     flexShrink: 0,
   },
 }));
 
 const StyledLink = styled(Link)({
-  color: colors.white,
+  color: colors.nestleCream,
   textDecoration: 'underline',
   cursor: 'pointer',
+  fontWeight: 600,
   '&:hover': {
-    color: colors.gray100,
+    color: colors.white,
     textDecoration: 'underline',
   },
 });
 
 const ParagraphText = styled(Box)({
-  marginBottom: 4,
+  marginBottom: 6,
   '&:last-child': {
     marginBottom: 0,
   },
@@ -146,40 +168,48 @@ const ParagraphText = styled(Box)({
 const ReferencesContainer = styled(Box)({
   display: 'flex',
   flexWrap: 'wrap',
-  gap: 4,
-  marginTop: 8,
+  gap: 6,
+  marginTop: 10,
   alignItems: 'center',
 });
 
 const ReferencesLabel = styled(Typography)({
   fontSize: 11,
-  fontWeight: 600,
-  color: colors.gray500,
-  marginRight: 4,
+  fontWeight: 700,
+  color: colors.nestleCream,
+  marginRight: 6,
   textTransform: 'uppercase',
-  letterSpacing: '0.5px',
+  letterSpacing: '0.6px',
+  fontFamily,
 });
 
-const ReferenceButton = styled(Chip)({
-  background: colors.gray400,
-  color: colors.white,
-  width: 20,
-  height: 20,
-  fontSize: 10,
-  fontWeight: 'bold',
-  cursor: 'pointer',
-  transition: 'all 0.2s ease',
-  '& .MuiChip-label': {
-    padding: 0,
-  },
-  '&:hover': {
-    background: colors.primary,
-    transform: 'scale(1.15)',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-  },
-  '&:active': {
-    transform: 'scale(1.05)',
-  },
+const ReferenceButton = styled(Chip)(() => {
+  return {
+    backgroundColor: `${colors.nestleCream} !important`,
+    color: `${colors.nestleGray} !important`,
+    width: 22,
+    height: 22,
+    fontSize: 10,
+    fontWeight: 700,
+    cursor: 'pointer',
+    transition: 'all 0.25s ease',
+    border: 'none !important',
+    minWidth: 22,
+    '& .MuiChip-label': {
+      padding: '0 !important',
+      fontFamily,
+      color: `${colors.nestleGray} !important`,
+    },
+    '&:hover': {
+      backgroundColor: `${colors.nestleCream} !important`,
+      opacity: 0.8,
+      transform: 'scale(1.15)',
+      boxShadow: `0 3px 10px ${colors.nestleCream}40`,
+    },
+    '&:active': {
+      transform: 'scale(1.05)',
+    },
+  };
 });
 
 const StyledTooltip = styled(({ className, ...props }) => (
@@ -191,23 +221,20 @@ const StyledTooltip = styled(({ className, ...props }) => (
     fontSize: 12,
     fontWeight: 500,
     fontFamily,
-    padding: '8px 12px',
-    borderRadius: 6,
-    maxWidth: 250,
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-    border: `1px solid ${colors.gray600}`,
+    padding: '10px 14px',
+    borderRadius: 8,
+    maxWidth: 280,
+    boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2)',
+    border: `1px solid ${colors.nestleGold}`,
   },
   '& .MuiTooltip-arrow': {
     color: colors.gray800,
-    '&::before': {
-      border: `1px solid ${colors.gray600}`,
-    },
   },
 });
 
 const MessageTime = styled(Typography)(({ messagetype }) => ({
   fontSize: 11,
-  color: colors.gray500,
+  color: colors.primary,
   marginTop: 4,
   textAlign: messagetype === 'user' ? 'right' : 'left',
   fontWeight: 500,
@@ -595,8 +622,8 @@ const MessageBubble = forwardRef(({ message }, ref) => {
     <MessageContainer messagetype={type} ref={ref}>
       {/* Show avatar for assistant messages */}
       {type === 'assistant' && (
-        <AssistantAvatar size="large">
-          <SmartToyOutlinedIcon />
+        <AssistantAvatar>
+          <NestleAvatarLogo src={nestleLogoCircle} alt="Nestlé Logo" />
         </AssistantAvatar>
       )}
       
