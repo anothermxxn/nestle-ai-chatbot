@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
 import ChatWindow from './ChatWindow';
-import { colors, fontFamily, FlexCenter, shadows } from './common';
+import { colors, fontFamily, FlexCenter, shadows, mediaQueries } from './common';
 import useChatSession from '../hooks/useChatSession';
 
 import nestleLogo from '../assets/logo.jpg';
@@ -27,6 +27,10 @@ const CollapsedNestleLogo = styled('img')({
   background: colors.white,
   padding: 2,
   boxShadow: '0 2px 8px rgba(99, 81, 61, 0.3)',
+  [mediaQueries.mobile]: {
+    width: 28,
+    height: 28,
+  },
 });
 
 // Nestlé Logo for closing animation
@@ -38,6 +42,10 @@ const ClosingNestleLogo = styled('img')({
   border: `2px solid ${colors.primary}`,
   background: colors.white,
   boxShadow: '0 2px 8px rgba(99, 81, 61, 0.3)',
+  [mediaQueries.mobile]: {
+    width: 50,
+    height: 50,
+  },
 });
 
 // Nestlé Logo for loading/expanding animation
@@ -51,6 +59,11 @@ const ExpandingNestleLogo = styled('img')({
   padding: 8,
   boxShadow: '0 8px 32px rgba(99, 81, 61, 0.3)',
   animation: 'pulse 1.5s ease-in-out infinite',
+  [mediaQueries.mobile]: {
+    width: 80,
+    height: 80,
+    padding: 6,
+  },
   '@keyframes pulse': {
     '0%': {
       transform: 'scale(1)',
@@ -81,16 +94,54 @@ const expandToWindow = keyframes`
   }
 `;
 
+const expandToWindowMobile = keyframes`
+  from {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+  }
+  to {
+    width: calc(100vw - 20px);
+    height: calc(100vh - 40px);
+    border-radius: 12px;
+  }
+`;
+
 const collapseToRectangle = keyframes`
   from {
     width: 400px;
     height: 600px;
     border-radius: 12px;
+    right: 20px;
+    left: auto;
+    transform: none;
   }
   to {
     width: 400px;
     height: 50px;
     border-radius: 12px;
+    right: 20px;
+    left: auto;
+    transform: none;
+  }
+`;
+
+const collapseToRectangleMobile = keyframes`
+  from {
+    width: calc(100vw - 20px);
+    height: calc(100vh - 40px);
+    border-radius: 12px;
+    left: 10px;
+    right: 10px;
+    transform: none;
+  }
+  to {
+    width: calc(100vw - 20px);
+    height: 50px;
+    border-radius: 12px;
+    left: 10px;
+    right: 10px;
+    transform: none;
   }
 `;
 
@@ -99,11 +150,36 @@ const expandFromRectangle = keyframes`
     width: 400px;
     height: 50px;
     border-radius: 12px;
+    right: 20px;
+    left: auto;
+    transform: none;
   }
   to {
     width: 400px;
     height: 600px;
     border-radius: 12px;
+    right: 20px;
+    left: auto;
+    transform: none;
+  }
+`;
+
+const expandFromRectangleMobile = keyframes`
+  from {
+    width: calc(100vw - 20px);
+    height: 50px;
+    border-radius: 12px;
+    left: 10px;
+    right: 10px;
+    transform: none;
+  }
+  to {
+    width: calc(100vw - 20px);
+    height: calc(100vh - 40px);
+    border-radius: 12px;
+    left: 10px;
+    right: 10px;
+    transform: none;
   }
 `;
 
@@ -116,6 +192,19 @@ const collapseToCircle = keyframes`
   to {
     width: 70px;
     height: 70px;
+    border-radius: 50%;
+  }
+`;
+
+const collapseToCircleMobile = keyframes`
+  from {
+    width: calc(100vw - 20px);
+    height: calc(100vh - 40px);
+    border-radius: 12px;
+  }
+  to {
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
   }
 `;
@@ -157,6 +246,12 @@ const AnimatedContainer = styled(Box, {
     justifyContent: 'center',
     overflow: 'hidden',
     transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+    [mediaQueries.mobile]: {
+      bottom: '10px',
+      right: '10px',
+      left: '10px',
+      boxShadow: shadows.mobile,
+    },
   };
 
   switch (chatState) {
@@ -167,9 +262,25 @@ const AnimatedContainer = styled(Box, {
         height: '70px',
         borderRadius: '50%',
         cursor: 'pointer',
+        [mediaQueries.mobile]: {
+          width: '60px',
+          height: '60px',
+          position: 'fixed',
+          right: '10px',
+          left: 'auto',
+        },
         '&:hover': {
           transform: 'scale(1.08)',
           boxShadow: shadows.gold,
+        },
+        [mediaQueries.touchDevice]: {
+          '&:hover': {
+            transform: 'none',
+            boxShadow: shadows.nestle,
+          },
+          '&:active': {
+            transform: 'scale(0.95)',
+          },
         },
       };
     
@@ -180,6 +291,14 @@ const AnimatedContainer = styled(Box, {
         height: '70px',
         borderRadius: '50%',
         animation: `${expandToWindow} 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
+        [mediaQueries.mobile]: {
+          width: '60px',
+          height: '60px',
+          animation: `${expandToWindowMobile} 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
+          position: 'fixed',
+          right: '10px',
+          left: 'auto',
+        },
       };
     
     case 'open':
@@ -188,6 +307,14 @@ const AnimatedContainer = styled(Box, {
         width: '400px',
         height: '600px',
         borderRadius: '12px',
+        [mediaQueries.mobile]: {
+          width: 'calc(100vw - 20px)',
+          height: 'calc(100vh - 40px)',
+          top: '10px',
+          bottom: '10px',
+          left: '10px',
+          right: '10px',
+        },
       };
     
     case 'collapsing':
@@ -197,6 +324,11 @@ const AnimatedContainer = styled(Box, {
         height: '600px',
         borderRadius: '12px',
         animation: `${collapseToRectangle} 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
+        [mediaQueries.mobile]: {
+          width: 'calc(100vw - 20px)',
+          height: 'calc(100vh - 40px)',
+          animation: `${collapseToRectangleMobile} 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
+        },
       };
     
     case 'collapsed':
@@ -206,9 +338,31 @@ const AnimatedContainer = styled(Box, {
         height: '50px',
         borderRadius: '12px',
         cursor: 'pointer',
+        right: '20px',
+        left: 'auto',
+        transform: 'none',
+        [mediaQueries.mobile]: {
+          width: 'calc(100vw - 20px)',
+          height: '50px',
+          left: '10px',
+          right: '10px',
+          transform: 'none',
+        },
         '&:hover': {
           transform: 'translateY(-2px)',
           boxShadow: shadows.gold,
+          [mediaQueries.mobile]: {
+            transform: 'none',
+          },
+        },
+        [mediaQueries.touchDevice]: {
+          '&:hover': {
+            transform: 'none',
+            boxShadow: shadows.nestle,
+          },
+          '&:active': {
+            transform: 'scale(0.98)',
+          },
         },
       };
     
@@ -219,6 +373,11 @@ const AnimatedContainer = styled(Box, {
         height: '50px',
         borderRadius: '12px',
         animation: `${expandFromRectangle} 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
+        [mediaQueries.mobile]: {
+          width: 'calc(100vw - 20px)',
+          height: '50px',
+          animation: `${expandFromRectangleMobile} 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
+        },
       };
     
     case 'closing':
@@ -228,6 +387,11 @@ const AnimatedContainer = styled(Box, {
         height: '600px',
         borderRadius: '12px',
         animation: `${collapseToCircle} 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
+        [mediaQueries.mobile]: {
+          width: 'calc(100vw - 20px)',
+          height: 'calc(100vh - 40px)',
+          animation: `${collapseToCircleMobile} 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
+        },
       };
     
     default:
@@ -236,6 +400,10 @@ const AnimatedContainer = styled(Box, {
         width: '70px',
         height: '70px',
         borderRadius: '50%',
+        [mediaQueries.mobile]: {
+          width: '60px',
+          height: '60px',
+        },
       };
   }
 });
@@ -254,6 +422,9 @@ const ExpandingContent = styled(FlexCenter)({
   height: '100%',
   flexDirection: 'column',
   gap: 12,
+  [mediaQueries.mobile]: {
+    gap: 8,
+  },
 });
 
 const SmartieText = styled(Typography)(({ size = 'normal' }) => ({
@@ -264,6 +435,10 @@ const SmartieText = styled(Typography)(({ size = 'normal' }) => ({
   color: colors.nestleCream,
   fontFamily,
   textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+  [mediaQueries.mobile]: {
+    fontSize: size === 'small' ? 9 : 6,
+    letterSpacing: '0.6px',
+  },
 }));
 
 const CollapsedContent = styled(FlexCenter)({
@@ -272,6 +447,9 @@ const CollapsedContent = styled(FlexCenter)({
   width: '100%',
   height: '100%',
   animation: `${fadeInContent} 0.2s ease 0.1s both`,
+  [mediaQueries.mobile]: {
+    gap: 8,
+  },
 });
 
 const ChatWindowContent = styled(Box)({

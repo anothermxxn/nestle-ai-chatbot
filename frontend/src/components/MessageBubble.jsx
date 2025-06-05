@@ -1,7 +1,7 @@
 import { Box, Typography, Paper, Chip, Tooltip, Link } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { forwardRef } from 'react';
-import { colors, fontFamily } from './common';
+import { colors, fontFamily, mediaQueries } from './common';
 import { parseMessageContent, formatReferenceTooltip } from '../utils/messageFormatter';
 
 // Import Nestlé logo
@@ -19,6 +19,11 @@ const MessageContainer = styled(Box)(({ messagetype }) => ({
   gap: messagetype === 'user' ? 0 : 8,
   position: messagetype === 'user' ? 'static' : 'relative',
   marginLeft: messagetype === 'user' ? 'auto' : 0,
+  [mediaQueries.mobile]: {
+    margin: '10px 0',
+    maxWidth: '98%',
+    gap: messagetype === 'user' ? 0 : 6,
+  },
 }));
 
 const AssistantAvatar = styled('div')({
@@ -35,6 +40,10 @@ const AssistantAvatar = styled('div')({
   background: colors.white,
   border: `1px solid ${colors.primary}`,
   boxShadow: '0 2px 8px rgba(99, 81, 61, 0.2)',
+  [mediaQueries.mobile]: {
+    width: 32,
+    height: 32,
+  },
 });
 
 const NestleAvatarLogo = styled('img')({
@@ -42,6 +51,10 @@ const NestleAvatarLogo = styled('img')({
   height: 28,
   borderRadius: '50%',
   objectFit: 'cover',
+  [mediaQueries.mobile]: {
+    width: 24,
+    height: 24,
+  },
 });
 
 const MessageContent = styled(Box)(({ messagetype }) => ({
@@ -49,6 +62,10 @@ const MessageContent = styled(Box)(({ messagetype }) => ({
   flexDirection: 'column',
   gap: 8,
   marginLeft: messagetype === 'assistant' ? 44 : 0,
+  [mediaQueries.mobile]: {
+    gap: 6,
+    marginLeft: messagetype === 'assistant' ? 38 : 0,
+  },
 }));
 
 const MessageText = styled(Paper)(({ messagetype }) => ({
@@ -77,12 +94,24 @@ const MessageText = styled(Paper)(({ messagetype }) => ({
   boxShadow: messagetype === 'user' 
     ? 'none'
     : '0 4px 12px rgba(114, 96, 80, 0.2)',
+  [mediaQueries.mobile]: {
+    padding: '8px 12px',
+    fontSize: 13,
+    borderRadius: 10,
+    borderBottomRightRadius: messagetype === 'user' ? 3 : 10,
+    borderBottomLeftRadius: messagetype === 'assistant' ? 3 : 10,
+  },
   ...(messagetype === 'system' && {
     textAlign: 'center',
     fontStyle: 'italic',
     fontSize: 12,
     margin: '4px auto',
     maxWidth: '200px',
+    [mediaQueries.mobile]: {
+      fontSize: 11,
+      maxWidth: '180px',
+      margin: '3px auto',
+    },
   }),
 }));
 
@@ -90,6 +119,10 @@ const FormattedText = styled(Box)({
   fontSize: 14,
   lineHeight: 1.6,
   fontFamily,
+  [mediaQueries.mobile]: {
+    fontSize: 13,
+    lineHeight: 1.5,
+  },
 });
 
 const BoldText = styled('span')({
@@ -109,12 +142,20 @@ const BulletList = styled(Box)({
   marginLeft: 16,
   marginTop: 4,
   marginBottom: 4,
+  [mediaQueries.mobile]: {
+    marginLeft: 12,
+    marginTop: 3,
+    marginBottom: 3,
+  },
 });
 
 const BulletItem = styled(Box)({
   display: 'flex',
   alignItems: 'flex-start',
   marginBottom: 2,
+  [mediaQueries.mobile]: {
+    marginBottom: 1,
+  },
   '&::before': {
     content: '"•"',
     color: colors.nestleCream,
@@ -123,6 +164,11 @@ const BulletItem = styled(Box)({
     marginRight: 8,
     marginTop: 2,
     flexShrink: 0,
+    [mediaQueries.mobile]: {
+      width: 10,
+      marginRight: 6,
+      marginTop: 1,
+    },
   },
 });
 
@@ -130,12 +176,20 @@ const NumberedList = styled(Box)({
   marginLeft: 16,
   marginTop: 4,
   marginBottom: 4,
+  [mediaQueries.mobile]: {
+    marginLeft: 12,
+    marginTop: 3,
+    marginBottom: 3,
+  },
 });
 
 const NumberedItem = styled(Box)(({ number }) => ({
   display: 'flex',
   alignItems: 'flex-start',
   marginBottom: 2,
+  [mediaQueries.mobile]: {
+    marginBottom: 1,
+  },
   '&::before': {
     content: `"${number}."`,
     color: colors.nestleCream,
@@ -144,6 +198,11 @@ const NumberedItem = styled(Box)(({ number }) => ({
     marginRight: 8,
     marginTop: 2,
     flexShrink: 0,
+    [mediaQueries.mobile]: {
+      minWidth: 20,
+      marginRight: 6,
+      marginTop: 1,
+    },
   },
 }));
 
@@ -156,12 +215,23 @@ const StyledLink = styled(Link)({
     color: colors.white,
     textDecoration: 'underline',
   },
+  [mediaQueries.touchDevice]: {
+    '&:hover': {
+      color: colors.nestleCream,
+    },
+    '&:active': {
+      color: colors.white,
+    },
+  },
 });
 
 const ParagraphText = styled(Box)({
   marginBottom: 6,
   '&:last-child': {
     marginBottom: 0,
+  },
+  [mediaQueries.mobile]: {
+    marginBottom: 4,
   },
 });
 
@@ -171,6 +241,10 @@ const ReferencesContainer = styled(Box)({
   gap: 6,
   marginTop: 10,
   alignItems: 'center',
+  [mediaQueries.mobile]: {
+    gap: 4,
+    marginTop: 8,
+  },
 });
 
 const ReferencesLabel = styled(Typography)({
@@ -181,36 +255,47 @@ const ReferencesLabel = styled(Typography)({
   textTransform: 'uppercase',
   letterSpacing: '0.6px',
   fontFamily,
+  [mediaQueries.mobile]: {
+    fontSize: 10,
+    marginRight: 4,
+    letterSpacing: '0.4px',
+  },
 });
 
-const ReferenceButton = styled(Chip)(() => {
-  return {
-    backgroundColor: `${colors.nestleCream} !important`,
-    color: `${colors.nestleGray} !important`,
-    width: 22,
-    height: 22,
-    fontSize: 10,
-    fontWeight: 700,
-    cursor: 'pointer',
-    transition: 'all 0.25s ease',
-    border: 'none !important',
-    minWidth: 22,
-    '& .MuiChip-label': {
-      padding: '0 !important',
-      fontFamily,
-      color: `${colors.nestleGray} !important`,
-    },
+const ReferenceButton = styled(Chip)(() => ({
+  backgroundColor: `${colors.nestleCream} !important`,
+  color: `${colors.nestleGray} !important`,
+  width: 22,
+  height: 22,
+  fontSize: 10,
+  fontWeight: 700,
+  cursor: 'pointer',
+  transition: 'all 0.25s ease',
+  border: 'none !important',
+  minWidth: 22,
+  [mediaQueries.mobile]: {
+    width: 24,
+    height: 24,
+    fontSize: 9,
+    minWidth: 24,
+  },
+  [mediaQueries.touchDevice]: {
     '&:hover': {
       backgroundColor: `${colors.nestleCream} !important`,
-      opacity: 0.8,
-      transform: 'scale(1.15)',
-      boxShadow: `0 3px 10px ${colors.nestleCream}40`,
+      transform: 'none',
     },
     '&:active': {
-      transform: 'scale(1.05)',
+      backgroundColor: `${colors.nestleGray} !important`,
+      color: `${colors.nestleCream} !important`,
+      transform: 'scale(0.95)',
     },
-  };
-});
+  },
+  '& .MuiChip-label': {
+    padding: '0 !important',
+    fontFamily,
+    color: `${colors.nestleGray} !important`,
+  },
+}));
 
 const StyledTooltip = styled(({ className, ...props }) => (
   <Tooltip {...props} classes={{ popper: className }} />
@@ -225,7 +310,7 @@ const StyledTooltip = styled(({ className, ...props }) => (
     borderRadius: 8,
     maxWidth: 280,
     boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2)',
-    border: `1px solid ${colors.nestleGold}`,
+    border: `1px solid ${colors.primary}`,
   },
   '& .MuiTooltip-arrow': {
     color: colors.gray800,

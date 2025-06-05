@@ -17,8 +17,53 @@ body {
   min-height: 100vh;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   background: linear-gradient(135deg, #F5F2E8 0%, #ffffff 50%, #F5F2E8 100%);
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Mobile styles */
+@media (max-width: 480px) {
+  :root {
+    line-height: 1.4;
+  }
+  
+  body {
+    min-width: 100vw;
+    min-height: 100vh;
+    min-height: calc(var(--vh, 1vh) * 100);
+    position: relative;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+  
+  input, textarea, button, select {
+    /* Prevent zoom on input focus for iOS */
+    font-size: 16px !important;
+  }
+}
+
+/* Prevent text selection on UI elements */
+button, .MuiIconButton-root, .MuiChip-root {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Safe area insets for devices with notches */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
 }

@@ -16,7 +16,8 @@ import {
   FlexCenter, 
   shadows, 
   StyledIconButton,
-  NestleHeader
+  NestleHeader,
+  mediaQueries
 } from './common';
 import useChatSession from '../hooks/useChatSession';
 import { createErrorHandler } from '../utils/errorHandler';
@@ -33,6 +34,10 @@ const HeaderNestleLogo = styled('img')({
   background: colors.white,
   padding: 2,
   boxShadow: '0 2px 8px rgba(99, 81, 61, 0.2)',
+  [mediaQueries.mobile]: {
+    width: 28,
+    height: 28,
+  },
 });
 
 // Loading animation for typing indicator
@@ -59,6 +64,12 @@ const ChatWindowContainer = styled(Paper)({
   border: `1px solid ${colors.nestleGray}`,
   fontFamily,
   fontWeight: 600,
+  [mediaQueries.mobile]: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+    boxShadow: shadows.mobile,
+  },
 });
 
 const ChatHeader = styled(NestleHeader)({
@@ -66,6 +77,9 @@ const ChatHeader = styled(NestleHeader)({
   borderBottom: `1px solid ${colors.nestleGray}`,
   background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.nestleGray} 100%)`,
   position: 'relative',
+  [mediaQueries.mobile]: {
+    padding: '12px 14px',
+  },
 });
 
 const SmartieHeader = styled(Box)({
@@ -73,6 +87,9 @@ const SmartieHeader = styled(Box)({
   alignItems: 'center',
   gap: 12,
   flex: 1,
+  [mediaQueries.mobile]: {
+    gap: 8,
+  },
 });
 
 const SmartieTitle = styled(Typography)({
@@ -81,10 +98,17 @@ const SmartieTitle = styled(Typography)({
   letterSpacing: '0.8px',
   color: colors.nestleCream,
   fontFamily,
+  [mediaQueries.mobile]: {
+    fontSize: 14,
+    letterSpacing: '0.6px',
+  },
 });
 
 const HeaderControls = styled(FlexCenter)({
   gap: 8,
+  [mediaQueries.mobile]: {
+    gap: 6,
+  },
 });
 
 const MessagesContainer = styled(Box)({
@@ -95,6 +119,10 @@ const MessagesContainer = styled(Box)({
   display: 'flex',
   flexDirection: 'column',
   gap: 12,
+  [mediaQueries.mobile]: {
+    padding: 12,
+    gap: 10,
+  },
   '&::-webkit-scrollbar': {
     width: 6,
   },
@@ -116,6 +144,9 @@ const LoadingContainer = styled(Box)({
   display: 'flex',
   justifyContent: 'flex-start',
   margin: '8px 0',
+  [mediaQueries.mobile]: {
+    margin: '6px 0',
+  },
 });
 
 const LoadingDots = styled(Box)({
@@ -127,6 +158,10 @@ const LoadingDots = styled(Box)({
   alignItems: 'center',
   border: `1px solid ${colors.gray200}`,
   boxShadow: shadows.light,
+  [mediaQueries.mobile]: {
+    padding: '10px 14px',
+    borderRadius: 16,
+  },
 });
 
 const LoadingDot = styled(Box)(({ delay = 0 }) => ({
@@ -136,12 +171,19 @@ const LoadingDot = styled(Box)(({ delay = 0 }) => ({
   borderRadius: '50%',
   animation: `${loadingBounce} 1.4s infinite ease-in-out`,
   animationDelay: `${delay}s`,
+  [mediaQueries.mobile]: {
+    width: 5,
+    height: 5,
+  },
 }));
 
 const InputArea = styled(Box)({
   padding: '12px',
   background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.nestleGray} 100%)`,
   borderTop: `1px solid ${colors.nestleGray}`,
+  [mediaQueries.mobile]: {
+    padding: '10px',
+  },
 });
 
 const InputContainer = styled(FlexCenter)({
@@ -152,6 +194,11 @@ const InputContainer = styled(FlexCenter)({
   padding: '4px 6px',
   width: '100%',
   transition: 'border-color 0.2s ease',
+  [mediaQueries.mobile]: {
+    gap: 6,
+    padding: '6px 8px',
+    borderRadius: 10,
+  },
   '&:focus-within': {
     borderColor: colors.primary,
   },
@@ -165,6 +212,9 @@ const MessageInput = styled(TextField)({
     fontSize: 14,
     fontFamily,
     fontWeight: 500,
+    [mediaQueries.mobile]: {
+      fontSize: 16, // Prevent zoom on iOS
+    },
     '& fieldset': {
       border: 'none',
     },
@@ -181,6 +231,9 @@ const MessageInput = styled(TextField)({
   '& .MuiOutlinedInput-input': {
     padding: '8px 12px',
     color: colors.nestleCream,
+    [mediaQueries.mobile]: {
+      padding: '10px 12px', // Increased touch target
+    },
     '&::placeholder': {
       color: colors.gray500,
       fontWeight: 500,
