@@ -4,7 +4,6 @@
 export const ERROR_TYPES = {
   NETWORK: 'NETWORK',
   API: 'API',
-  WEBSOCKET: 'WEBSOCKET',
   VALIDATION: 'VALIDATION',
   UNKNOWN: 'UNKNOWN',
 };
@@ -21,10 +20,6 @@ export const categorizeError = (error) => {
   
   if (message.includes('fetch') || message.includes('network') || message.includes('connection')) {
     return ERROR_TYPES.NETWORK;
-  }
-  
-  if (message.includes('websocket') || message.includes('ws')) {
-    return ERROR_TYPES.WEBSOCKET;
   }
   
   if (message.includes('http') || message.includes('api') || error.status) {
@@ -68,15 +63,6 @@ export const formatError = (error) => {
         title: 'Server Error',
         message: error.message || 'The server encountered an error processing your request.',
         userMessage: 'Sorry, something went wrong. Please try again.',
-        retryable: true,
-      };
-      
-    case ERROR_TYPES.WEBSOCKET:
-      return {
-        ...baseError,
-        title: 'Real-time Connection Error',
-        message: 'Unable to establish real-time connection.',
-        userMessage: 'Real-time features may not work properly.',
         retryable: true,
       };
       

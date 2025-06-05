@@ -18,7 +18,6 @@ if (!BACKEND_URL) {
 // API URLs
 export const API_CONFIG = {
   baseURL: BACKEND_URL,
-  wsURL: BACKEND_URL.replace('http', 'ws'),
   timeout: 30000,
   retryAttempts: 3,
   retryDelay: 1000,
@@ -30,10 +29,6 @@ export const ENDPOINTS = {
   // Chat endpoints
   CHAT: '/chat',
   CHAT_SEARCH: '/chat/search',
-  CHAT_RECIPES: '/chat/recipes',
-  CHAT_PRODUCTS: '/chat/products',
-  CHAT_COOKING_TIPS: '/chat/cooking-tips',
-  CHAT_NUTRITION: '/chat/nutrition',
   CHAT_QUICK_SEARCH: '/chat/quick-search',
   CHAT_HEALTH: '/chat/health',
   CHAT_EXAMPLES: '/chat/examples',
@@ -46,10 +41,6 @@ export const ENDPOINTS = {
   GRAPH_SCHEMA_RELATIONSHIPS: '/graph/schema/relationship-types',
   GRAPH_VALIDATE_ENTITY: '/graph/validate/entity',
   GRAPH_VALIDATE_RELATIONSHIP: '/graph/validate/relationship',
-  
-  // WebSocket endpoints
-  WS: '/ws',
-  WS_CONVERSATION: '/ws/{conversationId}',
 };
 
 // Request configuration
