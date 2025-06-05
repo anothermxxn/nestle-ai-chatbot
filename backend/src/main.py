@@ -4,11 +4,9 @@ import os
 
 try:
     from backend.src.chat.chat_router import router as chat_router
-    from backend.src.chat.websocket_router import router as websocket_router
     from backend.src.graph.graph_router import router as graph_router
 except ImportError:
     from src.chat.chat_router import router as chat_router
-    from src.chat.websocket_router import router as websocket_router
     from src.graph.graph_router import router as graph_router
 
 app = FastAPI(
@@ -42,7 +40,6 @@ else:
 
 # Include routers
 app.include_router(chat_router)
-app.include_router(websocket_router)
 app.include_router(graph_router)
 
 @app.get("/")
