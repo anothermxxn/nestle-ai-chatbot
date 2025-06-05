@@ -19,14 +19,14 @@ try:
         AZURE_OPENAI_CONFIG,
         CHAT_CONFIG,
         CHAT_PROMPTS,
-        validate_azure_openai_config
+        DOMAIN_CHECK_CONFIG,
     )
 except ImportError:
     from config import (
         AZURE_OPENAI_CONFIG,
         CHAT_CONFIG,
         CHAT_PROMPTS,
-        validate_azure_openai_config
+        DOMAIN_CHECK_CONFIG,
     )
 
 # Configure logging
@@ -124,67 +124,6 @@ class NestleChatClient:
             normalized = normalized.split("#")[0]
         
         return normalized
-
-    async def _check_domain_and_respond(self, query: str, session, search_params: Dict) -> Dict:
-        """
-        Check if query is within knowledge domain and provide appropriate response.
-        
-        Args:
-            query (str): User query
-            session: Session object
-            search_params (Dict): Search parameters used
-            
-        Returns:
-            Dict: Either None (proceed with search) or response dict (out of domain)
-        """
-        try:
-            # Use LLM to classify the query and potentially respond
-            prompt = CHAT_PROMPTS["domain_classification_prompt"].format(query=query)
-            
-            response_text = self.openai_client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model=self.deployment_name,
-                temperature=0.7,
-                max_tokens=200
-            )
-            
-            if response_text.choices and len(response_text.choices) > 0:
-                llm_response = response_text.choices[0].message.content.strip()
-                
-                # If LLM says it's within domain, return None to proceed with search
-                if "DOMAIN_MATCH" in llm_response:
-                    return None
-                
-                # Otherwise, use the LLM's response as the out-of-domain response
-                response = {
-                    "answer": llm_response,
-                    "sources": [],
-                    "search_results_count": 0,
-                    "query": query,
-                    "filters_applied": {
-                        "content_type": search_params.get("content_type"),
-                        "brand": search_params.get("brand"),
-                        "keywords": search_params.get("keywords")
-                    },
-                    "graphrag_enhanced": False,
-                    "combined_relevance_score": 0.0,
-                    "retrieval_metadata": {}
-                }
-                
-                session.add_assistant_message(
-                    response["answer"],
-                    {"search_results_count": 0, "filters_applied": response["filters_applied"], "out_of_domain": True}
-                )
-                
-                return response
-            else:
-                # If LLM call fails, proceed with search (safe fallback)
-                return None
-                
-        except Exception as e:
-            logger.warning(f"Failed to classify query domain: {str(e)}")
-            # If classification fails, proceed with search (safe fallback)
-            return None
 
     def _format_links(self, search_results: List[Dict]) -> List[Dict]:
         """
@@ -722,37 +661,52 @@ class NestleChatClient:
             session_id (Optional[str]): Session ID for context
             
         Returns:
-            Dict: Recipe suggestions with answers
-        """
-        query = f"recipes with {ingredient}"
-        return await self.search_and_chat(
-            query=query,
-            session_id=session_id,
-            content_type="recipe",
-            top_search_results=5
-        )
     
-    async def get_product(self, product_name: str, session_id: Optional[str] = None) -> Dict:
+    async def _check_domain_and_respond_stateless(self, query: str, search_params: Dict) -> Optional[Dict]:
         """
-        Get information about a specific Nestle product with conversation context.
+        Check if query is within domain using LLM-based classification.
+        LLM responds with either "YES" (in domain) or "NO" (out of domain).
         
         Args:
-            product_name (str): Name of the product
-            session_id (Optional[str]): Session ID for context
+            query (str): User query
+            search_params (Dict): Search parameters
             
         Returns:
-            Dict: Product information with answers
+            Optional[Dict]: Domain response if query is out of domain, None if in domain
         """
-        query = f"tell me about {product_name}"
-        return await self.search_and_chat(
-            query=query,
-            session_id=session_id,
-            content_type="brand",
-            keywords=[f"{product_name}"],
-            top_search_results=5
-        )
-    
-    async def get_cooking_tips(self, topic: str, session_id: Optional[str] = None) -> Dict:
+        try:
+            # Use LLM to classify domain
+            domain_prompt = CHAT_PROMPTS["domain_check_prompt"].format(query=query)
+            
+            response = self.openai_client.chat.completions.create(
+                messages=[{"role": "user", "content": domain_prompt}],
+                model=self.deployment_name,
+                temperature=DOMAIN_CHECK_CONFIG.get("llm_temperature"),
+                max_tokens=DOMAIN_CHECK_CONFIG.get("llm_max_tokens")
+            )
+            
+            classification_result = response.choices[0].message.content.strip().upper()
+            
+            # If the classification is "NO", it's out of domain
+            if classification_result == "NO":
+                return {
+                    "answer": CHAT_PROMPTS["out_of_domain_response"],
+                    "sources": [],
+                    "search_results_count": 0,
+                    "query": query,
+                    "filters_applied": search_params,
+                    "graphrag_enhanced": False,
+                    "combined_relevance_score": 0.0,
+                    "retrieval_metadata": {"domain_check": "out_of_domain"}
+                }
+            
+            # If the classification is "YES", proceed with search
+            return None
+
+        # If LLM fails, allow query to proceed    
+        except Exception as e:
+            logger.error(f"Domain classification failed: {str(e)}")
+            return None
         """
         Get cooking tips and advice with conversation context.
         

@@ -133,6 +133,7 @@ from .azure_ai import (
     # Chat configuration
     CHAT_CONFIG,
     CHAT_PROMPTS,
+    DOMAIN_CHECK_CONFIG,
     
     # Validation functions
     validate_azure_openai_config,
@@ -235,6 +236,7 @@ __all__ = [
     "AZURE_EMBEDDING_DEPLOYMENT",
     "CHAT_CONFIG",
     "CHAT_PROMPTS",
+    "DOMAIN_CHECK_CONFIG",
     "validate_azure_openai_config",
     "validate_azure_embedding_config",
     "get_chat_client_config",

@@ -36,7 +36,6 @@ AZURE_EMBEDDING_CONFIG = {
 CHAT_CONFIG = {
     "default_temperature": 0.3,
     "default_max_tokens": 1000,
-    "session_timeout_hours": 24,
     "max_conversation_history": 20,
     "context_window": 5,
 }
@@ -90,39 +89,44 @@ CHAT_PROMPTS = {
     Answer:
     """,
     
-    "domain_classification_prompt": """
-    You are Smartie, a helpful AI assistant for Nestle that specializes in cooking, recipes, food-related questions, and Nestle products.
+    "domain_check_prompt": """
+    You are a domain classifier for a Nestlé AI assistant. Determine if the user's query is related to Nestlé's business domain.
+
+    Nestlé's domain includes:
+    - Nestlé products and brands
+    - Food, beverages, nutrition, and cooking
+    - Recipes and cooking tips
+    - Baby food and pet food
+    - General food-related questions that could involve Nestlé products
+    - General purchase/gift ideas questions that could involve Nestlé products
+
+    Respond with only "YES" if the query is within Nestlé's domain, or "NO" if it's clearly outside the domain.
 
     User query: "{query}"
-
-    Your knowledge domain includes:
-    - Cooking techniques and methods
-    - Recipes and ingredients
-    - Food preparation and baking
-    - Nestle products and brands
-    - Nutrition information about food
-    - Food safety and storage
-    - Kitchen tips and equipment
-    - Beverages (coffee, tea, etc.)
-    - Desserts and treats
-
-    Analyze the user's query and determine if it is within your knowledge domain:
-    1. If it is, respond with: "DOMAIN_MATCH"
-    2. If it is not, provide a brief, friendly response that:
-       - Politely acknowledges their question
-       - Explains your specialization in food-related topics
-       - Suggests a related food/cooking topic they could ask about instead
-       - Keep it conversational and under 3 sentences
-       - Do not put your response in quotes
 
     Response:
     """,
     
-    "no_results_message": "I specialize in helping with Nestle products, recipes, cooking tips, and food-related questions. I couldn't find any relevant information about your current question in my knowledge base. Could you ask me something about cooking, recipes, or Nestle products instead? For example, you could ask about chocolate recipes, coffee preparation, or information about specific Nestle brands.",
+    "out_of_domain_response": (
+        "I'm Smartie, your Nestlé assistant! I specialize in helping with Nestlé products, "
+        "recipes, cooking tips, and nutrition information. You could ask me something about "
+        "Nestlé products, recipes, or cooking instead!"
+    ),
+    
+    "no_results_message": (
+        "I couldn't find any relevant information about your current question in my knowledge base."
+        "Could you ask me something about Nestlé products, recipes, or cooking instead?"),
     
     "error_message": "I'm sorry, I encountered an error while processing your question. Please try again.",
     
     "generation_error_message": "I found relevant sources but couldn't generate a complete answer. Please check the sources below."
+}
+
+# Domain checking configuration
+DOMAIN_CHECK_CONFIG = {
+    "use_llm_classification": True,
+    "llm_temperature": 0.0,
+    "llm_max_tokens": 10,
 }
 
 def validate_azure_openai_config() -> bool:
