@@ -18,6 +18,7 @@ AMAZON_SEARCH_CONFIG = {
         "Connection": "keep-alive",
         "Upgrade-Insecure-Requests": "1",
     },
+    "affiliate_tag": None,
     "default_department": "grocery",
     "search_params": {
         "k": "",  # search query

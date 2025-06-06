@@ -240,7 +240,7 @@ class NestleChatClient:
         
         return "\n=================\n".join(formatted_sources)
     
-    async def _perform_search(self, search_params: Dict, top_search_results: int):
+    async def _perform_hybrid_search(self, search_params: Dict, top_search_results: int):
         """
         Perform hybrid search using both vector search and GraphRAG.
         
@@ -280,6 +280,33 @@ class NestleChatClient:
             keywords=search_params.get("keywords")
         )
         return search_results, None
+
+    async def _perform_basic_search(self, search_params: Dict, top_search_results: int):
+        """
+        Perform basic vector-only search for purchase queries to avoid expensive GraphRAG processing.
+        
+        Args:
+            search_params (Dict): Search parameters including query and filters
+            top_search_results (int): Number of results
+            
+        Returns:
+            Tuple[List[Dict], None]: Search results and None (no graph context)
+        """
+        try:
+            logger.info("Using basic vector search for purchase query")
+            search_results = await self.search_client.search(
+                query=search_params.get("query"),
+                top=top_search_results,
+                content_type=search_params.get("content_type"),
+                brand=search_params.get("brand"),
+                keywords=search_params.get("keywords")
+            )
+            logger.info(f"Basic search returned {len(search_results)} results")
+            return search_results, None
+            
+        except Exception as e:
+            logger.error(f"Basic search failed: {str(e)}")
+            return [], None
 
     def _create_prompt(self, query: str, search_results: List[Dict], graphrag_result, conversation_history) -> str:
         """
@@ -355,48 +382,80 @@ class NestleChatClient:
         answer = response.choices[0].message.content
         return answer if answer else GENERATION_ERROR_MESSAGE
 
-    async def _check_purchase_intent(self, query: str) -> bool:
+    async def _check_purchase_intent(self, query: str) -> tuple[bool, Optional[str]]:
         """
-        Check if the user query expresses purchase intent using LLM classification.
+        Check if the user query expresses purchase intent using LLM classification
+        and extract the specific product name.
         
         Args:
             query (str): User query to analyze
             
         Returns:
-            bool: True if purchase intent is detected
+            tuple[bool, Optional[str]]: (purchase_intent_detected, extracted_product_name)
         """
         try:
             prompt = PURCHASE_CHECK_PROMPT.format(query=query)
+            
+            logger.info(f"Checking purchase intent for query: '{query}'")
+            logger.debug(f"Purchase check prompt: {prompt}")
             
             response = self.openai_client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
                 model=self.deployment_name,
                 temperature=0.1,
-                max_tokens=10
+                max_tokens=50  # Increased to accommodate product name extraction
             )
             
             if response.choices and len(response.choices) > 0:
-                result = response.choices[0].message.content.strip().upper()
-                return result == "YES"
+                result = response.choices[0].message.content.strip()
+                logger.info(f"Purchase intent detection result for '{query}': '{result}'")
+                
+                # Parse the structured response
+                intent_detected = False
+                extracted_product = None
+                
+                for line in result.split('\n'):
+                    line = line.strip()
+                    if line.startswith('INTENT:'):
+                        intent_value = line.replace('INTENT:', '').strip().upper()
+                        intent_detected = intent_value == "YES"
+                    elif line.startswith('PRODUCT:'):
+                        product_value = line.replace('PRODUCT:', '').strip()
+                        if product_value.upper() != "NONE":
+                            extracted_product = product_value
+                
+                logger.info(f"Purchase intent detected: {intent_detected}")
+                if extracted_product:
+                    logger.info(f"Extracted product name: '{extracted_product}'")
+                
+                return intent_detected, extracted_product
+            else:
+                logger.warning(f"No response choices for purchase intent detection")
+                return False, None
             
         except Exception as e:
             logger.error(f"Error in purchase intent detection: {str(e)}")
             
-        return False
+        return False, None
 
-    async def _get_purchase_assistance_data(self, query: str, user_location: Optional[Dict] = None) -> Dict:
+    async def _get_purchase_assistance_data(self, query: str, user_location: Optional[Dict] = None, extracted_product: Optional[str] = None) -> Dict:
         """
         Get store locations and Amazon products for purchase assistance.
         
         Args:
-            query (str): User query
+            query (str): Original user query
             user_location (Optional[Dict]): User's location {lat, lon}
+            extracted_product (Optional[str]): Extracted product name for targeted search
             
         Returns:
             Dict: Purchase assistance data with stores and Amazon products
         """
         stores = []
         amazon_products = []
+        
+        # Use extracted product name for searches if available, otherwise use original query
+        search_term = extracted_product if extracted_product else query
+        logger.info(f"Using search term for purchase assistance: '{search_term}' {'(extracted product)' if extracted_product else '(original query)'}")
         
         try:
             # Get store locations if user location is provided
@@ -410,10 +469,11 @@ class NestleChatClient:
                 except Exception as e:
                     logger.error(f"Error fetching store locations: {str(e)}")
             
-            # Get Amazon products
+            # Get Amazon products using the targeted search term
             try:
-                amazon_results = await self.amazon_search.search_products(query)
+                amazon_results = await self.amazon_search.search_products(search_term)
                 amazon_products = self.amazon_search.format_products_for_response(amazon_results[:3])
+                logger.info(f"Amazon search for '{search_term}' returned {len(amazon_products)} products")
             except Exception as e:
                 logger.error(f"Error fetching Amazon products: {str(e)}")
             
@@ -425,7 +485,7 @@ class NestleChatClient:
             "amazon_products": amazon_products
         }
 
-    async def _handle_purchase_query(self, query: str, search_results: List[Dict], user_location: Optional[Dict] = None) -> Dict:
+    async def _handle_purchase_query(self, query: str, search_results: List[Dict], user_location: Optional[Dict] = None, extracted_product: Optional[str] = None) -> Dict:
         """
         Handle purchase-specific queries with simplified response and purchase assistance data.
         
@@ -433,6 +493,7 @@ class NestleChatClient:
             query (str): User purchase query
             search_results (List[Dict]): Limited search results for product identification
             user_location (Optional[Dict]): User's location for store locator
+            extracted_product (Optional[str]): Extracted product name
             
         Returns:
             Dict: Purchase response with brief answer and purchase assistance data
@@ -457,7 +518,7 @@ class NestleChatClient:
             
             # Generate response
             answer = await self._generate_llm_response(purchase_prompt)
-            purchase_data = await self._get_purchase_assistance_data(query, user_location)
+            purchase_data = await self._get_purchase_assistance_data(query, user_location, extracted_product)
             source_links = self._format_links(search_results)
             
             return {
@@ -531,22 +592,35 @@ class NestleChatClient:
                 return domain_response
             
             # Purchase intent check
-            is_purchase_query = await self._check_purchase_intent(query)
+            logger.info(f"About to check purchase intent for query: '{query}'")
+            is_purchase_query, extracted_product = await self._check_purchase_intent(query)
+            logger.info(f"Purchase intent check completed for '{query}': {is_purchase_query}")
             
             if is_purchase_query:
-                # Get minimal search results for product identification
-                search_results, _ = await self._perform_search(search_params, min(3, top_search_results))
+                logger.info(f"Handling query '{query}' as purchase query with basic search")
+                
+                # Use extracted product name for search if available, otherwise use original query
+                search_query = extracted_product if extracted_product else query
+                logger.info(f"Using search query: '{search_query}' {'(extracted product)' if extracted_product else '(original query)'}")
+                
+                # Update search params to use the extracted product name
+                if extracted_product:
+                    search_params["query"] = extracted_product
+                
+                # Get basic search results for product identification
+                search_results, _ = await self._perform_basic_search(search_params, min(3, top_search_results))
                 
                 if not search_results:
                     search_results = []
                 
-                return await self._handle_purchase_query(query, search_results, user_location)
+                return await self._handle_purchase_query(query, search_results, user_location, extracted_product)
             
             else:
+                logger.info(f"Handling query '{query}' as regular query with hybrid search")
                 # Handle regular query
                 formatted_conversation_history = self._format_conversation_history(conversation_history)
                 
-                search_results, graphrag_result = await self._perform_search(
+                search_results, graphrag_result = await self._perform_hybrid_search(
                     search_params, top_search_results
                 )
                 
