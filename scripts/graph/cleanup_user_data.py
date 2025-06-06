@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import asyncio
+import logging
 import sys
 import os
 from typing import List
@@ -10,6 +11,10 @@ sys.path.insert(0, os.path.abspath(backend_root))
 sys.path.insert(0, os.path.abspath(backend_src_path))
 from graph.services.cosmos_service import CosmosGraphClient
 from graph.models.entity import EntityType
+
+# Initialize logging
+setup_logging()
+logger = logging.getLogger(__name__)
 
 async def get_user_created_entities(client: CosmosGraphClient) -> List:
     """
@@ -23,15 +28,13 @@ async def get_user_created_entities(client: CosmosGraphClient) -> List:
     """
     user_entities = []
     
-    for entity_type in EntityType:
-        print(f"Checking {entity_type.value} entities...")
-        
+    for entity_type in EntityType:        
         entities = await client.find_entities_by_type(entity_type, limit=1000)
         
         for entity in entities:
             if entity.is_user_created:
                 user_entities.append(entity)
-                print(f"  Found user-created {entity_type.value}: {entity.id}")
+                logger.info(f"  Found user-created {entity_type.value}: {entity.id}")
     
     return user_entities
 
@@ -46,7 +49,6 @@ async def get_user_created_relationships(client: CosmosGraphClient) -> List:
     Returns:
         List: List of user-created relationships
     """
-    print("Checking user-created relationships...")
     user_relationships = []
     
     # Get all relationships and filter for user-created ones
@@ -55,7 +57,7 @@ async def get_user_created_relationships(client: CosmosGraphClient) -> List:
     for rel in all_relationships:
         if rel.is_user_created:
             user_relationships.append(rel)
-            print(f"  Found user-created relationship: {rel.id} ({rel.relationship_type.value})")
+            logger.info(f"  Found user-created relationship: {rel.id} ({rel.relationship_type.value})")
     
     return user_relationships
 
@@ -73,39 +75,37 @@ async def get_relationships_for_entities(client: CosmosGraphClient, entity_ids: 
     """
     relationships = []
     
-    for entity_id in entity_ids:
-        print(f"Checking relationships for entity: {entity_id}")
-        
+    for entity_id in entity_ids:        
         entity_relationships = await client.get_entity_relationships(entity_id, "both")
         
         for rel in entity_relationships:
             if rel not in relationships:
                 relationships.append(rel)
-                print(f"  Found relationship: {rel.id} ({rel.relationship_type.value})")
+                logger.info(f"  Found relationship: {rel.id} ({rel.relationship_type.value})")
     
     return relationships
 
 
 async def cleanup_user_data():
     """Main cleanup function."""
-    print("🧹 Starting cleanup of user-created test data...")
-    print("=" * 50)
+    logger.info("🧹 Starting cleanup of user-created test data...")
+    logger.info("=" * 50)
     
     try:
         client = CosmosGraphClient()
         
         # Get all user-created entities
-        print("\nFinding user-created entities...")
+        logger.info("\nFinding user-created entities...")
         user_entities = await get_user_created_entities(client)
         
         # Get all user-created relationships
-        print("\nFinding user-created relationships...")
+        logger.info("\nFinding user-created relationships...")
         user_relationships = await get_user_created_relationships(client)
         
         # Get relationships connected to user-created entities (may include system relationships)
         if user_entities:
             entity_ids = [entity.id for entity in user_entities]
-            print("\nFinding relationships connected to user-created entities...")
+            logger.info("\nFinding relationships connected to user-created entities...")
             connected_relationships = await get_relationships_for_entities(client, entity_ids)
         else:
             connected_relationships = []
@@ -128,13 +128,8 @@ async def cleanup_user_data():
         
         # Check if anything to clean up
         if not user_entities and not all_relationships_to_delete:
-            print("✅ No user-created data found. Database is already clean!")
+            logger.info("✅ No user-created data found. Database is already clean!")
             return
-        
-        print(f"\nFound {len(user_entities)} user-created entities")
-        print(f"Found {len(user_relationships)} user-created relationships")
-        print(f"Found {len(connected_relationships)} relationships connected to user entities")
-        print(f"Total relationships to delete: {len(all_relationships_to_delete)}")
         
         print("\n⚠️  About to delete:")
         print(f"   - {len(user_entities)} user-created entities")
@@ -143,11 +138,11 @@ async def cleanup_user_data():
         confirmation = input("\nAre you sure you want to delete all this data? (yes/no): ")
         
         if confirmation.lower() not in ["yes", "y"]:
-            print("❌ Cleanup cancelled.")
+            logger.warning("❌ Cleanup cancelled.")
             return
         
         # Delete relationships
-        print(f"\nDeleting {len(all_relationships_to_delete)} relationships...")
+        logger.info(f"\nDeleting {len(all_relationships_to_delete)} relationships...")
         deleted_relationships = 0
         
         for rel in all_relationships_to_delete:
@@ -156,14 +151,13 @@ async def cleanup_user_data():
                 if success:
                     deleted_relationships += 1
                     user_flag = "👤" if rel.is_user_created else "🤖"
-                    print(f"  ✅ Deleted relationship: {rel.id} {user_flag}")
                 else:
-                    print(f"  ❌ Failed to delete relationship: {rel.id}")
+                    logger.warning(f"  ❌ Failed to delete relationship: {rel.id}")
             except Exception as e:
-                print(f"  ❌ Error deleting relationship {rel.id}: {e}")
+                logger.error(f"  ❌ Error deleting relationship {rel.id}: {e}")
         
         # Delete entities
-        print(f"\nDeleting {len(user_entities)} entities...")
+        logger.info(f"\nDeleting {len(user_entities)} entities...")
         deleted_entities = 0
         
         for entity in user_entities:
@@ -171,94 +165,96 @@ async def cleanup_user_data():
                 success = await client.delete_entity(entity.id, entity.entity_type)
                 if success:
                     deleted_entities += 1
-                    print(f"  ✅ Deleted entity: {entity.id} ({entity.entity_type.value})")
                 else:
-                    print(f"  ❌ Failed to delete entity: {entity.id}")
+                    logger.warning(f"  ❌ Failed to delete entity: {entity.id}")
             except Exception as e:
-                print(f"  ❌ Error deleting entity {entity.id}: {e}")
+                logger.error(f"  ❌ Error deleting entity {entity.id}: {e}")
         
-        print("\n" + "=" * 50)
-        print("Cleanup completed!")
-        print(f"   ✅ Deleted {deleted_entities}/{len(user_entities)} entities")
-        print(f"   ✅ Deleted {deleted_relationships}/{len(all_relationships_to_delete)} relationships")
+        logger.info("\n" + "=" * 50)
+        logger.info("Cleanup completed!")
+        logger.info(f"   ✅ Deleted {deleted_entities}/{len(user_entities)} entities")
+        logger.info(f"   ✅ Deleted {deleted_relationships}/{len(all_relationships_to_delete)} relationships")
         
         if deleted_entities < len(user_entities) or deleted_relationships < len(all_relationships_to_delete):
-            print("   ⚠️ Some items could not be deleted. Check the logs above.")
+            logger.warning("   ⚠️ Some items could not be deleted.")
         else:
-            print("   All user-created test data has been successfully removed!")
+            logger.info("   All user-created test data has been successfully removed!")
             
     except Exception as e:
-        print(f"\n❌ Error during cleanup: {e}")
-        print("   Please check your database connection and try again.")
-
+        logger.error(f"\n❌ Error during cleanup: {e}")
 
 async def list_user_data():
     """List user-created data without deleting."""
-    print("Listing user-created test data...")
-    print("=" * 50)
+    logger.info("Listing user-created test data...")
+    logger.info("=" * 50)
     
     try:
         client = CosmosGraphClient()
         
+        # Get all user-created entities
         user_entities = await get_user_created_entities(client)
+        
+        # Get all user-created relationships
         user_relationships = await get_user_created_relationships(client)
         
         if not user_entities and not user_relationships:
-            print("✅ No user-created data found.")
+            logger.info("✅ No user-created data found.")
             return
         
-        # Display entities
         if user_entities:
-            print(f"\nFound {len(user_entities)} user-created entities:")
-            
-            # Group by type
-            by_type = {}
+            # Group entities by type for better display
+            entities_by_type = {}
             for entity in user_entities:
                 entity_type = entity.entity_type.value
-                if entity_type not in by_type:
-                    by_type[entity_type] = []
-                by_type[entity_type].append(entity)
+                if entity_type not in entities_by_type:
+                    entities_by_type[entity_type] = []
+                entities_by_type[entity_type].append(entity)
             
-            for entity_type, entities in by_type.items():
-                print(f"\n  {entity_type} ({len(entities)} entities):")
+            logger.info(f"\nFound {len(user_entities)} user-created entities:")
+            for entity_type, entities in entities_by_type.items():
+                logger.info(f"\n  {entity_type} ({len(entities)} entities):")
                 for entity in entities:
-                    name = entity.properties.get("name") or entity.properties.get("title", "Unknown")
-                    print(f"    - {entity.id}: {name}")
+                    name = getattr(entity, 'name', entity.id)
+                    logger.info(f"    - {entity.id}: {name}")
         else:
-            print("\n✅ No user-created entities found.")
+            logger.info("\n✅ No user-created entities found.")
         
-        # Display relationships
         if user_relationships:
-            print(f"\nFound {len(user_relationships)} user-created relationships:")
-            
-            # Group by type
-            by_rel_type = {}
+            # Group relationships by type for better display
+            relationships_by_type = {}
             for rel in user_relationships:
                 rel_type = rel.relationship_type.value
-                if rel_type not in by_rel_type:
-                    by_rel_type[rel_type] = []
-                by_rel_type[rel_type].append(rel)
+                if rel_type not in relationships_by_type:
+                    relationships_by_type[rel_type] = []
+                relationships_by_type[rel_type].append(rel)
             
-            for rel_type, relationships in by_rel_type.items():
-                print(f"\n  {rel_type} ({len(relationships)} relationships):")
+            logger.info(f"\nFound {len(user_relationships)} user-created relationships:")
+            for rel_type, relationships in relationships_by_type.items():
+                logger.info(f"\n  {rel_type} ({len(relationships)} relationships):")
                 for rel in relationships:
-                    print(f"    - {rel.id}: {rel.from_entity_id} → {rel.to_entity_id}")
+                    logger.info(f"    - {rel.id}: {rel.from_entity_id} → {rel.to_entity_id}")
         else:
-            print("\n✅ No user-created relationships found.")
+            logger.info("\n✅ No user-created relationships found.")
         
-        # Show summary
-        if user_entities or user_relationships:
-            print(f"\n📊 Summary:")
-            print(f"   - Total user-created entities: {len(user_entities)}")
-            print(f"   - Total user-created relationships: {len(user_relationships)}")
+        # Summary
+        logger.info(f"\nSummary:")
+        logger.info(f"   - Total user-created entities: {len(user_entities)}")
+        logger.info(f"   - Total user-created relationships: {len(user_relationships)}")
         
     except Exception as e:
-        print(f"❌ Error listing data: {e}")
+        logger.error(f"❌ Error listing data: {e}")
 
 
 def main():
     """Main entry point."""
-    if len(sys.argv) > 1 and sys.argv[1] == "--list":
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Cleanup or list user-created test data in Cosmos DB")
+    parser.add_argument("--list", action="store_true", help="List user-created data without deleting")
+    
+    args = parser.parse_args()
+    
+    if args.list:
         asyncio.run(list_user_data())
     else:
         asyncio.run(cleanup_user_data())

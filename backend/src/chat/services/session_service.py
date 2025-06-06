@@ -156,12 +156,12 @@ class SessionManager:
         """
         session = self.get_session(session_id)
         if not session:
-            logger.warning(f"Attempted to add message to non-existent session: {session_id}")
+            logger.error(f"Attempted to add message to non-existent session: {session_id}")
             return False
         
         with self._lock:
             session.add_message(role, content, metadata)
-            logger.debug(f"Added {role} message to session {session_id}")
+            logger.info(f"Added {role} message to session {session_id}")
             return True
     
     def get_conversation_history(self, session_id: str, max_messages: int = 20) -> List[Dict[str, Any]]:
@@ -252,7 +252,7 @@ class SessionManager:
         
         for session_id in expired_sessions:
             del self.sessions[session_id]
-            logger.debug(f"Cleaned up expired session: {session_id}")
+            logger.info(f"Cleaned up expired session: {session_id}")
         
         # If still over limit, remove oldest sessions
         if len(self.sessions) > self.max_sessions:
@@ -266,7 +266,7 @@ class SessionManager:
             for i in range(sessions_to_remove):
                 session_id, _ = sessions_by_activity[i]
                 del self.sessions[session_id]
-                logger.debug(f"Cleaned up old session due to limit: {session_id}")
+                logger.info(f"Cleaned up old session: {session_id}")
     
     def cleanup_expired_sessions(self):
         """Public method to manually trigger cleanup of expired sessions."""

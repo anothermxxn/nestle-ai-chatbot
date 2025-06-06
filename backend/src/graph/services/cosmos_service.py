@@ -5,7 +5,6 @@ from azure.cosmos import CosmosClient, PartitionKey, exceptions
 from azure.cosmos.container import ContainerProxy
 from azure.cosmos.database import DatabaseProxy
 
-# Dynamic import to handle both local development and Docker environments
 try:
     from backend.config.database import (
         COSMOS_CONFIG,
@@ -29,10 +28,6 @@ except ImportError:
     from src.graph.models.entity import Entity, EntityType
     from src.graph.models.relationship import Relationship, RelationshipType
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 class CosmosGraphClient:

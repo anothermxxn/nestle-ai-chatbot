@@ -1,21 +1,14 @@
-import asyncio
 import logging
-from typing import List, Dict, Optional
 
-# Dynamic import to handle both local development and Docker environments
 try:
     from backend.config import MAX_PAGES_LARGE
+    from backend.src.scrape.services.link_collector import LinkCollector
+    from backend.src.scrape.services.content_processor import ContentProcessor
 except ImportError:
     from config import MAX_PAGES_LARGE
+    from src.scrape.services.link_collector import LinkCollector
+    from src.scrape.services.content_processor import ContentProcessor
 
-from .link_collector import LinkCollector
-from .content_processor import ContentProcessor
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 async def collect_links(base_url: str, output_file: str, max_pages: int = None):

@@ -1,11 +1,27 @@
 import sys
 from pathlib import Path
+import logging
+import os
 
 # Add project root to Python path for local development
 # This ensures backend.config imports work regardless of execution context
 project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
+
+# Global logging configuration
+def setup_logging():
+    """Configure logging for the entire application."""    
+    logging.basicConfig(
+        level=getattr(logging, "INFO"),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.StreamHandler(),  # Console output
+        ]
+    )
+
+# Initialize logging when config is imported
+setup_logging()
 
 # Import all configuration modules
 from .content_types import (
@@ -153,6 +169,9 @@ from .store_locator import (
 )
 
 __all__ = [
+    # Logging configuration
+    "setup_logging",
+    
     # Content Types
     "CONTENT_TYPES",
     "CONTENT_TYPE_KEYWORDS", 

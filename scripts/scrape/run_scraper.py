@@ -16,11 +16,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "
 from scrape.link_collector import LinkCollector
 from scrape.content_processor import ContentProcessor
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 async def collect_links(base_url: str, output_file: str, max_pages: int = MAX_PAGES_DEFAULT):

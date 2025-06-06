@@ -5,20 +5,12 @@ from datetime import datetime
 from typing import Set, Optional, Dict
 from urllib.parse import urlparse, urljoin
 from playwright.async_api import async_playwright, Browser, Page
-import aiohttp
-from bs4 import BeautifulSoup
 
-# Dynamic import to handle both local development and Docker environments
 try:
     from backend.config import MAX_PAGES_DEFAULT, SCRAPER_CONCURRENCY
 except ImportError:
     from config import MAX_PAGES_DEFAULT, SCRAPER_CONCURRENCY
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 class BrowserManager:
@@ -117,7 +109,7 @@ class LinkCollector:
                     if self._is_valid_url(clean_url):
                         links.add(clean_url)
             except Exception as e:
-                logger.debug(f"Error extracting link: {e}")
+                logger.error(f"Error extracting link: {e}")
                 continue
         
         return links

@@ -1,16 +1,18 @@
 import asyncio
-import logging
 import json
+import logging
 import re
 from typing import List, Optional
-from openai import AsyncAzureOpenAI, AzureOpenAI
+from openai import AsyncAzureOpenAI
 
-# Dynamic import to handle both local development and Docker environments
 try:
     from backend.config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
+    from backend.src.scrape.utils.keyword_utils import is_meaningful_keyword
 except ImportError:
     from config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
-from ..utils.keyword_utils import is_meaningful_keyword
+    from src.scrape.utils.keyword_utils import is_meaningful_keyword
+
+logger = logging.getLogger(__name__)
 
 class LLMKeywordExtractor:
     """LLM-based keyword extractor using Azure OpenAI"""
@@ -22,7 +24,7 @@ class LLMKeywordExtractor:
     def _initialize_client(self) -> None:
         """Initialize Azure OpenAI client"""
         if not validate_azure_openai_config():
-            print("Warning: Azure OpenAI configuration invalid. LLM keyword extraction will be disabled.")
+            logger.warning("Azure OpenAI configuration invalid. LLM keyword extraction will be disabled.")
             return
         
         try:
@@ -31,9 +33,9 @@ class LLMKeywordExtractor:
                 api_version=AZURE_OPENAI_CONFIG["api_version"],
                 azure_endpoint=AZURE_OPENAI_CONFIG["endpoint"]
             )
-            print("LLM keyword extractor initialized successfully")
+            logger.info("LLM keyword extractor initialized successfully")
         except Exception as e:
-            print(f"Failed to initialize Azure OpenAI client: {e}")
+            logger.error(f"Failed to initialize Azure OpenAI client: {e}")
             self.client = None
     
     def _create_keyword_prompt(self, content: str, title: str, content_type: str, brand: Optional[str] = None) -> str:
@@ -114,8 +116,8 @@ class LLMKeywordExtractor:
                     keywords = []
                     
             except json.JSONDecodeError as json_err:
-                print(f"JSON decode error: {json_err}")
-                print(f"Response text: {response_text}")
+                logger.error(f"JSON decode error: {json_err}")
+                logger.error(f"Response text: {response_text}")
                 
                 # Fallback: try to extract keywords using regex
                 keyword_patterns = [
@@ -154,7 +156,7 @@ class LLMKeywordExtractor:
             return list(set(result_keywords))  # Remove duplicates
             
         except Exception as e:
-            print(f"LLM keyword extraction failed: {e}")
+            logger.error(f"LLM keyword extraction failed: {e}")
             return []
     
     def extract_keywords_sync(self, content: str, title: str, content_type: str, brand: Optional[str] = None) -> List[str]:
@@ -174,7 +176,7 @@ class LLMKeywordExtractor:
                 self.extract_keywords_async(content, title, content_type, brand)
             )
         except Exception as e:
-            print(f"Sync keyword extraction failed: {e}")
+            logger.error(f"Sync keyword extraction failed: {e}")
             return []
 
 def extract_keywords_with_llm(content: str, title: str, content_type: str, brand: Optional[str] = None) -> List[str]:

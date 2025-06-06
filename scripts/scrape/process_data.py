@@ -6,18 +6,16 @@ import logging
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from backend.config import (
     RAW_DATA_DIR,
-    PROCESSED_DATA_DIR
+    PROCESSED_DATA_DIR,
+    setup_logging
 )
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "src"))
 from scrape.data_processor import (
     process_all_content,
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+# Initialize logging
+setup_logging()
 logger = logging.getLogger(__name__)
 
 def get_default_paths():

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 import sys
 from typing import List, Dict, Any
@@ -11,7 +12,8 @@ from backend.config import (
     COSMOS_CONFIG,
     ENTITIES_CONTAINER_NAME,
     RELATIONSHIPS_CONTAINER_NAME,
-    validate_config
+    validate_config,
+    setup_logging
 )
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "src"))
 from graph.services.cosmos_service import CosmosGraphClient
@@ -24,6 +26,10 @@ from graph.models.relationship import create_entity_relationships
 # Load environment variables
 load_dotenv()
 
+# Initialize logging
+setup_logging()
+logger = logging.getLogger(__name__)
+
 class CosmosSetup:
     """Setup class for initializing Cosmos DB graph database."""
     
@@ -32,50 +38,48 @@ class CosmosSetup:
         try:
             validate_config()
             self.client = CosmosGraphClient()
-            print("Cosmos DB client initialized successfully")
+            logger.info("Cosmos DB client initialized successfully")
         except Exception as e:
-            print(f"Failed to initialize Cosmos DB client: {str(e)}")
+            logger.error(f"Failed to initialize Cosmos DB client: {str(e)}")
             raise
     
     async def verify_containers(self) -> bool:
         """Verify that the required containers exist and are accessible."""
-        print("\nVerifying Cosmos DB containers...")
+        logger.info("\nVerifying Cosmos DB containers...")
         
         try:
             health_status = await self.client.health_check()
             if not health_status:
-                print("Health check failed")
+                logger.error("Health check failed")
                 return False
             
-            print(f"Database: {COSMOS_CONFIG['database_name']}")
-            print(f"Entities container: {ENTITIES_CONTAINER_NAME}")
-            print(f"Relationships container: {RELATIONSHIPS_CONTAINER_NAME}")
+            logger.info(f"Database: {COSMOS_CONFIG['database_name']}")
+            logger.info(f"Entities container: {ENTITIES_CONTAINER_NAME}")
+            logger.info(f"Relationships container: {RELATIONSHIPS_CONTAINER_NAME}")
             
             return True
             
         except Exception as e:
-            print(f"Container verification failed: {str(e)}")
+            logger.error(f"Container verification failed: {str(e)}")
             return False
     
     async def clear_existing_data(self) -> bool:
         """Clear all existing entities and relationships."""
-        print("\nClearing existing data...")
+        logger.info("\nClearing existing data...")
         
         try:
             for entity_type in EntityType:
                 entities = await self.client.find_entities_by_type(entity_type, limit=1000)
                 for entity in entities:
                     success = await self.client.delete_entity(entity.id, entity.entity_type)
-                    if success:
-                        print(f"  Deleted entity: {entity.id}")
-                    else:
-                        print(f"  Failed to delete entity: {entity.id}")
+                    if not success:
+                        logger.error(f"  Failed to delete entity: {entity.id}")
             
-            print("Data clearing completed")
+            logger.info("Data clearing completed")
             return True
             
         except Exception as e:
-            print(f"Data clearing failed: {str(e)}")
+            logger.error(f"Data clearing failed: {str(e)}")
             return False
     
     async def load_processed_chunks(self) -> List[Dict[str, Any]]:
@@ -83,22 +87,22 @@ class CosmosSetup:
         chunks_file = DEFAULT_VECTOR_CHUNKS_FILE
         
         if not os.path.exists(chunks_file):
-            print(f"No processed chunks found at {chunks_file}")
-            print("   Please run the data processing first.")
+            logger.error(f"No processed chunks found at {chunks_file}")
+            logger.info("   Please run the data processing first.")
             return []
         
         try:
             with open(chunks_file, "r", encoding="utf-8") as f:
                 chunks = json.load(f)
-            print(f"Loaded {len(chunks)} processed chunks")
+            logger.info(f"Loaded {len(chunks)} processed chunks")
             return chunks
         except Exception as e:
-            print(f"Failed to load chunks: {str(e)}")
+            logger.error(f"Failed to load chunks: {str(e)}")
             return []
     
     async def populate_entities(self, chunks: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
         """Extract and create entities from processed chunks."""
-        print("\nExtracting and creating entities...")
+        logger.info("\nExtracting and creating entities...")
         
         try:
             # Extract entities from chunks
@@ -110,27 +114,26 @@ class CosmosSetup:
             
             for entity_type, entities_dict in entities_by_type.items():
                 created_entities[entity_type] = {}
-                print(f"\n  Creating {len(entities_dict)} {entity_type} entities...")
+                logger.info(f"\n  Creating {len(entities_dict)} {entity_type} entities...")
                 
                 for entity_name, entity in entities_dict.items():
                     success = await self.client.create_entity(entity)
                     if success:
                         created_entities[entity_type][entity.id] = entity
                         total_entities += 1
-                        print(f"    Created: {entity.id}")
                     else:
-                        print(f"    Failed: {entity.id}")
+                        logger.error(f"    Failed: {entity.id}")
             
-            print(f"\nCreated {total_entities} entities total")
+            logger.info(f"\nCreated {total_entities} entities total")
             return created_entities
             
         except Exception as e:
-            print(f"Entity creation failed: {str(e)}")
+            logger.error(f"Entity creation failed: {str(e)}")
             return {}
     
     async def populate_relationships(self, entities: Dict[str, Dict[str, Any]]) -> int:
         """Create relationships between entities."""
-        print("\nCreating relationships...")
+        logger.info("\nCreating relationships...")
         
         try:
             # Generate relationships
@@ -143,39 +146,21 @@ class CosmosSetup:
                 success = await self.client.create_relationship(relationship)
                 if success:
                     created_count += 1
-                    print(f"    Created: {relationship.relationship_type.value} "
-                          f"({relationship.from_entity_id} -> {relationship.to_entity_id})")
                 else:
-                    print(f"    Failed: {relationship.relationship_type.value} "
+                    logger.error(f"    Failed: {relationship.relationship_type.value} "
                           f"({relationship.from_entity_id} -> {relationship.to_entity_id})")
             
-            print(f"\nCreated {created_count} relationships total")
+            logger.info(f"\nCreated {created_count} relationships total")
             return created_count
             
         except Exception as e:
-            print(f"Relationship creation failed: {str(e)}")
+            logger.error(f"Relationship creation failed: {str(e)}")
             return 0
-    
-    async def display_statistics(self):
-        """Display database statistics."""
-        print("\nDatabase Statistics:")
-        
-        try:
-            for entity_type in EntityType:
-                entities = await self.client.find_entities_by_type(entity_type, limit=1000)
-                print(f"  {entity_type.value}: {len(entities)} entities")
-            
-            # Note: We don't have a direct way to count all relationships
-            # This would require querying each relationship type
-            print("  Relationships: Created successfully (see logs above)")
-            
-        except Exception as e:
-            print(f"Failed to get statistics: {str(e)}")
     
     async def setup_database(self, clear_existing: bool = False):
         """Complete database setup process."""
-        print("Starting Cosmos DB Graph Database Setup")
-        print("=" * 50)
+        logger.info("Starting Cosmos DB Graph Database Setup")
+        logger.info("=" * 50)
         
         # Verify containers
         if not await self.verify_containers():
@@ -189,24 +174,21 @@ class CosmosSetup:
         # Populate with data
         chunks = await self.load_processed_chunks()
         if not chunks:
-            print("No data to populate. Database setup completed with empty containers.")
+            logger.warning("No data to populate. Database setup completed with empty containers.")
             return True
         
         # Create entities
         entities = await self.populate_entities(chunks)
         if not entities:
-            print("Failed to create entities")
+            logger.error("Failed to create entities")
             return False
         
         # Create relationships
         relationship_count = await self.populate_relationships(entities)
         if relationship_count == 0:
-            print("No relationships created")
+            logger.warning("No relationships created")
         
-        # Display statistics
-        await self.display_statistics()
-        
-        print("\nCosmos DB Graph Database setup completed successfully!")
+        logger.info("\nCosmos DB Graph Database setup completed successfully!")
         return True
 
 async def main():
@@ -226,14 +208,14 @@ async def main():
         )
         
         if success:
-            print("\nSetup completed successfully!")
+            logger.info("\nSetup completed successfully!")
             return 0
         else:
-            print("\nSetup failed!")
+            logger.error("\nSetup failed!")
             return 1
             
     except Exception as e:
-        print(f"\nSetup failed with error: {str(e)}")
+        logger.error(f"\nSetup failed with error: {str(e)}")
         return 1
 
 if __name__ == "__main__":

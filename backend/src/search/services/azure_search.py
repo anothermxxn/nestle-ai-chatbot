@@ -1,19 +1,14 @@
 import logging
-import sys
-import os
 from typing import Dict, List, Optional
 from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizableTextQuery
 from azure.core.credentials import AzureKeyCredential
-import json
 
-# Dynamic import to handle both local development and Docker environments
 try:
     from backend.config.database import (
         AZURE_SEARCH_ENDPOINT,
         AZURE_SEARCH_ADMIN_KEY,
         AZURE_SEARCH_INDEX_NAME,
-        validate_config
     )
     from backend.config import BATCH_SIZE
     from backend.src.search.services.ranking import VectorSearchRanker
@@ -22,16 +17,9 @@ except ImportError:
         AZURE_SEARCH_ENDPOINT,
         AZURE_SEARCH_ADMIN_KEY,
         AZURE_SEARCH_INDEX_NAME,
-        validate_config
     )
     from config import BATCH_SIZE
     from src.search.services.ranking import VectorSearchRanker
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 
 # Set Azure SDK logging to WARNING level to suppress request/response logs
 logging.getLogger("azure").setLevel(logging.WARNING)

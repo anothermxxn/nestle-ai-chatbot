@@ -1,8 +1,11 @@
 import os
+import logging
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 # Azure OpenAI configuration
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
@@ -140,7 +143,7 @@ def validate_azure_openai_config() -> bool:
     
     for field in required_fields:
         if not AZURE_OPENAI_CONFIG.get(field):
-            print(f"Missing required Azure OpenAI configuration: {field}")
+            logger.error(f"Missing required Azure OpenAI configuration: {field}")
             return False
     
     return True
@@ -156,7 +159,7 @@ def validate_azure_embedding_config() -> bool:
     
     for field in required_fields:
         if not AZURE_EMBEDDING_CONFIG.get(field):
-            print(f"Missing required Azure Embedding configuration: {field}")
+            logger.error(f"Missing required Azure Embedding configuration: {field}")
             return False
     
     return True

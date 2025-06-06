@@ -1,21 +1,19 @@
 import re
 import logging
-from typing import Dict, List, Optional, Set, Tuple
-from urllib.parse import urlparse, urljoin
+from typing import Dict, List, Optional
+from urllib.parse import urlparse
 from urllib.parse import unquote, urlparse
 from html import unescape
 
-# Dynamic import to handle both local development and Docker environments
 try:
     from backend.config.content_types import CONTENT_TYPES, CONTENT_TYPE_KEYWORDS
     from backend.config.brands import BRAND_PATTERNS
+    from backend.config.scraper import STOP_WORDS
 except ImportError:
-    # Fallback for Docker environment where backend is the working directory
     from config.content_types import CONTENT_TYPES, CONTENT_TYPE_KEYWORDS
     from config.brands import BRAND_PATTERNS
+    from config.scraper import STOP_WORDS
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def decode_url_part(text: str) -> str:
@@ -179,12 +177,6 @@ def extract_keywords(url_parts: List[str], title: str, content_type: str, brand:
         # Add decoded and cleaned part
         cleaned = decode_url_part(part).lower()
         keywords.update(re.findall(r"\w+", cleaned))
-    
-    # Import our minimal technical stop words with dynamic import
-    try:
-        from backend.config.scraper import STOP_WORDS
-    except ImportError:
-        from config.scraper import STOP_WORDS
     
     # Remove only technical terms and short terms
     keywords = {k for k in keywords if len(k) > 2 and k not in STOP_WORDS}

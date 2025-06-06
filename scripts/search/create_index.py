@@ -10,14 +10,15 @@ from backend.config import (
     AZURE_SEARCH_ENDPOINT,
     AZURE_SEARCH_ADMIN_KEY,
     AZURE_SEARCH_INDEX_NAME,
-    AZURE_SEARCH_API_VERSION
+    AZURE_SEARCH_API_VERSION,
+    setup_logging
 )
 
 # Load environment variables (for any missing env vars)
 load_dotenv()
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Initialize logging
+setup_logging()
 logger = logging.getLogger(__name__)
 
 def create_index(index_settings):

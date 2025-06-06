@@ -1,13 +1,6 @@
 import logging
-import sys
-import os
-import re
-import math
-from typing import Dict, List, Optional, Tuple, Any
-from collections import Counter
-from datetime import datetime
+from typing import Dict, List, Optional
 
-# Dynamic import to handle both local development and Docker environments
 try:
     from backend.config.content_types import CONTENT_TYPE_KEYWORDS
 except ImportError:

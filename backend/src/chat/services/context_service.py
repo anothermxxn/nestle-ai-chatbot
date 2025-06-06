@@ -1,10 +1,8 @@
-import re
 import logging
-from typing import Dict, List, Optional, Set, Any
-from dataclasses import dataclass, field, asdict
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass, asdict
 from datetime import datetime
 
-# Dynamic import to handle both local development and Docker environments
 try:
     from backend.config.content_types import CONTENT_TYPE_KEYWORDS
     from backend.config.brands import get_all_brand_variations
@@ -273,7 +271,6 @@ class ContextExtractor:
     def map_topic_names_to_keywords(self, topic_names: List[str]) -> List[str]:
         """
         Map topic names to actual keywords that exist in the search index.
-        Dynamically extracts keywords from the topic configuration.
         
         Args:
             topic_names (List[str]): List of topic names from context

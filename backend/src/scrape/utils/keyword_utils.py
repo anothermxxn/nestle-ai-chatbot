@@ -1,6 +1,5 @@
 import re
 
-# Dynamic import to handle both local development and Docker environments
 try:
     from backend.config import STOP_WORDS
 except ImportError:

@@ -1,6 +1,5 @@
 import logging
 from typing import Dict, List, Optional, TYPE_CHECKING
-from datetime import datetime
 from openai import AzureOpenAI
 
 if TYPE_CHECKING:
@@ -12,14 +11,6 @@ try:
     from backend.src.search.services.graphrag import GraphRAGClient
     from backend.src.chat.formatters.graphrag_formatter import GraphRAGFormatter
     from backend.src.chat.services.context_service import SearchContext, ContextExtractor
-except ImportError:
-    from src.search.services.azure_search import AzureSearchClient
-    from src.search.services.graphrag import GraphRAGClient
-    from src.chat.formatters.graphrag_formatter import GraphRAGFormatter
-    from src.chat.services.context_service import SearchContext, ContextExtractor
-
-# Dynamic import to handle both local development and Docker environments
-try:
     from backend.config import (
         AZURE_OPENAI_CONFIG,
         CHAT_CONFIG,
@@ -27,18 +18,18 @@ try:
         DOMAIN_CHECK_CONFIG,
     )
 except ImportError:
+    from src.search.services.azure_search import AzureSearchClient
+    from src.search.services.graphrag import GraphRAGClient
+    from src.chat.formatters.graphrag_formatter import GraphRAGFormatter
+    from src.chat.services.context_service import SearchContext, ContextExtractor
     from config import (
         AZURE_OPENAI_CONFIG,
         CHAT_CONFIG,
         CHAT_PROMPTS,
         DOMAIN_CHECK_CONFIG,
     )
+    
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 class NestleChatClient:
@@ -153,7 +144,6 @@ class NestleChatClient:
                 
                 # Skip if normalized URL already seen
                 if normalized_url in seen_urls:
-                    logger.debug(f"Skipping duplicate URL: {url} (normalized: {normalized_url})")
                     continue
                 
                 seen_urls.add(normalized_url)

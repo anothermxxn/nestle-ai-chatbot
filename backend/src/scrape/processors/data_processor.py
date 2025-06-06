@@ -1,32 +1,23 @@
 import os
 import json
+import logging
 import re
 import urllib.parse
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Tuple
 from datetime import datetime
 from langchain.text_splitter import MarkdownTextSplitter, RecursiveCharacterTextSplitter
 from collections import defaultdict, Counter
 import nltk
 from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
 from nltk.util import ngrams
 
 from .url_parser import parse_url
 from ..services.keyword_extractor import extract_keywords_with_llm
 from ..utils.keyword_utils import is_meaningful_keyword
 
-# Dynamic import to handle both local development and Docker environments
 try:
     from backend.config import (
-        CONTENT_TYPES,
-        BRAND_PATTERNS,
-        ALL_TOPICS,
-        detect_topics_from_text,
-        normalize_brand_name,
-        get_brand_category,
         STOP_WORDS,
-        
-        # Compound terms
         ALL_COMPOUND_TERMS,
         
         # Content filtering
@@ -58,15 +49,7 @@ try:
     )
 except ImportError:
     from config import (
-        CONTENT_TYPES,
-        BRAND_PATTERNS,
-        ALL_TOPICS,
-        detect_topics_from_text,
-        normalize_brand_name,
-        get_brand_category,
         STOP_WORDS,
-        
-        # Compound terms
         ALL_COMPOUND_TERMS,
         
         # Content filtering
@@ -97,13 +80,15 @@ except ImportError:
         MAX_PHRASE_LENGTH,
     )
 
+logger = logging.getLogger(__name__)
+
 # Download required NLTK data if not already present
 try:
     nltk.data.find("tokenizers/punkt")
     nltk.data.find("tokenizers/punkt_tab")
     nltk.data.find("corpora/stopwords")
 except LookupError:
-    print("Downloading required NLTK data...")
+    logger.info("Downloading required NLTK data...")
     nltk.download("punkt", quiet=True)
     nltk.download("punkt_tab", quiet=True)
     nltk.download("stopwords", quiet=True)
@@ -254,7 +239,7 @@ def keyword_extraction(url_parts: List[str], title: str, content: str,
         return _fallback_keyword_extraction(url_parts, title, content, content_type, brand)
         
     except Exception as e:
-        print(f"Keyword extraction failed, using fallback: {e}")
+        logger.debug(f"Keyword extraction failed, using fallback: {e}")
         return _fallback_keyword_extraction(url_parts, title, content, content_type, brand)
 
 def _fallback_keyword_extraction(url_parts: List[str], title: str, content: str, 
@@ -335,7 +320,7 @@ def extract_content_keywords(content: str, max_keywords: int = MAX_KEYWORDS_PER_
             if len(filtered_keywords) >= 3:
                 return filtered_keywords[:max_keywords]
         except Exception as e:
-            print(f"LLM chunk keyword extraction failed: {e}")
+            logger.debug(f"LLM chunk keyword extraction failed: {e}")
     
     # Fallback to basic frequency analysis
     return _fallback_content_keywords(content, max_keywords)
@@ -551,9 +536,8 @@ def process_markdown_file(file_path: str, url: str) -> List[Dict]:
     # Parse URL for basic metadata
     url_info = parse_url(url, content)
     
-    # Check if entire page is an error page - skip if so
+    # Skip error pages
     if is_error_page(url_info["normalized_title"]):
-        print(f"Skipping error page: {url}")
         return []
     
     # Keyword extraction that includes compound terms
@@ -653,7 +637,7 @@ def process_markdown_file(file_path: str, url: str) -> List[Dict]:
             })
     
     if filtered_sections > 0:
-        print(f"Filtered {filtered_sections} boilerplate sections from {url}")
+        logger.info(f"Filtered {filtered_sections} boilerplate sections from {url}")
     
     return chunks
 
@@ -688,16 +672,13 @@ def process_all_content(raw_dir: str = None, processed_dir: str = None) -> Dict:
     
     all_chunks = []
     
-    print(f"Processing files with {results['filtering_mode']} keyword extraction (min length: {MIN_CONTENT_LENGTH})...")
-    print("Note: LLM-based keyword extraction may take longer but provides higher quality keywords.")
+    logger.info(f"Processing files with {results['filtering_mode']} keyword extraction (min length: {MIN_CONTENT_LENGTH})...")
     
     # Get list of markdown files
     md_files = [f for f in os.listdir(raw_dir) if f.endswith(".md")]
     total_files = len(md_files)
     
-    for idx, filename in enumerate(md_files, 1):
-        print(f"Processing file {idx}/{total_files}: {filename[:50]}{'...' if len(filename) > 50 else ''}")
-        
+    for idx, filename in enumerate(md_files, 1):        
         file_path = os.path.join(raw_dir, filename)
         url = filename[:-3].replace("_", "/")
         
@@ -742,7 +723,6 @@ def process_all_content(raw_dir: str = None, processed_dir: str = None) -> Dict:
     
     # Save all chunks to a single file
     chunks_file = os.path.join(processed_dir, "vector_chunks.json")
-    print(f"\nSaving {len(all_chunks)} chunks to {chunks_file}")
     with open(chunks_file, "w", encoding="utf-8") as f:
         json.dump(all_chunks, f, indent=2, ensure_ascii=False)
     
@@ -755,10 +735,6 @@ def process_all_content(raw_dir: str = None, processed_dir: str = None) -> Dict:
     with open(results_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
     
-    print(f"\nProcessed {results['total_files']} files into {results['total_chunks']} chunks")
-    print(f"LLM extraction stats:")
-    print(f"  - Successful: {results['llm_extraction_stats']['successful']}")
-    print(f"  - Fallback used: {results['llm_extraction_stats']['fallback']}")
-    print(f"  - Failed: {results['llm_extraction_stats']['failed']}")
+    logger.info(f"\nProcessed {results['total_files']} files into {results['total_chunks']} chunks")
     
     return results
