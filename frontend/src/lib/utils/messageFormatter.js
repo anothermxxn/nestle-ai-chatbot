@@ -1,8 +1,4 @@
 /**
- * Utility functions for formatting chat messages
- */
-
-/**
  * Groups consecutive bullet points and numbered items for better visual presentation
  * Also handles nested structures (numbered items with bullet sub-items)
  * @param {Array} segments - Array of parsed segments

@@ -20,12 +20,10 @@ import {
   NestleHeader,
   mediaQueries,
   rgba
-} from './common';
-import useChatSession from '../hooks/useChatSession';
-import { createErrorHandler } from '../utils/errorHandler';
-import { validateFSA, getFSAValidationMessage, formatFSA } from '../utils/validation';
-
-import nestleLogoCircle from '../assets/logoCircle.jpg';
+} from '../common';
+import { useChatSession } from '../../lib/hooks';
+import { createErrorHandler } from '../../lib/utils/errorHandler';
+import { validateFSA, getFSAValidationMessage, formatFSA } from '../../lib/utils/validation';
 
 // Nestlé Logo for header avatar
 const HeaderNestleLogo = styled('img')({
@@ -684,7 +682,7 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger, location, onLocationRef
         <FlexBetween sx={{ width: '100%' }}>
           <SmartieHeader>
             <HeaderNestleLogo 
-              src={nestleLogoCircle} 
+              src="/logoCircle.jpg" 
               alt="Nestlé Logo"
               loading="lazy"
             />

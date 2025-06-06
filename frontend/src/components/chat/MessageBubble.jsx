@@ -1,11 +1,8 @@
 import { Box, Typography, Paper, Chip, Tooltip, Link } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { forwardRef } from 'react';
-import { colors, fontFamily, mediaQueries, rgba } from './common';
-import { parseMessageContent, formatReferenceTooltip } from '../utils/messageFormatter';
-
-// Import Nestlé logo
-import nestleLogoCircle from '../assets/logoCircle.jpg';
+import { colors, fontFamily, mediaQueries, rgba } from '../common';
+import { parseMessageContent, formatReferenceTooltip } from '../../lib/utils/messageFormatter';
 
 // Styled components
 const MessageContainer = styled(Box)(({ messagetype }) => ({
@@ -711,7 +708,7 @@ const MessageBubble = forwardRef(({ message }, ref) => {
       {/* Show avatar for assistant messages */}
       {type === 'assistant' && (
         <AssistantAvatar>
-          <NestleAvatarLogo src={nestleLogoCircle} alt="Nestlé Logo" />
+          <NestleAvatarLogo src="/logoCircle.jpg" alt="Nestlé Logo" />
         </AssistantAvatar>
       )}
       

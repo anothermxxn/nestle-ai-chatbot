@@ -1,5 +1,5 @@
-import ChatBot from './components/ChatBot';
-import './App.css';
+import ChatBot from './components/chat/ChatBot';
+import './styles/app.css';
 
 /**
  * Main application component that renders the chat interface

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import apiClient from '../services/api';
+import apiClient from './api';
 
 /**
  * Custom hook for managing chat conversation sessions with backend session management
@@ -239,4 +239,4 @@ const useChatSession = () => {
   };
 };
 
-export default useChatSession; 
+export { useChatSession }; 

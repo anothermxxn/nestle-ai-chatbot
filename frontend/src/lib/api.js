@@ -1,18 +1,61 @@
-/**
- * API client for communicating with the Nestle AI Chatbot backend
- * Handles HTTP requests and session management
- */
+// Configuration
+const VITE_ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT;
+const VITE_DEV_BACKEND_URL = import.meta.env.VITE_DEV_BACKEND_URL;
+const VITE_PROD_BACKEND_URL = import.meta.env.VITE_PROD_BACKEND_URL;
 
-import { API_CONFIG } from '../config/api';
+const getBackendURL = () => {
+  if (VITE_ENVIRONMENT === 'production' && VITE_PROD_BACKEND_URL) {
+    return VITE_PROD_BACKEND_URL;
+  }
+  return VITE_DEV_BACKEND_URL;
+};
 
-const API_BASE_URL = API_CONFIG.baseURL;
+const BACKEND_URL = getBackendURL();
+
+if (!BACKEND_URL) {
+  console.error('Backend URL is not defined. Check your environment variables.');
+}
+
+// API URLs
+export const API_CONFIG = {
+  baseURL: BACKEND_URL,
+  timeout: 30000,
+  retryAttempts: 3,
+  retryDelay: 1000,
+  environment: VITE_ENVIRONMENT,
+};
+
+// API endpoints
+export const ENDPOINTS = {
+  // Chat endpoints
+  CHAT: '/chat',
+  CHAT_SEARCH: '/chat/search',
+  CHAT_HEALTH: '/chat/health',
+  
+  // Graph endpoints
+  GRAPH_HEALTH: '/graph/health',
+  GRAPH_ENTITIES: '/graph/entities',
+  GRAPH_RELATIONSHIPS: '/graph/relationships',
+  GRAPH_SCHEMA_ENTITIES: '/graph/schema/entity-types',
+  GRAPH_SCHEMA_RELATIONSHIPS: '/graph/schema/relationship-types',
+  GRAPH_VALIDATE_ENTITY: '/graph/validate/entity',
+  GRAPH_VALIDATE_RELATIONSHIP: '/graph/validate/relationship',
+};
+
+// Request configuration
+export const REQUEST_CONFIG = {
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  credentials: 'include',
+};
 
 /**
  * HTTP API client class for REST endpoints with session management
  */
 class ApiClient {
   constructor() {
-    this.baseURL = API_BASE_URL;
+    this.baseURL = API_CONFIG.baseURL;
   }
 
   /**

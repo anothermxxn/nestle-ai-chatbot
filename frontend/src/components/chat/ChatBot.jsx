@@ -2,11 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Box, Typography } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
 import ChatWindow from './ChatWindow';
-import { colors, fontFamily, FlexCenter, shadows, mediaQueries, rgba } from './common';
-import { validateFSA } from '../utils/validation';
-
-import nestleLogo from '../assets/logo.jpg';
-import nestleLogoCircle from '../assets/logoCircle.jpg';
+import { colors, fontFamily, FlexCenter, shadows, mediaQueries, rgba } from '../common';
+import { validateFSA } from '../../lib/utils/validation';
 
 // Nestlé Logo for floating button
 const FloatingNestleLogo = styled('img')({
@@ -758,7 +755,7 @@ const ChatBot = () => {
           {(state === 'collapsing' || state === 'collapsed') && (
             <CollapsedContent>
               <CollapsedNestleLogo 
-                src={nestleLogoCircle} 
+                src="/logoCircle.jpg" 
                 alt="Nestlé Logo"
                 loading="lazy"
               />
@@ -769,7 +766,7 @@ const ChatBot = () => {
           {state === 'expanding-from-rectangle' && (
             <ExpandingContent>
               <ExpandingNestleLogo 
-                src={nestleLogo} 
+                src="/logo.jpg" 
                 alt="Nestlé Logo"
                 loading="lazy"
               />
@@ -781,7 +778,7 @@ const ChatBot = () => {
       return (
         <ExpandingContent>
           <ExpandingNestleLogo 
-            src={nestleLogo} 
+            src="/logo.jpg" 
             alt="Nestlé Logo"
             loading="lazy"
           />
@@ -791,7 +788,7 @@ const ChatBot = () => {
       return (
         <CircleContent>
           <ClosingNestleLogo 
-            src={nestleLogoCircle} 
+            src="/logoCircle.jpg" 
             alt="Nestlé Logo"
             loading="lazy"
           />
@@ -801,7 +798,7 @@ const ChatBot = () => {
       return (
         <CircleContent>
           <FloatingNestleLogo 
-            src={nestleLogoCircle} 
+            src="/logoCircle.jpg" 
             alt="Nestlé Logo"
             loading="lazy"
           />
