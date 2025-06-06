@@ -60,13 +60,15 @@ Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-fronte
 
 ## Known Limitations
 
-- **Response Time**: Takes up to 10 seconds to get responses due to compute resource limitations
-- **Data Coverage**: Missing around 15% of website data due to database storage limiations
-- **Store Data**: Limited to Canadian retail chains and OpenStreetMap data availability
-- **Amazon Scraping**: Subject to rate limiting and potential blocking by Amazon
-- **Test Coverage**: No unit tests or end-to-end tests implemented due to time constraints
-- **Content Updates**: Manual process required to update content index
-- **Language Support**: Currently optimized for English content only
+- **Response Performance**: Response times may extend up to 10 seconds for purchase assistance queries due to additional processing requirements
+- **Data Coverage**: Approximately 10% of website content is unavailable due to database storage capacity limitations
+- **Mapping Integration**: Store location cards open Google Maps search results rather than direct place pages due to API tier limitations
+- **Search Result Precision**: Amazon product searches may include non-Nestlé items in the returned results
+- **External Service Dependencies**: Amazon web scraping functionality is subject to rate limiting and potential service restrictions
+- **Mobile Display Constraints**: Device orientation is locked to portrait mode; landscape rotation is not currently supported
+- **Testing Framework**: Comprehensive unit and end-to-end testing suites have not been implemented due to development timeline constraints
+- **Content Synchronization**: Content index updates require manual intervention and are not automated
+- **Localization Support**: Application is currently optimized exclusively for English language content
 
 ## Local Setup Steps
 
