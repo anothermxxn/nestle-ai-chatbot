@@ -22,7 +22,9 @@ try:
         ERROR_MESSAGE,
         GENERATION_ERROR_MESSAGE,
         PURCHASE_CHECK_PROMPT,
-        PURCHASE_ASSISTANCE_PROMPT
+        PURCHASE_ASSISTANCE_PROMPT,
+        COUNT_CHECK_PROMPT,
+        COUNT_RESPONSE_PROMPT
     )
     from backend.src.chat.services.amazon_search import AmazonSearchService
     from backend.src.chat.services.store_locator import StoreLocatorService
@@ -42,7 +44,9 @@ except ImportError:
         ERROR_MESSAGE,
         GENERATION_ERROR_MESSAGE,
         PURCHASE_CHECK_PROMPT,
-        PURCHASE_ASSISTANCE_PROMPT
+        PURCHASE_ASSISTANCE_PROMPT,
+        COUNT_CHECK_PROMPT,
+        COUNT_RESPONSE_PROMPT
     )
     from src.chat.services.amazon_search import AmazonSearchService
     from src.chat.services.store_locator import StoreLocatorService
@@ -573,6 +577,77 @@ class NestleChatClient:
                 "is_purchase_query": True,
                 "purchase_assistance": {"stores": [], "amazon_products": []}
             }
+    
+    async def _check_count_intent(self, query: str) -> tuple[bool, Optional[str], Optional[str], Optional[str]]:
+        """
+        Check if the user query is asking for counts, numbers, statistics, or quantities
+        and extract the specific type, category, and brand.
+        
+        Args:
+            query (str): User query to analyze
+            
+        Returns:
+            tuple[bool, Optional[str], Optional[str], Optional[str]]: 
+                (count_intent_detected, count_type, category_name, brand_name)
+        """
+        try:
+            prompt = COUNT_CHECK_PROMPT.format(query=query)
+            
+            logger.info(f"Checking count intent for query: '{query}'")
+            logger.debug(f"Count check prompt: {prompt}")
+            
+            response = self.openai_client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model=self.deployment_name,
+                temperature=0.1,
+                max_tokens=100
+            )
+            
+            if response.choices and len(response.choices) > 0:
+                result = response.choices[0].message.content.strip()
+                logger.info(f"Count intent detection result for '{query}': '{result}'")
+                
+                # Parse the structured response
+                intent_detected = False
+                count_type = None
+                category_name = None
+                brand_name = None
+                
+                for line in result.split('\n'):
+                    line = line.strip()
+                    if line.startswith('INTENT:'):
+                        intent_value = line.replace('INTENT:', '').strip().upper()
+                        intent_detected = intent_value == "YES"
+                    elif line.startswith('TYPE:'):
+                        type_value = line.replace('TYPE:', '').strip()
+                        if type_value.upper() != "NONE":
+                            count_type = type_value
+                    elif line.startswith('CATEGORY:'):
+                        category_value = line.replace('CATEGORY:', '').strip()
+                        if category_value.upper() != "NONE":
+                            category_name = category_value
+                    elif line.startswith('BRAND:'):
+                        brand_value = line.replace('BRAND:', '').strip()
+                        if brand_value.upper() != "NONE":
+                            brand_name = brand_value
+                
+                logger.info(f"Count intent detected: {intent_detected}")
+                if count_type:
+                    logger.info(f"Count type: '{count_type}'")
+                if category_name:
+                    logger.info(f"Category: '{category_name}'")
+                if brand_name:
+                    logger.info(f"Brand: '{brand_name}'")
+                
+                return intent_detected, count_type, category_name, brand_name
+            else:
+                logger.warning(f"No response choices for count intent detection")
+                return False, None, None, None
+            
+        except Exception as e:
+            logger.error(f"Error in count intent detection: {str(e)}")
+            
+        return False, None, None, None
 
     async def search_and_chat(
         self,
