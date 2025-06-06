@@ -15,9 +15,9 @@ except ImportError:
         ENTITIES_CONTAINER_NAME,
         RELATIONSHIPS_CONTAINER_NAME
     )
-    from services.cosmos_service import CosmosGraphClient
-    from models.entity import EntityType, Entity  
-    from models.relationship import RelationshipType, Relationship
+    from .services.cosmos_service import CosmosGraphClient
+    from .models.entity import EntityType, Entity  
+    from .models.relationship import RelationshipType, Relationship
 
 __all__ = [
     "COSMOS_CONFIG",
