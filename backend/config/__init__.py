@@ -147,8 +147,21 @@ from .azure_ai import (
     
     # Chat configuration
     CHAT_CONFIG,
-    CHAT_PROMPTS,
     DOMAIN_CHECK_CONFIG,
+)
+
+from .chat_prompts import (
+    # Prompts
+    SYSTEM_PROMPT,
+    DOMAIN_CHECK_PROMPT,
+    PURCHASE_CHECK_PROMPT,
+    PURCHASE_ASSISTANCE_PROMPT,
+    OUT_OF_DOMAIN_PROMPT,
+    
+    # Messages
+    NO_RESULTS_MESSAGE,
+    ERROR_MESSAGE,
+    GENERATION_ERROR_MESSAGE,
 )
 
 from .store_locator import (
@@ -274,7 +287,6 @@ __all__ = [
     "AZURE_EMBEDDING_MODEL_NAME",
     "AZURE_EMBEDDING_DEPLOYMENT",
     "CHAT_CONFIG",
-    "CHAT_PROMPTS",
     "DOMAIN_CHECK_CONFIG",
     
     # Store locator configuration
@@ -298,4 +310,16 @@ __all__ = [
     "EXCLUDE_PRODUCT_KEYWORDS",
     "RATE_LIMIT_CONFIG",
     "get_amazon_category_for_brand",
+    
+    # Prompts
+    "SYSTEM_PROMPT",
+    "DOMAIN_CHECK_PROMPT",
+    "PURCHASE_CHECK_PROMPT",
+    "PURCHASE_ASSISTANCE_PROMPT",
+    "OUT_OF_DOMAIN_PROMPT",
+    
+    # Messages
+    "NO_RESULTS_MESSAGE",
+    "ERROR_MESSAGE",
+    "GENERATION_ERROR_MESSAGE",
 ] 

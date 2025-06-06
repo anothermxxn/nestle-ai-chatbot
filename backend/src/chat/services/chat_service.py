@@ -14,8 +14,13 @@ try:
     from backend.config import (
         AZURE_OPENAI_CONFIG,
         CHAT_CONFIG,
-        CHAT_PROMPTS,
         DOMAIN_CHECK_CONFIG,
+        SYSTEM_PROMPT,
+        DOMAIN_CHECK_PROMPT,
+        OUT_OF_DOMAIN_PROMPT,
+        NO_RESULTS_MESSAGE,
+        ERROR_MESSAGE,
+        GENERATION_ERROR_MESSAGE,
     )
 except ImportError:
     from src.search.services.azure_search import AzureSearchClient
@@ -25,8 +30,13 @@ except ImportError:
     from config import (
         AZURE_OPENAI_CONFIG,
         CHAT_CONFIG,
-        CHAT_PROMPTS,
         DOMAIN_CHECK_CONFIG,
+        SYSTEM_PROMPT,
+        DOMAIN_CHECK_PROMPT,
+        OUT_OF_DOMAIN_PROMPT,
+        NO_RESULTS_MESSAGE,
+        ERROR_MESSAGE,
+        GENERATION_ERROR_MESSAGE,
     )
     
 
@@ -271,7 +281,7 @@ class NestleChatClient:
         Returns:
             str: Formatted prompt for LLM
         """
-        prompt_template = CHAT_PROMPTS["system_prompt"]
+        prompt_template = SYSTEM_PROMPT
         
         # Format conversation context
         conversation_context = ""
@@ -280,7 +290,7 @@ class NestleChatClient:
             for msg in conversation_history:
                 role = "User" if msg.role == "user" else "Assistant"
                 conversation_context += f"{role}: {msg.content}\n"
-            conversation_context += f"\nCurrent question: {query}\n"
+            conversation_context += f"\nCURRENT QUESTION: {query}\n"
         if conversation_context:
             prompt_template = prompt_template.replace(
                 "USER QUESTION: {query}",
@@ -330,7 +340,7 @@ class NestleChatClient:
             raise Exception("No choices in OpenAI response")
         
         answer = response.choices[0].message.content
-        return answer if answer else CHAT_PROMPTS["generation_error_message"]
+        return answer if answer else GENERATION_ERROR_MESSAGE
 
     async def search_and_chat(
         self,
@@ -395,7 +405,7 @@ class NestleChatClient:
             logger.error(f"Error in context-aware search_and_chat: {str(e)}")
             
             return {
-                "answer": CHAT_PROMPTS["error_message"],
+                "answer": ERROR_MESSAGE,
                 "sources": [],
                 "search_results_count": 0,
                 "query": query,
@@ -541,7 +551,7 @@ class NestleChatClient:
         """
         try:
             # Use LLM to classify domain
-            domain_prompt = CHAT_PROMPTS["domain_check_prompt"].format(query=query)
+            domain_prompt = DOMAIN_CHECK_PROMPT.format(query=query)
             
             response = self.openai_client.chat.completions.create(
                 messages=[{"role": "user", "content": domain_prompt}],
@@ -554,8 +564,19 @@ class NestleChatClient:
             
             # If the classification is "NO", it's out of domain
             if classification_result == "NO":
+                out_of_domain_prompt = OUT_OF_DOMAIN_PROMPT.format(query=query)
+                
+                out_of_domain_response = self.openai_client.chat.completions.create(
+                    messages=[{"role": "user", "content": out_of_domain_prompt}],
+                    model=self.deployment_name,
+                    temperature=CHAT_CONFIG.get("llm_temperature"),
+                    max_tokens=CHAT_CONFIG.get("llm_max_tokens")
+                )
+                
+                generated_answer = out_of_domain_response.choices[0].message.content.strip()
+                
                 return {
-                    "answer": CHAT_PROMPTS["out_of_domain_response"],
+                    "answer": generated_answer,
                     "sources": [],
                     "search_results_count": 0,
                     "query": query,
@@ -585,7 +606,7 @@ class NestleChatClient:
             Dict: No results response
         """
         return {
-            "answer": CHAT_PROMPTS["no_results_message"],
+            "answer": NO_RESULTS_MESSAGE,
             "sources": [],
             "search_results_count": 0,
             "query": query,
