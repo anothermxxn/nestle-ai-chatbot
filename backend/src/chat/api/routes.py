@@ -174,11 +174,20 @@ async def chat_search(request: ChatRequest):
             logger.info(f"Created new session for chat: {session_id}")
         else:
             session_id = request.session_id
+            # Check if session exists, create new one if not found
             if not session_manager.get_session(session_id):
-                raise HTTPException(status_code=404, detail="Session not found")
+                logger.warning(f"Session {session_id} not found, creating new session")
+                session_id = session_manager.create_session()
+                logger.info(f"Created replacement session: {session_id}")
         
         # Add user message to session
-        session_manager.add_message(session_id, "user", request.query)
+        message_added = session_manager.add_message(session_id, "user", request.query)
+        if not message_added:
+            logger.error(f"Failed to add user message to session {session_id}")
+            # Create a new session as fallback
+            session_id = session_manager.create_session()
+            session_manager.add_message(session_id, "user", request.query)
+            logger.info(f"Created fallback session: {session_id}")
         
         # Get conversation context from session
         conversation_context = session_manager.get_conversation_context(session_id)
@@ -203,10 +212,14 @@ async def chat_search(request: ChatRequest):
         )
         
         if "error" in response:
-            raise HTTPException(status_code=500, detail=response["error"])
+            logger.error(f"Error in search_and_chat: {response['error']}")
+            # Remove the error from response to prevent HTTP 500
+            response.pop("error", None)
         
         # Add assistant response to session
-        session_manager.add_message(session_id, "assistant", response["answer"])
+        message_added = session_manager.add_message(session_id, "assistant", response["answer"])
+        if not message_added:
+            logger.warning(f"Failed to add assistant message to session {session_id}")
         
         # Add session_id to response
         response["session_id"] = session_id

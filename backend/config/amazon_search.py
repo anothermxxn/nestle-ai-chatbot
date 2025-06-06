@@ -7,16 +7,27 @@ except ImportError:
 AMAZON_SEARCH_CONFIG = {
     "base_url": "https://www.amazon.ca",
     "search_endpoint": "/s",
-    "timeout": 15,
+    "timeout": 20,
     "max_results": 3,
-    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "user_agents": [
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0"
+    ],
     "headers": {
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Accept-Encoding": "gzip, deflate",
-        "DNT": "1",
-        "Connection": "keep-alive",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br, zstd",
+        "Cache-Control": "max-age=0",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
         "Upgrade-Insecure-Requests": "1",
+        "sec-ch-ua": '"Chromium";v="123", "Not:A-Brand";v="8"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"macOS"'
     },
     "affiliate_tag": None,
     "default_department": "grocery",
@@ -154,7 +165,8 @@ ERROR_HANDLING = {
     "retry_delay": 2,  # seconds
     "backoff_factor": 1.5,
     "timeout_errors": ["TimeoutError", "ConnectTimeout", "ReadTimeout"],
-    "rate_limit_delay": 5,  # seconds to wait on rate limiting
+    "rate_limit_delay": 5,
+    "random_delay_range": (2, 8),  # random delay between requests
 }
 
 # Generate valid product indicators from brand data

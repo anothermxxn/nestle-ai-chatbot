@@ -126,6 +126,15 @@ const useChatSession = () => {
     setIsLoading(true);
     setError(null);
     
+    // Prepare location data for backend
+    let userLocationData = null;
+    if (location && location.coords && location.coords.latitude && location.coords.longitude) {
+      userLocationData = {
+        lat: location.coords.latitude,
+        lon: location.coords.longitude
+      };
+    }
+    
     try {
       let currentSessionId = sessionId;
       
@@ -142,15 +151,6 @@ const useChatSession = () => {
       
       setConversationHistory(prev => [...prev, userMessage]);
       
-      // Prepare location data for backend
-      let userLocationData = null;
-      if (location && location.coords && location.coords.latitude && location.coords.longitude) {
-        userLocationData = {
-          lat: location.coords.latitude,
-          lon: location.coords.longitude
-        };
-      }
-      
       const response = await apiClient.sendChatMessage(message, currentSessionId, {}, userLocationData);
       
       // Update session ID if it was created by the backend
@@ -158,6 +158,7 @@ const useChatSession = () => {
         setSessionId(response.session_id);
         saveSessionId(response.session_id);
         currentSessionId = response.session_id;
+        console.log(`Updated session ID from ${currentSessionId} to ${response.session_id}`);
       }
       
       const assistantMessage = {
@@ -183,8 +184,49 @@ const useChatSession = () => {
       return response;
     } catch (error) {
       console.error('Failed to send message:', error);
-      setError(error.message);
-      throw error;
+      
+      // Handle specific error types
+      if (error.message.includes('404') || error.message.includes('Session not found')) {
+        console.warn('Session expired, attempting recovery...');
+        // Clear invalid session and try to recover
+        setSessionId(null);
+        saveSessionId(null);
+        
+        try {
+          // Attempt to send message with new session
+          const newSessionId = await createSession();
+          const response = await apiClient.sendChatMessage(message, newSessionId, {}, userLocationData);
+          
+          const assistantMessage = {
+            role: 'assistant',
+            content: response.answer,
+            timestamp: new Date().toISOString(),
+            metadata: {
+              sources: response.sources,
+              search_results_count: response.search_results_count,
+              filters_applied: response.filters_applied,
+              graphrag_enhanced: response.graphrag_enhanced,
+              is_purchase_query: response.is_purchase_query,
+              purchase_assistance: response.purchase_assistance
+            }
+          };
+
+          if (response.purchase_assistance) {
+            assistantMessage.purchase_assistance = response.purchase_assistance;
+          }
+          
+          setConversationHistory(prev => [...prev, assistantMessage]);
+          console.info('Successfully recovered from session error');
+          return response;
+        } catch (recoveryError) {
+          console.error('Session recovery failed:', recoveryError);
+          setError('Connection lost. Please try again.');
+          throw recoveryError;
+        }
+      } else {
+        setError(error.message);
+        throw error;
+      }
     } finally {
       setIsLoading(false);
     }

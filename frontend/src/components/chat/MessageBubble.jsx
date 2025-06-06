@@ -354,6 +354,9 @@ const StoreCardsContainer = styled(Box)({
   position: 'relative',
 });
 
+const AmazonCardsContainer = styled(Box)({
+  position: 'relative',
+});
 
 const StoreCardsScrollArea = styled(Box)({
   display: 'flex',
@@ -369,6 +372,19 @@ const StoreCardsScrollArea = styled(Box)({
   },
 });
 
+const AmazonCardsScrollArea = styled(Box)({
+  display: 'flex',
+  gap: 12,
+  overflowX: 'auto',
+  scrollbarWidth: 'none',
+  msOverflowStyle: 'none',
+  '&::-webkit-scrollbar': {
+    display: 'none',
+  },
+  [mediaQueries.mobile]: {
+    gap: 10,
+  },
+});
 
 const ScrollButton = styled(IconButton)(({ variant = 'right' }) => ({
   position: 'absolute',
@@ -398,10 +414,28 @@ const ScrollButton = styled(IconButton)(({ variant = 'right' }) => ({
     },
   },
   '& .MuiSvgIcon-root': {
-    filter: `drop-shadow(0 4px 4px ${rgba(colors.primary, 0.8)})`,
     transition: 'filter 0.2s ease',
     stroke: colors.nestleCream,
     strokeWidth: '0.5px',
+  },
+}));
+
+const ScrollShadowOverlay = styled(Box)(({ side = 'right', visible = false }) => ({
+  position: 'absolute',
+  top: 0,
+  bottom: 0,
+  width: 30,
+  right: side === 'right' ? 0 : 'auto',
+  left: side === 'left' ? 0 : 'auto',
+  background: side === 'right' 
+    ? `linear-gradient(to left, ${rgba(colors.nestleGray, 0.9)} 0%, ${rgba(colors.primary, 0.9)} 50%, transparent 100%)`
+    : `linear-gradient(to right, ${rgba(colors.nestleGray, 0.9)} 0%, ${rgba(colors.primary, 0.9)} 50%, transparent 100%)`,
+  pointerEvents: 'none',
+  opacity: visible ? 0.7 : 0,
+  transition: 'opacity 0.3s ease',
+  zIndex: 1,
+  [mediaQueries.mobile]: {
+    width: 30,
   },
 }));
 
@@ -832,6 +866,18 @@ const MessageBubble = forwardRef(({ message }, ref) => {
     }
   };
 
+  /**
+   * Handles scrolling the Amazon cards container
+   */
+  const handleAmazonScroll = (direction = 'right') => {
+    if (amazonScrollRef.current) {
+      const scrollAmount = direction === 'right' ? 220 : -220; // Width of one card plus gap
+      amazonScrollRef.current.scrollBy({
+        left: scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   /**
    * Formats a Date object into a readable time string
@@ -934,6 +980,14 @@ const MessageBubble = forwardRef(({ message }, ref) => {
                   <StoreCard key={index} store={store} />
                 ))}
               </StoreCardsScrollArea>
+              <ScrollShadowOverlay 
+                side="left" 
+                visible={storeScrollState.canScrollLeft} 
+              />
+              <ScrollShadowOverlay 
+                side="right" 
+                visible={storeScrollState.canScrollRight} 
+              />
               {storeScrollState.canScrollLeft && (
                 <ScrollButton 
                   variant="left" 
@@ -954,6 +1008,43 @@ const MessageBubble = forwardRef(({ message }, ref) => {
           </PurchaseResponseSection>
         )}
 
+        {/* Purchase Response Sections - Amazon Cards */}
+        {amazon_products && amazon_products.length > 0 && (
+          <PurchaseResponseSection>
+            <SectionTitle>Available on Amazon</SectionTitle>
+            <AmazonCardsContainer>
+              <AmazonCardsScrollArea ref={amazonScrollRef}>
+                {amazon_products.map((product, index) => (
+                  <AmazonCard key={index} product={product} />
+                ))}
+              </AmazonCardsScrollArea>
+              <ScrollShadowOverlay 
+                side="left" 
+                visible={amazonScrollState.canScrollLeft} 
+              />
+              <ScrollShadowOverlay 
+                side="right" 
+                visible={amazonScrollState.canScrollRight} 
+              />
+              {amazonScrollState.canScrollLeft && (
+                <ScrollButton 
+                  variant="left" 
+                  onClick={() => handleAmazonScroll('left')}
+                >
+                  <ChevronLeft sx={{ fontSize: 40 }} />
+                </ScrollButton>
+              )}
+              {amazonScrollState.canScrollRight && (
+                <ScrollButton 
+                  variant="right" 
+                  onClick={() => handleAmazonScroll('right')}
+                >
+                  <ChevronRight sx={{ fontSize: 40 }} />
+                </ScrollButton>
+              )}
+            </AmazonCardsContainer>
+          </PurchaseResponseSection>
+        )}
         
         {/* Message timestamp */}
         <MessageTime messagetype={type}>

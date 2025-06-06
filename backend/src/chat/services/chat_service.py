@@ -440,45 +440,56 @@ class NestleChatClient:
 
     async def _get_purchase_assistance_data(self, query: str, user_location: Optional[Dict] = None, extracted_product: Optional[str] = None) -> Dict:
         """
-        Get store locations and Amazon products for purchase assistance.
+        Get purchase assistance data (stores and Amazon products).
         
         Args:
-            query (str): Original user query
-            user_location (Optional[Dict]): User's location {lat, lon}
-            extracted_product (Optional[str]): Extracted product name for targeted search
+            query: Search query
+            user_location: User location for store search
+            extracted_product: Extracted product name for targeted search
             
         Returns:
-            Dict: Purchase assistance data with stores and Amazon products
+            Dictionary with stores and amazon_products
         """
         stores = []
         amazon_products = []
         
-        # Use extracted product name for searches if available, otherwise use original query
+        # Use extracted product if available, otherwise use query
         search_term = extracted_product if extracted_product else query
-        logger.info(f"Using search term for purchase assistance: '{search_term}' {'(extracted product)' if extracted_product else '(original query)'}")
         
-        try:
-            # Get store locations if user location is provided
-            if user_location and user_location.get('lat') and user_location.get('lon'):
-                try:
-                    store_results = await self.store_locator.find_nearby_stores(
-                        lat=user_location['lat'],
-                        lon=user_location['lon']
-                    )
-                    stores = self.store_locator.format_stores_for_response(store_results[:3])
-                except Exception as e:
-                    logger.error(f"Error fetching store locations: {str(e)}")
-            
-            # Get Amazon products using the targeted search term
+        # Get store locations
+        if user_location and user_location.get('lat') and user_location.get('lon'):
             try:
-                amazon_results = await self.amazon_search.search_products(search_term)
-                amazon_products = self.amazon_search.format_products_for_response(amazon_results[:3])
-                logger.info(f"Amazon search for '{search_term}' returned {len(amazon_products)} products")
+                store_results = await self.store_locator.find_nearby_stores(
+                    lat=user_location['lat'],
+                    lon=user_location['lon']
+                )
+                stores = self.store_locator.format_stores_for_response(store_results[:3])
+                logger.info(f"Found {len(stores)} nearby stores for location")
             except Exception as e:
-                logger.error(f"Error fetching Amazon products: {str(e)}")
-            
+                logger.warning(f"Store locator failed: {str(e)}")
+                stores = []
+        
+        # Get Amazon products
+        try:
+            amazon_results = await self.amazon_search.search_products(search_term)
+            amazon_products = self.amazon_search.format_products_for_response(amazon_results[:3])
+            logger.info(f"Amazon search for '{search_term}' returned {len(amazon_products)} products")
         except Exception as e:
-            logger.warning(f"Error in purchase assistance data retrieval: {str(e)}")
+            logger.warning(f"Amazon search failed: {str(e)}")
+            fallback_query = f"{query} nestle"
+            fallback_url = self.amazon_search._build_search_url(search_term)
+            amazon_products = [{
+                "id": 1,
+                "title": f"Search for '{fallback_query}' on Amazon",
+                "price": "Click to see prices",
+                "rating": None,
+                "image_url": None,
+                "product_url": fallback_url,
+                "asin": None,
+                "is_sponsored": False,
+                "platform": "Amazon"
+            }]
+            logger.info(f"Generated fallback Amazon search link for '{search_term}'")
         
         return {
             "stores": stores,
@@ -487,39 +498,53 @@ class NestleChatClient:
 
     async def _handle_purchase_query(self, query: str, search_results: List[Dict], user_location: Optional[Dict] = None, extracted_product: Optional[str] = None) -> Dict:
         """
-        Handle purchase-specific queries with simplified response and purchase assistance data.
+        Handle purchase queries.
         
         Args:
-            query (str): User purchase query
-            search_results (List[Dict]): Limited search results for product identification
-            user_location (Optional[Dict]): User's location for store locator
-            extracted_product (Optional[str]): Extracted product name
+            query: Original user query
+            search_results: Search results for product identification
+            user_location: User's location for store search
+            extracted_product: Extracted product name for targeted search
             
         Returns:
-            Dict: Purchase response with brief answer and purchase assistance data
+            Dictionary with purchase assistance response
         """
         try:
-            sources_formatted = self._format_search_results(search_results[:2])  # Limit to top 2 sources
+            # Get purchase assistance dat
+            purchase_data = await self._get_purchase_assistance_data(query, user_location, extracted_product)
             
-            # Add location context to the sources for the prompt
-            has_location = user_location and user_location.get('lat') and user_location.get('lon')
-            location_context = "\n\nLOCATION STATUS:\n"
-            if has_location:
-                location_context += "User location is available - can provide nearby store recommendations."
+            # Format sources for the prompt
+            sources_text = ""
+            if search_results:
+                sources_text = "\n".join([
+                    f"- {result.get('title', 'Untitled')}: {result.get('content', 'No content available')[:200]}..."
+                    for result in search_results[:3]
+                ])
             else:
-                location_context += "User location is not available - cannot provide specific store locations."
+                sources_text = "No specific product information found in our knowledge base."
             
-            sources_with_context = sources_formatted + location_context
-            
+            # Create prompt
             purchase_prompt = PURCHASE_ASSISTANCE_PROMPT.format(
                 query=query,
-                sources=sources_with_context
+                sources=sources_text
             )
             
-            # Generate response
-            answer = await self._generate_llm_response(purchase_prompt)
-            purchase_data = await self._get_purchase_assistance_data(query, user_location, extracted_product)
-            source_links = self._format_links(search_results)
+            # Generate LLM response
+            try:
+                response = self.openai_client.chat.completions.create(
+                    messages=[{"role": "user", "content": purchase_prompt}],
+                    model=self.deployment_name,
+                    temperature=CHAT_CONFIG.get("llm_temperature", 0.7),
+                    max_tokens=CHAT_CONFIG.get("llm_max_tokens", 1000)
+                )
+                answer = response.choices[0].message.content.strip()
+            except Exception as llm_error:
+                logger.error(f"LLM failed for purchase query, using fallback: {str(llm_error)}")
+                product_name = extracted_product or "Nestlé products"
+                answer = f"I'd be happy to help you find {product_name}! I've found some options for you below, including nearby stores and Amazon listings where you can purchase them."
+            
+            # Format source links from search results
+            source_links = self._format_links(search_results) if search_results else []
             
             return {
                 "answer": answer,
@@ -535,7 +560,7 @@ class NestleChatClient:
             }
             
         except Exception as e:
-            logger.error(f"Error in purchase query handling: {str(e)}")
+            logger.error(f"Critical error in purchase query handling: {str(e)}")
             return {
                 "answer": "I'd be happy to help you find Nestlé products! Let me get some information for you.",
                 "sources": [],
@@ -647,6 +672,7 @@ class NestleChatClient:
                 "sources": [],
                 "search_results_count": 0,
                 "query": query,
+                "session_id": None,
                 "filters_applied": {
                     "content_type": content_type,
                     "brand": brand,
@@ -654,9 +680,9 @@ class NestleChatClient:
                 },
                 "graphrag_enhanced": False,
                 "combined_relevance_score": 0.0,
-                "retrieval_metadata": {},
-                "error": str(e),
-                "is_purchase_query": False
+                "retrieval_metadata": {"error": str(e), "error_type": "general_failure"},
+                "is_purchase_query": False,
+                "purchase_assistance": None
             }
     
     def _extract_search_context_from_history(self, conversation_history: Optional[List['ConversationMessage']]) -> 'SearchContext':

@@ -52,7 +52,7 @@ const StoreHeader = styled(Box)({
 });
 
 const StoreName = styled(Typography)({
-  fontSize: 16,
+  fontSize: 14,
   fontWeight: 700,
   color: colors.primary,
   fontFamily,
@@ -62,7 +62,7 @@ const StoreName = styled(Typography)({
   WebkitBoxOrient: 'vertical',
   overflow: 'hidden',
   [mediaQueries.mobile]: {
-    fontSize: 18,
+    fontSize: 16,
   },
 });
 
@@ -71,7 +71,7 @@ const DistanceChip = styled(Box)({
   color: colors.white,
   padding: '3px 8px',
   borderRadius: 6,
-  fontSize: 12,
+  fontSize: 14,
   fontWeight: 600,
   fontFamily,
   minWidth: 'fit-content',
@@ -113,7 +113,7 @@ const StoreIcon = styled(Box)({
 });
 
 const StoreInfoText = styled(Typography)({
-  fontSize: 13,
+  fontSize: 14,
   fontFamily,
   flex: 1,
   lineHeight: 1.3,
@@ -124,7 +124,7 @@ const StoreInfoText = styled(Typography)({
   margin: 0,
   padding: 0,
   [mediaQueries.mobile]: {
-    fontSize: 15,
+    fontSize: 16,
   },
 });
 
