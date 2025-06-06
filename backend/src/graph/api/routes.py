@@ -6,6 +6,7 @@ import uuid
 from ..models.entity import EntityType, create_brand_entity, create_topic_entity, create_product_entity, create_recipe_entity
 from ..models.relationship import RelationshipType, create_relationship
 from ..services.cosmos_service import CosmosGraphClient
+from ..services.count_service import CountStatisticsService
 from ..validation.validators import (
     is_valid_entity_type, is_valid_relationship_type,
     validate_entity_properties, validate_relationship,
@@ -65,10 +66,29 @@ class GraphStatsResponse(BaseModel):
     entity_counts: Dict[str, int]
     relationship_counts: Dict[str, int]
 
+class CountStatsResponse(BaseModel):
+    """Response model for count statistics."""
+    entity_counts: Dict[str, int]
+    
+class ProductCountStatsResponse(BaseModel):
+    """Response model for product-specific count statistics."""
+    total_products: int
+    by_brand: Dict[str, int]
+    
+class CategoryCountStatsResponse(BaseModel):
+    """Response model for category-based count statistics."""
+    by_category: Dict[str, int]
+    recipe_stats: Dict[str, Any]
+
 # Dependency to get graph client
 async def get_graph_client() -> CosmosGraphClient:
     """Get graph client instance."""
     return CosmosGraphClient()
+
+# Dependency to get count service
+async def get_count_service() -> CountStatisticsService:
+    """Get count statistics service instance."""
+    return CountStatisticsService()
 
 # Health check endpoint
 @router.get("/health")
@@ -758,5 +778,79 @@ async def list_relationships(
         
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+# Count Statistics Endpoints
+@router.get("/stats", response_model=CountStatsResponse)
+async def get_count_stats(
+    count_service: CountStatisticsService = Depends(get_count_service)
+):
+    """
+    Get entity count statistics from the graph database.
+    
+    Args:
+        count_service: Count statistics service instance
+        
+    Returns:
+        CountStatsResponse: Entity counts by type
+    """
+    try:
+        entity_counts = await count_service.get_entity_counts()
+        
+        return CountStatsResponse(
+            entity_counts=entity_counts
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@router.get("/stats/products", response_model=ProductCountStatsResponse)
+async def get_product_count_stats(
+    count_service: CountStatisticsService = Depends(get_count_service)
+):
+    """
+    Get product-specific count statistics.
+    
+    Args:
+        count_service: Count statistics service instance
+        
+    Returns:
+        ProductCountStatsResponse: Product counts by brand
+    """
+    try:
+        brand_counts = await count_service.get_product_counts_by_brand()
+        total_products = sum(brand_counts.values())
+        
+        return ProductCountStatsResponse(
+            total_products=total_products,
+            by_brand=brand_counts
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@router.get("/stats/categories", response_model=CategoryCountStatsResponse)
+async def get_category_count_stats(
+    count_service: CountStatisticsService = Depends(get_count_service)
+):
+    """
+    Get category-based count statistics.
+    
+    Args:
+        count_service: Count statistics service instance
+        
+    Returns:
+        CategoryCountStatsResponse: Product counts by category and recipe statistics
+    """
+    try:
+        category_counts = await count_service.get_product_counts_by_category()
+        recipe_stats = await count_service.get_recipe_counts()
+        
+        return CategoryCountStatsResponse(
+            by_category=category_counts,
+            recipe_stats=recipe_stats
+        )
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

@@ -158,7 +158,6 @@ const useChatSession = () => {
         setSessionId(response.session_id);
         saveSessionId(response.session_id);
         currentSessionId = response.session_id;
-        console.log(`Updated session ID from ${currentSessionId} to ${response.session_id}`);
       }
       
       const assistantMessage = {

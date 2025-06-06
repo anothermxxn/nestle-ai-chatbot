@@ -112,11 +112,11 @@ class CosmosSetup:
             created_entities = {}
             total_entities = 0
             
-            for entity_type, entities_dict in entities_by_type.items():
+            for entity_type, entities_list in entities_by_type.items():
                 created_entities[entity_type] = {}
-                logger.info(f"\n  Creating {len(entities_dict)} {entity_type} entities...")
+                logger.info(f"\n  Creating {len(entities_list)} {entity_type} entities...")
                 
-                for entity_name, entity in entities_dict.items():
+                for entity in entities_list:
                     success = await self.client.create_entity(entity)
                     if success:
                         created_entities[entity_type][entity.id] = entity

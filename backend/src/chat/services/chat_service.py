@@ -28,6 +28,7 @@ try:
     )
     from backend.src.chat.services.amazon_search import AmazonSearchService
     from backend.src.chat.services.store_locator import StoreLocatorService
+    from backend.src.graph.services.count_service import CountStatisticsService
 except ImportError:
     from src.search.services.azure_search import AzureSearchClient
     from src.search.services.graphrag import GraphRAGClient
@@ -50,6 +51,7 @@ except ImportError:
     )
     from src.chat.services.amazon_search import AmazonSearchService
     from src.chat.services.store_locator import StoreLocatorService
+    from src.graph.services.count_service import CountStatisticsService
     
 
 logger = logging.getLogger(__name__)
@@ -86,6 +88,9 @@ class NestleChatClient:
         # Initialize services for purchase assistance
         self.amazon_search = AmazonSearchService()
         self.store_locator = StoreLocatorService()
+        
+        # Initialize count statistics service
+        self.count_service = CountStatisticsService()
         
         logger.info("NestleChatClient initialized successfully")
 
@@ -649,6 +654,105 @@ class NestleChatClient:
             
         return False, None, None, None
 
+    async def _handle_count_query(self, query: str, count_type: Optional[str], 
+                                  category_filter: Optional[str], brand_filter: Optional[str]) -> Dict:
+        """
+        Handle count queries by retrieving statistics and formatting natural language response.
+        
+        Args:
+            query (str): Original user query
+            count_type (Optional[str]): Type of count requested
+            category_filter (Optional[str]): Category filter if applicable
+            brand_filter (Optional[str]): Brand filter if applicable
+            
+        Returns:
+            Dict: Count response with natural language explanation
+        """
+        try:
+            logger.info(f"Handling count query: {query}, type: {count_type}, category: {category_filter}, brand: {brand_filter}")
+            
+            # Gather count statistics based on query type
+            count_data = {}
+            
+            if count_type in ["TOTAL_PRODUCTS", "PRODUCTS_BY_CATEGORY", "PRODUCTS_BY_BRAND"]:
+                if brand_filter:
+                    # Brand-specific product count
+                    brand_counts = await self.count_service.get_product_counts_by_brand()
+                    count_data = {"brand_counts": brand_counts, "requested_brand": brand_filter}
+                elif category_filter:
+                    # Category-specific product count
+                    category_counts = await self.count_service.get_product_counts_by_category()
+                    count_data = {"category_counts": category_counts, "requested_category": category_filter}
+                else:
+                    # Total product count
+                    entity_counts = await self.count_service.get_entity_counts()
+                    count_data = {"total_products": entity_counts.get("product", 0)}
+            
+            elif count_type == "BRANDS":
+                # Brand count
+                entity_counts = await self.count_service.get_entity_counts()
+                count_data = {"total_brands": entity_counts.get("brand", 0)}
+            
+            elif count_type == "RECIPES":
+                # Recipe count
+                recipe_counts = await self.count_service.get_recipe_counts()
+                count_data = {"recipe_stats": recipe_counts}
+            
+            else:
+                # General entity counts (fallback)
+                entity_counts = await self.count_service.get_entity_counts()
+                count_data = {"entity_counts": entity_counts}
+            
+            # Create prompt for natural language count response
+            count_response_prompt = COUNT_RESPONSE_PROMPT.format(
+                query=query,
+                statistics=str(count_data)
+            )
+            
+            # Generate natural language response
+            response = self.openai_client.chat.completions.create(
+                messages=[{"role": "user", "content": count_response_prompt}],
+                model=self.deployment_name,
+                temperature=CHAT_CONFIG.get("llm_temperature", 0.7),
+                max_tokens=CHAT_CONFIG.get("llm_max_tokens", 500)
+            )
+            
+            generated_answer = response.choices[0].message.content.strip()
+            
+            return {
+                "answer": generated_answer,
+                "sources": [],
+                "search_results_count": 0,
+                "query": query,
+                "filters_applied": {
+                    "content_type": None,
+                    "brand": brand_filter,
+                    "category": category_filter
+                },
+                "graphrag_enhanced": False,
+                "combined_relevance_score": 1.0,
+                "retrieval_metadata": {"query_type": "count", "count_data": count_data},
+                "is_count_query": True,
+                "is_purchase_query": False,
+                "count_data": count_data
+            }
+            
+        except Exception as e:
+            logger.error(f"Error handling count query: {str(e)}")
+            return {
+                "answer": "I'm sorry, I couldn't retrieve the count information at the moment. Please try again later.",
+                "sources": [],
+                "search_results_count": 0,
+                "query": query,
+                "filters_applied": {},
+                "graphrag_enhanced": False,
+                "combined_relevance_score": 0.0,
+                "retrieval_metadata": {"error": str(e), "query_type": "count"},
+                "is_count_query": True,
+                "is_purchase_query": False,
+                "count_data": {}
+            }
+
     async def search_and_chat(
         self,
         query: str,
@@ -661,7 +765,7 @@ class NestleChatClient:
     ) -> Dict:
         """
         Perform context-aware search and generate a conversational response.
-        Enhanced with purchase assistance features.
+        Enhanced with purchase assistance features and count query handling.
         
         Args:
             query (str): User's question or search query
@@ -691,17 +795,18 @@ class NestleChatClient:
             if domain_response:
                 return domain_response
             
+            # Count query check
+            is_count_query, count_type, category_filter, brand_filter = await self._check_count_intent(query)
+            
+            if is_count_query:
+                logger.info(f"Handling count query: '{query}'")
+                return await self._handle_count_query(query, count_type, category_filter, brand_filter)
+            
             # Purchase intent check
-            logger.info(f"About to check purchase intent for query: '{query}'")
             is_purchase_query, extracted_product = await self._check_purchase_intent(query)
-            logger.info(f"Purchase intent check completed for '{query}': {is_purchase_query}")
             
             if is_purchase_query:
-                logger.info(f"Handling query '{query}' as purchase query with basic search")
-                
-                # Use extracted product name for search if available, otherwise use original query
-                search_query = extracted_product if extracted_product else query
-                logger.info(f"Using search query: '{search_query}' {'(extracted product)' if extracted_product else '(original query)'}")
+                logger.info(f"Handling purchase query: '{query}'" + (f" (product: {extracted_product})" if extracted_product else ""))
                 
                 # Update search params to use the extracted product name
                 if extracted_product:
@@ -710,13 +815,10 @@ class NestleChatClient:
                 # Get basic search results for product identification
                 search_results, _ = await self._perform_basic_search(search_params, min(3, top_search_results))
                 
-                if not search_results:
-                    search_results = []
-                
                 return await self._handle_purchase_query(query, search_results, user_location, extracted_product)
             
             else:
-                logger.info(f"Handling query '{query}' as regular query with hybrid search")
+                logger.info(f"Handling regular query: '{query}'")
                 # Handle regular query
                 formatted_conversation_history = self._format_conversation_history(conversation_history)
                 
@@ -736,6 +838,7 @@ class NestleChatClient:
                     answer, search_results, source_links, query, search_params, graphrag_result
                 )
                 response['is_purchase_query'] = False
+                response['is_count_query'] = False
                 
                 return response
             
@@ -757,6 +860,7 @@ class NestleChatClient:
                 "combined_relevance_score": 0.0,
                 "retrieval_metadata": {"error": str(e), "error_type": "general_failure"},
                 "is_purchase_query": False,
+                "is_count_query": False,
                 "purchase_assistance": None
             }
     

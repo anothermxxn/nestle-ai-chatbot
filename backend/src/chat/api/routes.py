@@ -63,7 +63,9 @@ class ChatResponse(BaseModel):
     combined_relevance_score: Optional[float] = Field(0.0, description="Combined relevance score from GraphRAG")
     retrieval_metadata: Optional[Dict] = Field({}, description="Metadata about the retrieval process")
     is_purchase_query: bool = Field(..., description="Whether this query was classified as a purchase query")
+    is_count_query: bool = Field(False, description="Whether this query was classified as a count query")
     purchase_assistance: Optional[PurchaseAssistance] = Field(None, description="Purchase assistance data (stores and Amazon products)")
+    count_data: Optional[Dict] = Field(None, description="Count statistics data for count queries")
 
 class SessionRequest(BaseModel):
     """Request model for creating a new session."""
