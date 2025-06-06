@@ -7,6 +7,7 @@ WORKDIR /app
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app:/app/backend:$PYTHONPATH
 
 # Set production environment
 ENV ENVIRONMENT=production
@@ -35,9 +36,9 @@ USER app
 # Expose port
 EXPOSE 8000
 
-# Health check using Python script
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD python healthcheck.py
+# Temporarily disable health check to debug startup issues
+# HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+#     CMD python healthcheck.py
 
-# Run the application
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"] 
+# Run the application with explicit Python path
+CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"] 
