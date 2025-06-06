@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 import sys
 from typing import List, Dict
@@ -13,13 +14,18 @@ from backend.config import (
     AZURE_EMBEDDING_API_KEY,
     AZURE_EMBEDDING_API_VERSION,
     AZURE_EMBEDDING_DEPLOYMENT,
-    BATCH_SIZE
+    BATCH_SIZE,
+    setup_logging
 )
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "src"))
 from search.search_client import AzureSearchClient
 
 # Load environment variables
 load_dotenv()
+
+# Initialize logging
+setup_logging()
+logger = logging.getLogger(__name__)
 
 # Initialize Azure OpenAI client using embedding config
 client = AzureOpenAI(
@@ -45,7 +51,7 @@ def get_embeddings(texts: List[str]) -> List[List[float]]:
         )
         return [embedding.embedding for embedding in response.data]
     except Exception as e:
-        print(f"Error getting embeddings: {str(e)}")
+        logger.error(f"Error getting embeddings: {str(e)}")
         return None
 
 async def prepare_documents(chunks: List[Dict]) -> List[Dict]:
@@ -70,13 +76,13 @@ async def prepare_documents(chunks: List[Dict]) -> List[Dict]:
         section_texts = [chunk.get("section_title", "") for chunk in batch]
         
         # Get embeddings
-        print(f"\nGenerating embeddings for batch {i//batch_size + 1}...")
+        logger.info(f"\nGenerating embeddings for batch {i//batch_size + 1}...")
         content_vectors = get_embeddings(content_texts)
         title_vectors = get_embeddings(title_texts)
         section_vectors = get_embeddings(section_texts)
         
         if not all([content_vectors, title_vectors, section_vectors]):
-            print("Failed to generate embeddings for batch")
+            logger.error("Failed to generate embeddings for batch")
             continue
             
         # Add vectors to chunks
@@ -98,7 +104,7 @@ async def load_processed_chunks() -> List[Dict]:
     chunks_file = DEFAULT_VECTOR_CHUNKS_FILE
     
     if not os.path.exists(chunks_file):
-        print(f"No processed chunks found at {chunks_file}. Please run the data processing first.")
+        logger.error(f"No processed chunks found at {chunks_file}. Please run the data processing first.")
         return []
     
     with open(chunks_file, "r", encoding="utf-8") as f:
@@ -107,29 +113,29 @@ async def load_processed_chunks() -> List[Dict]:
 async def main():
     """Upload processed content chunks to Azure Cognitive Search."""
     # Load processed content chunks
-    print(f"\nLoading processed content chunks from {DEFAULT_VECTOR_CHUNKS_FILE}...")
+    logger.info(f"\nLoading processed content chunks from {DEFAULT_VECTOR_CHUNKS_FILE}...")
     chunks = await load_processed_chunks()
     if not chunks:
         return
         
     # Prepare documents with embeddings
-    print(f"\nPreparing {len(chunks)} documents with embeddings...")
+    logger.info(f"\nPreparing {len(chunks)} documents with embeddings...")
     prepared_chunks = await prepare_documents(chunks)
     
     if not prepared_chunks:
-        print("No documents were prepared successfully")
+        logger.error("No documents were prepared successfully")
         return
     
     # Initialize search client and upload all documents
     client = AzureSearchClient()
-    print(f"\nUploading {len(prepared_chunks)} documents...")
+    logger.info(f"\nUploading {len(prepared_chunks)} documents...")
     
     success = await client.index_documents(prepared_chunks)
     
     if success:
-        print("All documents uploaded successfully!")
+        logger.info("All documents uploaded successfully!")
     else:
-        print("Some documents failed to upload. Check logs for details.")
+        logger.warning("Some documents failed to upload. Check logs for details.")
 
 if __name__ == "__main__":
     asyncio.run(main()) 
