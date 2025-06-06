@@ -3,13 +3,15 @@ from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 
 try:
-    from backend.src.search.search_client import AzureSearchClient
-    from backend.src.graph.cosmos_client import CosmosGraphClient
-    from backend.src.graph.models import EntityType, Entity, Relationship
+    from backend.src.search.services.azure_search import AzureSearchClient
+    from backend.src.graph.services.cosmos_service import CosmosGraphClient
+    from backend.src.graph.models.entity import EntityType, Entity
+    from backend.src.graph.models.relationship import Relationship
 except ImportError:
-    from src.search.search_client import AzureSearchClient
-    from src.graph.cosmos_client import CosmosGraphClient
-    from src.graph.models import EntityType, Entity, Relationship
+    from src.search.services.azure_search import AzureSearchClient
+    from src.graph.services.cosmos_service import CosmosGraphClient
+    from src.graph.models.entity import EntityType, Entity
+    from src.graph.models.relationship import Relationship
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +74,6 @@ class GraphRAGClient:
             GraphRAGResult: Combined search results with graph context
         """
         try:
-            logger.info(f"Starting hybrid search for query: {query}")
-            
             # Perform vector search
             vector_results = await self._perform_vector_search(
                 query, content_type, brand, keywords, top_results * 2
@@ -228,9 +228,7 @@ class GraphRAGClient:
             current_entities = seed_entities.copy()
             remaining_depth = depth
             max_entities_per_level = 20  # Limit expansion to prevent explosion
-            
-            logger.info(f"Starting graph traversal with {len(current_entities)} seed entities, depth={depth}")
-            
+                        
             while remaining_depth > 0 and current_entities:
                 next_level_entities = []
                 entities_added_this_level = 0
@@ -278,7 +276,6 @@ class GraphRAGClient:
                 
                 current_entities = next_level_entities
                 remaining_depth -= 1
-                logger.info(f"Level {depth - remaining_depth}: found {len(next_level_entities)} new entities")
             
             logger.info(f"Graph traversal completed: {len(expanded_entities)} entities, {len(all_relationships)} relationships")
             return expanded_entities, all_relationships

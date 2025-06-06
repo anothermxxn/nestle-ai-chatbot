@@ -3,9 +3,10 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 import uuid
 
-from .models import EntityType, RelationshipType, create_brand_entity, create_topic_entity, create_product_entity, create_recipe_entity, create_relationship
-from .cosmos_client import CosmosGraphClient
-from .validation import (
+from ..models.entity import EntityType, create_brand_entity, create_topic_entity, create_product_entity, create_recipe_entity
+from ..models.relationship import RelationshipType, create_relationship
+from ..services.cosmos_service import CosmosGraphClient
+from ..validation.validators import (
     is_valid_entity_type, is_valid_relationship_type,
     validate_entity_properties, validate_relationship,
     get_valid_entity_types, get_valid_relationship_types,

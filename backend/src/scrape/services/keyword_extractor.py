@@ -10,7 +10,7 @@ try:
     from backend.config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
 except ImportError:
     from config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
-from .keyword_utils import is_meaningful_keyword
+from ..utils.keyword_utils import is_meaningful_keyword
 
 class LLMKeywordExtractor:
     """LLM-based keyword extractor using Azure OpenAI"""

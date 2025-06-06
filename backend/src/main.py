@@ -3,11 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 
 try:
-    from backend.src.chat.chat_router import router as chat_router
-    from backend.src.graph.graph_router import router as graph_router
+    from backend.src.chat.api.routes import router as chat_router
+    from backend.src.graph.api.routes import router as graph_router
 except ImportError:
-    from src.chat.chat_router import router as chat_router
-    from src.graph.graph_router import router as graph_router
+    from src.chat.api.routes import router as chat_router
+    from src.graph.api.routes import router as graph_router
 
 app = FastAPI(
     title="Nestle AI Chatbot",

@@ -1,9 +1,11 @@
 from typing import Dict, Any, List, Optional
 
 try:
-    from backend.src.graph.models import EntityType, RelationshipType
+    from backend.src.graph.models.entity import EntityType
+    from backend.src.graph.models.relationship import RelationshipType
 except ImportError:
-    from src.graph.models import EntityType, RelationshipType
+    from src.graph.models.entity import EntityType
+    from src.graph.models.relationship import RelationshipType
 
 # Required properties for each entity type
 ENTITY_REQUIRED_PROPERTIES = {

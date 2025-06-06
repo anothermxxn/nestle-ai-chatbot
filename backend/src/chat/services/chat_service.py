@@ -4,19 +4,19 @@ from datetime import datetime
 from openai import AzureOpenAI
 
 if TYPE_CHECKING:
-    from .session_manager import ConversationMessage
-    from .context_manager import SearchContext, ContextExtractor
+    from .session_service import ConversationMessage
+    from .context_service import SearchContext, ContextExtractor
 
 try:
-    from backend.src.search.search_client import AzureSearchClient
-    from backend.src.search.graphrag_client import GraphRAGClient
-    from backend.src.chat.graphrag_formatter import GraphRAGFormatter
-    from backend.src.chat.context_manager import SearchContext, ContextExtractor
+    from backend.src.search.services.azure_search import AzureSearchClient
+    from backend.src.search.services.graphrag import GraphRAGClient
+    from backend.src.chat.formatters.graphrag_formatter import GraphRAGFormatter
+    from backend.src.chat.services.context_service import SearchContext, ContextExtractor
 except ImportError:
-    from src.search.search_client import AzureSearchClient
-    from src.search.graphrag_client import GraphRAGClient
-    from src.chat.graphrag_formatter import GraphRAGFormatter
-    from src.chat.context_manager import SearchContext, ContextExtractor
+    from src.search.services.azure_search import AzureSearchClient
+    from src.search.services.graphrag import GraphRAGClient
+    from src.chat.formatters.graphrag_formatter import GraphRAGFormatter
+    from src.chat.services.context_service import SearchContext, ContextExtractor
 
 # Dynamic import to handle both local development and Docker environments
 try:
@@ -366,7 +366,7 @@ class NestleChatClient:
             Dict: Response containing answer, sources, metadata
         """
         try:
-            logger.info(f"Processing context-aware chat query: {query}")
+            logger.info(f"Processing chat query: {query}")
             
             # Extract search context from conversation history
             search_context = self._extract_search_context_from_history(conversation_history)
@@ -466,7 +466,7 @@ class NestleChatClient:
         if not conversation_history:
             return []
         
-        from .context_manager import ChatMessage
+        from .context_service import ChatMessage
         
         formatted_history = []
         # Use recent messages for context

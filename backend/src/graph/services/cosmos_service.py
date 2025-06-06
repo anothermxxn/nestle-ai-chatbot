@@ -15,7 +15,8 @@ try:
         CONTAINER_CONFIGS,
         validate_config
     )
-    from backend.src.graph.models import Entity, Relationship, EntityType, RelationshipType
+    from backend.src.graph.models.entity import Entity, EntityType
+    from backend.src.graph.models.relationship import Relationship, RelationshipType
 except ImportError:
     from config.database import (
         COSMOS_CONFIG,
@@ -25,7 +26,8 @@ except ImportError:
         CONTAINER_CONFIGS,
         validate_config
     )
-    from src.graph.models import Entity, Relationship, EntityType, RelationshipType
+    from src.graph.models.entity import Entity, EntityType
+    from src.graph.models.relationship import Relationship, RelationshipType
 
 logging.basicConfig(
     level=logging.INFO,

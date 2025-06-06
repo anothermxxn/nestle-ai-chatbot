@@ -2,11 +2,13 @@ import logging
 from typing import Dict, List, Any
 
 try:
-    from backend.src.search.graphrag_client import GraphRAGResult
-    from backend.src.graph.models import Entity, Relationship
+    from backend.src.search.services.graphrag import GraphRAGResult
+    from backend.src.graph.models.entity import Entity
+    from backend.src.graph.models.relationship import Relationship
 except ImportError:
-    from src.search.graphrag_client import GraphRAGResult
-    from src.graph.models import Entity, Relationship
+    from src.search.services.graphrag import GraphRAGResult
+    from src.graph.models.entity import Entity
+    from src.graph.models.relationship import Relationship
 
 logger = logging.getLogger(__name__)
 

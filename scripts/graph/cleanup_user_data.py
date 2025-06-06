@@ -8,8 +8,8 @@ backend_root = os.path.join(os.path.dirname(__file__), "..", "..", "backend")
 backend_src_path = os.path.join(backend_root, "src")
 sys.path.insert(0, os.path.abspath(backend_root))
 sys.path.insert(0, os.path.abspath(backend_src_path))
-from graph.cosmos_client import CosmosGraphClient
-from graph.models import EntityType
+from graph.services.cosmos_service import CosmosGraphClient
+from graph.models.entity import EntityType
 
 async def get_user_created_entities(client: CosmosGraphClient) -> List:
     """

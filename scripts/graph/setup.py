@@ -14,12 +14,12 @@ from backend.config import (
     validate_config
 )
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "src"))
-from graph.cosmos_client import CosmosGraphClient
-from graph.models import (
+from graph.services.cosmos_service import CosmosGraphClient
+from graph.models.entity import (
     extract_entities_from_chunks,
-    create_entity_relationships,
     EntityType,
 )
+from graph.models.relationship import create_entity_relationships
 
 # Load environment variables
 load_dotenv()

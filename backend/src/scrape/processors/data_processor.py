@@ -12,8 +12,8 @@ from nltk.corpus import stopwords
 from nltk.util import ngrams
 
 from .url_parser import parse_url
-from .llm_keyword_extractor import extract_keywords_with_llm
-from .keyword_utils import is_meaningful_keyword
+from ..services.keyword_extractor import extract_keywords_with_llm
+from ..utils.keyword_utils import is_meaningful_keyword
 
 # Dynamic import to handle both local development and Docker environments
 try:
