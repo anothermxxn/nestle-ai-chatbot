@@ -1,18 +1,32 @@
 import { styled } from '@mui/material/styles';
 import { Box, IconButton } from '@mui/material';
 
-// Nestlé brand colors
 export const colors = {
+  // Nestlé brand colors
   primary: '#726050',
   nestleCream: '#afa89b',
   nestleGray: '#242525',
+  nestleBackground: '#F5F2E8',
   // UI colors
   white: '#ffffff',
+  black: '#000000',
   gray100: '#f5f5f5',
   gray200: '#eeeeee',
   gray500: '#9e9e9e',
   gray600: '#757575',
   gray800: '#424242',
+  warning: '#ff6b6b',
+};
+
+// Helper function to create RGBA colors - this is the modern best practice
+export const rgba = (color, opacity) => {
+  // Convert hex to RGB values
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 };
 
 // Mobile breakpoints
@@ -62,7 +76,7 @@ export const StyledIconButton = styled(IconButton)(({ variant = 'default' }) => 
   ...(variant === 'header' && {
     color: colors.nestleCream,
     '&:hover': {
-      backgroundColor: 'rgba(175, 168, 155, 0.15)',
+      backgroundColor: rgba(colors.nestleCream, 0.15),
       transform: 'scale(1.05)',
     },
     [mediaQueries.touchDevice]: {
@@ -71,7 +85,7 @@ export const StyledIconButton = styled(IconButton)(({ variant = 'default' }) => 
         transform: 'none',
       },
       '&:active': {
-        backgroundColor: 'rgba(175, 168, 155, 0.25)',
+        backgroundColor: rgba(colors.nestleCream, 0.25),
         transform: 'scale(0.95)',
       },
     },
@@ -90,7 +104,7 @@ export const StyledIconButton = styled(IconButton)(({ variant = 'default' }) => 
       background: colors.primary,
       color: colors.nestleGray,
       transform: 'scale(1.08)',
-      boxShadow: `0 4px 12px ${colors.nestleCream}40`,
+      boxShadow: `0 4px 12px ${rgba(colors.nestleCream, 0.4)}`,
     },
     [mediaQueries.touchDevice]: {
       '&:hover': {
@@ -102,7 +116,7 @@ export const StyledIconButton = styled(IconButton)(({ variant = 'default' }) => 
       '&:active': {
         background: colors.nestleGray,
         transform: 'scale(0.95)',
-        boxShadow: `0 2px 8px ${colors.nestleCream}60`,
+        boxShadow: `0 2px 8px ${rgba(colors.nestleCream, 0.6)}`,
       },
     },
     '&:disabled': {
@@ -134,8 +148,7 @@ export const NestleHeader = styled(Box)({
 
 // Shadows
 export const shadows = {
-  light: '0 1px 3px rgba(99, 81, 61, 0.12)',
-  nestle: '0 6px 24px rgba(99, 81, 61, 0.2)',
-  gold: '0 4px 16px rgba(212, 175, 55, 0.25)',
-  mobile: '0 4px 16px rgba(99, 81, 61, 0.15)',
+  light: `0 1px 3px ${rgba(colors.primary, 0.12)}`,
+  nestle: `0 6px 24px ${rgba(colors.primary, 0.2)}`,
+  mobile: `0 4px 16px ${rgba(colors.primary, 0.15)}`,
 }; 

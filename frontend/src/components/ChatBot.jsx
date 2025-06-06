@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Typography } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
 import ChatWindow from './ChatWindow';
-import { colors, fontFamily, FlexCenter, shadows, mediaQueries } from './common';
+import { colors, fontFamily, FlexCenter, shadows, mediaQueries, rgba } from './common';
 import { validateFSA } from '../utils/validation';
 
 import nestleLogo from '../assets/logo.jpg';
@@ -26,7 +26,7 @@ const CollapsedNestleLogo = styled('img')({
   border: `1px solid ${colors.primary}`,
   background: colors.white,
   padding: 2,
-  boxShadow: '0 2px 8px rgba(99, 81, 61, 0.3)',
+  boxShadow: `0 2px 8px ${rgba(colors.primary, 0.3)}`,
   [mediaQueries.mobile]: {
     width: 28,
     height: 28,
@@ -41,7 +41,7 @@ const ClosingNestleLogo = styled('img')({
   objectFit: 'cover',
   border: `2px solid ${colors.primary}`,
   background: colors.white,
-  boxShadow: '0 2px 8px rgba(99, 81, 61, 0.3)',
+  boxShadow: `0 2px 8px ${rgba(colors.primary, 0.3)}`,
   [mediaQueries.mobile]: {
     width: 50,
     height: 50,
@@ -57,7 +57,7 @@ const ExpandingNestleLogo = styled('img')({
   border: `3px solid ${colors.primary}`,
   background: colors.white,
   padding: 8,
-  boxShadow: '0 8px 32px rgba(99, 81, 61, 0.3)',
+  boxShadow: `0 8px 32px rgba(${colors.primary}, 0.3)`,
   animation: 'pulse 1.5s ease-in-out infinite',
   [mediaQueries.mobile]: {
     width: 80,
@@ -271,7 +271,7 @@ const AnimatedContainer = styled(Box, {
         },
         '&:hover': {
           transform: 'scale(1.08)',
-          boxShadow: shadows.gold,
+          boxShadow: shadows.nestle,
         },
         [mediaQueries.touchDevice]: {
           '&:hover': {
@@ -350,7 +350,7 @@ const AnimatedContainer = styled(Box, {
         },
         '&:hover': {
           transform: 'translateY(-2px)',
-          boxShadow: shadows.gold,
+          boxShadow: shadows.nestle,
           [mediaQueries.mobile]: {
             transform: 'none',
           },
@@ -434,7 +434,7 @@ const SmartieText = styled(Typography)(({ size = 'normal' }) => ({
   textAlign: 'center',
   color: colors.nestleCream,
   fontFamily,
-  textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+  textShadow: `0 1px 2px ${rgba(colors.black, 0.3)}`,
   [mediaQueries.mobile]: {
     fontSize: size === 'small' ? 9 : 6,
     letterSpacing: '0.6px',

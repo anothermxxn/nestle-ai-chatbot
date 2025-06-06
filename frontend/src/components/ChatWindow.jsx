@@ -18,7 +18,8 @@ import {
   shadows, 
   StyledIconButton,
   NestleHeader,
-  mediaQueries
+  mediaQueries,
+  rgba
 } from './common';
 import useChatSession from '../hooks/useChatSession';
 import { createErrorHandler } from '../utils/errorHandler';
@@ -35,7 +36,7 @@ const HeaderNestleLogo = styled('img')({
   border: `1px solid ${colors.primary}`,
   background: colors.white,
   padding: 2,
-  boxShadow: '0 2px 8px rgba(99, 81, 61, 0.2)',
+  boxShadow: `0 2px 8px ${rgba(colors.primary, 0.2)}`,
   [mediaQueries.mobile]: {
     width: 28,
     height: 28,
@@ -117,7 +118,7 @@ const LocationIcon = styled(LocationOn, {
   shouldForwardProp: (prop) => prop !== 'hasError'
 })(({ hasError }) => ({
   fontSize: 16,
-  color: hasError ? '#ff6b6b' : colors.nestleCream,
+  color: hasError ? colors.warning : colors.nestleCream,
   marginLeft: 8,
   cursor: 'pointer',
   transition: 'all 0.2s ease',
@@ -132,7 +133,7 @@ const LocationRefreshIcon = styled(Refresh, {
   shouldForwardProp: (prop) => prop !== 'hasError'
 })(({ hasError }) => ({
   fontSize: 16,
-  color: hasError ? '#ff6b6b' : colors.nestleCream,
+  color: hasError ? colors.warning : colors.nestleCream,
   marginLeft: 8,
   cursor: 'pointer',
   transition: 'all 0.2s ease',
@@ -181,11 +182,11 @@ const LocationTextInline = styled(Typography, {
 })(({ isEditing, hasError }) => ({
   fontSize: 16,
   fontWeight: 500,
-  color: hasError ? '#ff6b6b' : colors.nestleCream,
+  color: hasError ? colors.warning : colors.nestleCream,
   fontFamily,
   cursor: isEditing ? 'text' : 'pointer',
   textDecoration: 'underline',
-  textDecorationColor: hasError ? '#ff6b6b' : colors.nestleCream,
+  textDecorationColor: hasError ? colors.warning : colors.nestleCream,
   textUnderlineOffset: 2,
   minWidth: 60,
   padding: '2px 4px',
@@ -198,7 +199,7 @@ const LocationTextInline = styled(Typography, {
     padding: '4px 6px',
   },
   '&:hover': {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: `${colors.white}1A`, // 1A is 10% opacity in hex
   },
 }));
 
@@ -208,7 +209,7 @@ const LocationInputInline = styled('input')(({ isValid }) => ({
   color: colors.nestleCream,
   fontFamily,
   background: colors.nestleGray,
-  border: `1px solid ${isValid === false ? '#ff6b6b' : 'transparent'}`,
+  border: `1px solid ${isValid === false ? colors.warning : 'transparent'}`,
   outline: 'none',
   borderRadius: 4,
   padding: '2px 6px',
@@ -612,7 +613,7 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger, location, onLocationRef
           arrow
           sx={{
             '& .MuiTooltip-tooltip': {
-              backgroundColor: '#ff6b6b',
+              backgroundColor: colors.warning,
               color: 'white',
               fontSize: 12,
               fontWeight: 500,
@@ -621,7 +622,7 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger, location, onLocationRef
               maxWidth: 200,
             },
             '& .MuiTooltip-arrow': {
-              color: '#ff6b6b',
+              color: colors.warning,
             },
           }}
         >

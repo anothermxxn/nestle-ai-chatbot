@@ -1,7 +1,7 @@
 import { Box, Typography, Paper, Chip, Tooltip, Link } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { forwardRef } from 'react';
-import { colors, fontFamily, mediaQueries } from './common';
+import { colors, fontFamily, mediaQueries, rgba } from './common';
 import { parseMessageContent, formatReferenceTooltip } from '../utils/messageFormatter';
 
 // Import Nestlé logo
@@ -16,21 +16,19 @@ const MessageContainer = styled(Box)(({ messagetype }) => ({
   fontWeight: 600,
   justifyContent: messagetype === 'user' ? 'flex-end' : 'flex-start',
   alignItems: messagetype === 'user' ? 'center' : 'flex-start',
-  gap: messagetype === 'user' ? 0 : 8,
+  gap: messagetype === 'user' ? 0 : 12,
   position: messagetype === 'user' ? 'static' : 'relative',
   marginLeft: messagetype === 'user' ? 'auto' : 0,
   [mediaQueries.mobile]: {
     margin: '10px 0',
     maxWidth: '98%',
-    gap: messagetype === 'user' ? 0 : 6,
+    gap: messagetype === 'user' ? 0 : 10,
+    justifyContent: messagetype === 'user' ? 'flex-end' : 'flex-start',
+    marginLeft: messagetype === 'user' ? 'auto' : 0,
   },
 }));
 
-const AssistantAvatar = styled('div')({
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  zIndex: 1,
+const AssistantAvatar = styled(Box)({
   width: 36,
   height: 36,
   borderRadius: '50%',
@@ -39,7 +37,8 @@ const AssistantAvatar = styled('div')({
   justifyContent: 'center',
   background: colors.white,
   border: `1px solid ${colors.primary}`,
-  boxShadow: '0 2px 8px rgba(99, 81, 61, 0.2)',
+  boxShadow: `0 2px 8px ${rgba(colors.primary, 0.2)}`,
+  flexShrink: 0,
   [mediaQueries.mobile]: {
     width: 32,
     height: 32,
@@ -47,26 +46,26 @@ const AssistantAvatar = styled('div')({
 });
 
 const NestleAvatarLogo = styled('img')({
-  width: 28,
-  height: 28,
+  width: 30,
+  height: 30,
   borderRadius: '50%',
   objectFit: 'cover',
   [mediaQueries.mobile]: {
-    width: 24,
-    height: 24,
+    width: 26,
+    height: 26,
   },
 });
 
-const MessageContent = styled(Box)(({ messagetype }) => ({
+const MessageContent = styled(Box)({
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
-  marginLeft: messagetype === 'assistant' ? 44 : 0,
+  flex: 1,
+  minWidth: 0,
   [mediaQueries.mobile]: {
     gap: 6,
-    marginLeft: messagetype === 'assistant' ? 38 : 0,
   },
-}));
+});
 
 const MessageText = styled(Paper)(({ messagetype }) => ({
   padding: '10px 14px',
@@ -93,7 +92,11 @@ const MessageText = styled(Paper)(({ messagetype }) => ({
   borderBottomLeftRadius: messagetype === 'assistant' ? 4 : 12,
   boxShadow: messagetype === 'user' 
     ? 'none'
-    : '0 4px 12px rgba(114, 96, 80, 0.2)',
+    : `0 4px 12px ${rgba(colors.primary, 0.2)}`,
+  ...(messagetype === 'user' && {
+    width: 'fit-content',
+    maxWidth: '100%',
+  }),
   [mediaQueries.mobile]: {
     padding: '8px 12px',
     fontSize: 16,
@@ -309,7 +312,7 @@ const StyledTooltip = styled(({ className, ...props }) => (
     padding: '10px 14px',
     borderRadius: 8,
     maxWidth: 280,
-    boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2)',
+    boxShadow: `0 6px 20px ${rgba(colors.black, 0.2)}`,
     border: `1px solid ${colors.primary}`,
   },
   '& .MuiTooltip-arrow': {
@@ -712,7 +715,7 @@ const MessageBubble = forwardRef(({ message }, ref) => {
         </AssistantAvatar>
       )}
       
-      <MessageContent messagetype={type}>
+      <MessageContent>
         {/* Main message text */}
         <MessageText messagetype={type} elevation={0}>
           <FormattedMessageContent segments={contentSegments} references={uniqueReferences} />

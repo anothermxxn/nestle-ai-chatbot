@@ -39,8 +39,9 @@
   font-weight: 700;
   color: rgba(99, 81, 61, 0.06);
   text-align: center;
-  letter-spacing: 0.15em;
+  white-space: nowrap;
   pointer-events: none;
+  user-select: none;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   z-index: 1;
   text-shadow: 
