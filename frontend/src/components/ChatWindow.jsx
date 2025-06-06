@@ -4,10 +4,11 @@ import {
   Paper, 
   Typography, 
   TextField, 
-  Alert
+  Alert,
+  Tooltip
 } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
-import { Send, ExpandMore, Close } from '@mui/icons-material';
+import { Send, ExpandMore, Close, LocationOn, Refresh } from '@mui/icons-material';
 import MessageBubble from './MessageBubble';
 import { 
   colors, 
@@ -21,6 +22,7 @@ import {
 } from './common';
 import useChatSession from '../hooks/useChatSession';
 import { createErrorHandler } from '../utils/errorHandler';
+import { validateFSA, getFSAValidationMessage, formatFSA } from '../utils/validation';
 
 import nestleLogoCircle from '../assets/logoCircle.jpg';
 
@@ -85,8 +87,10 @@ const SmartieHeader = styled(Box)({
   alignItems: 'center',
   gap: 12,
   flex: 1,
+  overflow: 'hidden',
   [mediaQueries.mobile]: {
-    gap: 8,
+    gap: 10,
+    minWidth: 0,
   },
 });
 
@@ -97,7 +101,7 @@ const SmartieTitle = styled(Typography)({
   color: colors.nestleCream,
   fontFamily,
   [mediaQueries.mobile]: {
-    fontSize: 14,
+    fontSize: 18,
     letterSpacing: '0.6px',
   },
 });
@@ -108,6 +112,117 @@ const HeaderControls = styled(FlexCenter)({
     gap: 6,
   },
 });
+
+const LocationIcon = styled(LocationOn, {
+  shouldForwardProp: (prop) => prop !== 'hasError'
+})(({ hasError }) => ({
+  fontSize: 16,
+  color: hasError ? '#ff6b6b' : colors.nestleCream,
+  marginLeft: 8,
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+  [mediaQueries.mobile]: {
+    fontSize: 16,
+    marginLeft: 8,
+    marginRight: 0,
+  },
+}));
+
+const LocationRefreshIcon = styled(Refresh, {
+  shouldForwardProp: (prop) => prop !== 'hasError'
+})(({ hasError }) => ({
+  fontSize: 16,
+  color: hasError ? '#ff6b6b' : colors.nestleCream,
+  marginLeft: 8,
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    transform: 'rotate(90deg)',
+  },
+  [mediaQueries.mobile]: {
+    fontSize: 16,
+    marginLeft: 8,
+  },
+}));
+
+const LocationContainer = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'isEditingLocation'
+})(({ isEditingLocation }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+  ...(isEditingLocation ? {
+    // In editing mode: always show refresh icon
+    '& .location-icon': {
+      display: 'none',
+    },
+    '& .location-refresh': {
+      display: 'block',
+    },
+  } : {
+    // Outside editing mode: show location icon, refresh on hover
+    '& .location-icon': {
+      display: 'block',
+    },
+    '& .location-refresh': {
+      display: 'none',
+    },
+    '&:hover .location-icon': {
+      display: 'none',
+    },
+    '&:hover .location-refresh': {
+      display: 'block',
+    },
+  }),
+}));
+
+const LocationTextInline = styled(Typography, {
+  shouldForwardProp: (prop) => prop !== 'isEditing' && prop !== 'hasError'
+})(({ isEditing, hasError }) => ({
+  fontSize: 16,
+  fontWeight: 500,
+  color: hasError ? '#ff6b6b' : colors.nestleCream,
+  fontFamily,
+  cursor: isEditing ? 'text' : 'pointer',
+  textDecoration: 'underline',
+  textDecorationColor: hasError ? '#ff6b6b' : colors.nestleCream,
+  textUnderlineOffset: 2,
+  minWidth: 60,
+  padding: '2px 4px',
+  borderRadius: 4,
+  background: 'transparent',
+  transition: 'all 0.2s ease',
+  [mediaQueries.mobile]: {
+    fontSize: 18,
+    minWidth: 70,
+    padding: '4px 6px',
+  },
+  '&:hover': {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+}));
+
+const LocationInputInline = styled('input')(({ isValid }) => ({
+  fontSize: 16,
+  fontWeight: 500,
+  color: colors.nestleCream,
+  fontFamily,
+  background: colors.nestleGray,
+  border: `1px solid ${isValid === false ? '#ff6b6b' : 'transparent'}`,
+  outline: 'none',
+  borderRadius: 4,
+  padding: '2px 6px',
+  minWidth: 50,
+  maxWidth: 80,
+  textDecoration: 'none',
+  transition: 'border-color 0.2s ease',
+  [mediaQueries.mobile]: {
+    fontSize: 18,
+    padding: '4px 8px',
+    minWidth: 60,
+    maxWidth: 90,
+  },
+}));
 
 const MessagesContainer = styled(Box)({
   flex: 1,
@@ -208,7 +323,7 @@ const MessageInput = styled(TextField)({
     fontFamily,
     fontWeight: 500,
     [mediaQueries.mobile]: {
-      fontSize: 16, // Prevent zoom on iOS
+      fontSize: 16,
     },
     '& fieldset': {
       border: 'none',
@@ -227,7 +342,8 @@ const MessageInput = styled(TextField)({
     padding: '8px 12px',
     color: colors.nestleCream,
     [mediaQueries.mobile]: {
-      padding: '10px 12px', // Increased touch target
+      padding: '10px 14px',
+      fontSize: 16,
     },
     '&::placeholder': {
       color: colors.gray500,
@@ -248,18 +364,23 @@ const MessageInput = styled(TextField)({
 });
 
 /**
- * Main chat window component that handles message display and user input
- * @param {Function} onClose      - Callback function to close the chat window
- * @param {Function} onCollapse   - Callback function to collapse the chat window
- * @param {number}   resetTrigger - Counter that triggers message reset when changed
- * @param {Object}   style        - Style object for the chat window
- * @returns {JSX.Element} The complete chat interface
+ * Main chat window component that handles the main chat interface and messaging
+ * @param {Function} onClose            - Callback to close the chat window
+ * @param {Function} onCollapse         - Callback to collapse the chat window
+ * @param {number} resetTrigger         - Trigger to reset conversation
+ * @param {Object} location             - Current location data (FSA)
+ * @param {Function} onLocationRefresh  - Callback to refresh location
+ * @param {Function} onLocationUpdate   - Callback to update location manually
+ * @param {Object} style                - Additional styles for the container
+ * @returns {JSX.Element} Chat window interface
  */
-const ChatWindow = ({ onClose, onCollapse, resetTrigger, style }) => {
+const ChatWindow = ({ onClose, onCollapse, resetTrigger, location, onLocationRefresh, onLocationUpdate, style }) => {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [locationInputValue, setLocationInputValue] = useState("");
 
   // Conversation management
   const {
@@ -378,6 +499,183 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger, style }) => {
     }
   };
 
+  /**
+   * Handles starting location edit mode
+   */
+  const handleLocationEdit = () => {
+    setLocationInputValue(location?.fsa || "");
+    setIsEditingLocation(true);
+  };
+
+  /**
+   * Handles canceling location edit
+   */
+  const handleLocationCancel = () => {
+    setIsEditingLocation(false);
+    setLocationInputValue("");
+  };
+
+  /**
+   * Handles Enter key in location input
+   */
+  const handleLocationKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleLocationSave();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleLocationCancel();
+    }
+  };
+
+  /**
+   * Handles saving location edit with validation
+   */
+  const handleLocationSave = () => {
+    const trimmedInput = locationInputValue.trim().toUpperCase();
+    
+    if (!trimmedInput) {
+      setIsEditingLocation(false);
+      return;
+    }
+    
+    if (!validateFSA(trimmedInput)) {
+      return; // Keep editing mode, validation shown via tooltip
+    }
+    
+    if (onLocationUpdate) {
+      onLocationUpdate(trimmedInput);
+    }
+    setIsEditingLocation(false);
+  };
+
+  /**
+   * Handles blur event with validation
+   */
+  const handleLocationBlur = () => {
+    const trimmedInput = locationInputValue.trim().toUpperCase();
+    
+    // If empty input, close editing mode
+    if (!trimmedInput) {
+      setIsEditingLocation(false);
+      return;
+    }
+    
+    // If invalid input, revert to original value and close editing
+    if (!validateFSA(trimmedInput)) {
+      setIsEditingLocation(false);
+      setLocationInputValue("");
+      return;
+    }
+    
+    // If valid input, save it
+    if (onLocationUpdate) {
+      onLocationUpdate(trimmedInput);
+    }
+    setIsEditingLocation(false);
+  };
+
+  /**
+   * Handles input change with real-time validation and formatting
+   */
+  const handleLocationInputChange = (e) => {
+    const formatted = formatFSA(e.target.value);
+    setLocationInputValue(formatted);
+  };
+
+  /**
+   * Handles location refresh
+   */
+  const handleLocationRefresh = () => {
+    if (onLocationRefresh) {
+      onLocationRefresh();
+    }
+  };
+
+  /**
+   * Renders the location indicator component
+   */
+  const renderLocationIndicator = () => {
+    if (!location) return "Location";
+
+    if (isEditingLocation) {
+      const inputValue = locationInputValue.trim();
+      const isValid = inputValue.length === 0 ? null : validateFSA(inputValue);
+      const validationMessage = getFSAValidationMessage(inputValue);
+      const showTooltip = validationMessage !== '';
+      
+      return (
+        <Tooltip
+          title={validationMessage}
+          open={showTooltip}
+          placement="top"
+          arrow
+          sx={{
+            '& .MuiTooltip-tooltip': {
+              backgroundColor: '#ff6b6b',
+              color: 'white',
+              fontSize: 12,
+              fontWeight: 500,
+              padding: '6px 12px',
+              borderRadius: 6,
+              maxWidth: 200,
+            },
+            '& .MuiTooltip-arrow': {
+              color: '#ff6b6b',
+            },
+          }}
+        >
+          <LocationInputInline
+            value={locationInputValue}
+            onChange={handleLocationInputChange}
+            onKeyDown={handleLocationKeyDown}
+            onBlur={handleLocationBlur}
+            placeholder="E.g. K1A"
+            isValid={isValid}
+            autoFocus
+            maxLength={3}
+          />
+        </Tooltip>
+      );
+    }
+
+    if (location.loading) {
+      return (
+        <LocationTextInline 
+          isEditing={false} 
+          hasError={false}
+          onClick={handleLocationEdit}
+        >
+          Detecting...
+        </LocationTextInline>
+      );
+    }
+
+    if (location.error) {
+      return (
+        <LocationTextInline 
+          isEditing={false} 
+          hasError={true}
+          onClick={handleLocationEdit}
+          title="Location detection failed. Click to enter manually or try: System Preferences > Security & Privacy > Location Services > Enable Safari"
+        >
+          Location
+        </LocationTextInline>
+      );
+    }
+
+    return (
+      <LocationTextInline 
+        isEditing={false} 
+        hasError={false}
+        onClick={handleLocationEdit}
+        onDoubleClick={handleLocationRefresh}
+      >
+        {location.fsa || "Location"}
+      </LocationTextInline>
+    );
+  };
+
   return (
     <ChatWindowContainer elevation={8} style={style}>
       {/* Chat Header */}
@@ -390,6 +688,13 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger, style }) => {
               loading="lazy"
             />
             <SmartieTitle variant="h6">SMARTIE</SmartieTitle>
+            
+            {/* Inline Location Indicator */}
+            <LocationContainer isEditingLocation={isEditingLocation}>
+              <LocationIcon hasError={location?.error} className="location-icon" />
+              <LocationRefreshIcon hasError={location?.error} className="location-refresh" onClick={handleLocationRefresh} />
+              {renderLocationIndicator()}
+            </LocationContainer>
           </SmartieHeader>
           
           <HeaderControls>

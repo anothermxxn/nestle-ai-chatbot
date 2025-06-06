@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, Typography } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
 import ChatWindow from './ChatWindow';
 import { colors, fontFamily, FlexCenter, shadows, mediaQueries } from './common';
+import { validateFSA } from '../utils/validation';
 
 import nestleLogo from '../assets/logo.jpg';
 import nestleLogoCircle from '../assets/logoCircle.jpg';
@@ -465,6 +466,238 @@ const ChatWindowContent = styled(Box)({
 const ChatBot = () => {
   const [state, setState] = useState('circle');
   const [resetTrigger, setResetTrigger] = useState(0);
+  const [location, setLocation] = useState({
+    coords: null,
+    fsa: null,
+    error: null,
+    loading: false,
+    permission: null, // 'granted', 'denied', 'prompt'
+    source: null // 'auto', 'manual'
+  });
+
+  const geolocationAttempted = useRef(false);
+
+  // Initialize location on component mount
+  useEffect(() => {
+    if (geolocationAttempted.current) return;
+    
+    const hasStoredLocation = loadStoredLocation();
+    
+    if (!hasStoredLocation) {
+      geolocationAttempted.current = true;
+      tryGeolocationWithFallbacks();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Gets the FSA (first 3 characters of postal code) from coordinates using reverse geocoding
+   * @param {number} lat - Latitude
+   * @param {number} lng - Longitude
+   * @returns {Promise<string>} FSA (Forward Sortation Area)
+   */
+  const getFSAFromCoords = async (lat, lng) => {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`
+    ).catch(() => null);
+    
+    if (!response?.ok) return 'LOC';
+    
+    const data = await response.json().catch(() => ({}));
+    const fullPostalCode = data.address?.postcode;
+    
+    if (fullPostalCode) {
+      const cleanedPostalCode = fullPostalCode.replace(/[\s-]/g, '');
+      const fsa = cleanedPostalCode.substring(0, 3).toUpperCase();
+      
+      if (validateFSA(fsa)) {
+        return fsa;
+      }
+    }
+    
+    return 'LOC';
+  };
+
+  /**
+   * Get approximate location from IP address
+   * @returns {Promise<string|null>} FSA from IP-based location
+   */
+  const getLocationFromIP = async () => {
+    const response = await fetch('https://ipapi.co/json/').catch(() => null);
+    if (!response?.ok) return null;
+    
+    const data = await response.json().catch(() => ({}));
+    
+    if (data.country_code === 'CA' && data.postal) {
+      const fsa = data.postal.substring(0, 3).toUpperCase();
+      return validateFSA(fsa) ? fsa : null;
+    }
+    
+    return null;
+  };
+
+  /**
+   * Multi-strategy geolocation
+   */
+  const tryGeolocationWithFallbacks = async () => {
+    if (!navigator.geolocation) {
+      setLocation(prev => ({
+        ...prev,
+        error: 'Geolocation is not supported by this browser',
+        loading: false
+      }));
+      return;
+    }
+
+    setLocation(prev => ({ ...prev, loading: true, error: null }));
+
+    // High accuracy GPS
+    const tryHighAccuracy = () => new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000
+      });
+    });
+
+    // Network-based positioning
+    const tryNetworkPositioning = () => new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: false,
+        timeout: 15000,
+        maximumAge: 600000
+      });
+    });
+
+    try {
+      // Try high accuracy first, fallback to network positioning
+      let position;
+      try {
+        position = await tryHighAccuracy();
+      } catch (error) {
+        if (error.code === error.PERMISSION_DENIED) {
+          throw error;
+        }
+        position = await tryNetworkPositioning();
+      }
+
+      // Process successful position
+      const { latitude, longitude } = position.coords;
+      
+      const fsa = await getFSAFromCoords(latitude, longitude);
+      const locationData = {
+        coords: { latitude, longitude },
+        fsa,
+        error: null,
+        loading: false,
+        permission: 'granted',
+        source: 'auto'
+      };
+      
+      setLocation(locationData);
+      localStorage.setItem('location', JSON.stringify({
+        ...locationData,
+        timestamp: Date.now()
+      }));
+      return;
+    } catch (geoError) {
+      if (geoError.code === geoError.PERMISSION_DENIED) {
+        setLocation(prev => ({
+          ...prev,
+          error: 'Location access denied. You can set your location manually.',
+          loading: false,
+          permission: 'denied'
+        }));
+        return;
+      }
+    }
+
+    // Fallback to IP-based location
+    const ipFSA = await getLocationFromIP();
+    if (ipFSA) {
+      const locationData = {
+        coords: null,
+        fsa: ipFSA,
+        error: null,
+        loading: false,
+        permission: 'granted',
+        source: 'ip'
+      };
+      
+      setLocation(locationData);
+      localStorage.setItem('location', JSON.stringify({
+        ...locationData,
+        timestamp: Date.now()
+      }));
+      return;
+    }
+
+    // All strategies failed
+    setLocation(prev => ({
+      ...prev,
+      error: 'Location detection failed. Please set manually.',
+      loading: false,
+      permission: 'granted'
+    }));
+  };
+
+  /**
+   * Handles manual location entry
+   * @param {string} fsaCode - Manual FSA input (3 character postal code)
+   */
+  const setManualLocation = (fsaCode) => {
+    const locationData = {
+      coords: null,
+      fsa: fsaCode,
+      error: null,
+      loading: false,
+      permission: location.permission,
+      source: 'manual'
+    };
+    
+    setLocation(locationData);
+    localStorage.setItem('location', JSON.stringify({
+      ...locationData,
+      timestamp: Date.now()
+    }));
+  };
+
+  /**
+   * Loads location from localStorage on component mount
+   */
+  const loadStoredLocation = () => {
+    const stored = localStorage.getItem('location');
+    if (!stored) return false;
+    
+    try {
+      const locationData = JSON.parse(stored);
+      const timeDiff = Date.now() - (locationData.timestamp || 0);
+      
+      // Use stored location if less than 24 hour old
+      if (timeDiff < 86400000) {
+        setLocation({
+          coords: locationData.coords,
+          fsa: locationData.fsa,
+          error: null,
+          loading: false,
+          permission: locationData.permission || null,
+          source: locationData.source || 'auto'
+        });
+        return true;
+      }
+    } catch {
+      // Invalid JSON in localStorage
+    }
+    
+    return false;
+  };
+
+  /**
+   * Gets the user's current location using multi-strategy approach
+   */
+  const getCurrentLocation = () => {
+    tryGeolocationWithFallbacks();
+  };
 
   /**
    * Handles click events on the chat button/collapsed window
@@ -514,6 +747,9 @@ const ChatBot = () => {
             onClose={handleClose} 
             onCollapse={handleCollapse}
             resetTrigger={resetTrigger}
+            location={location}
+            onLocationRefresh={getCurrentLocation}
+            onLocationUpdate={setManualLocation}
             style={{
               display: state === 'open' ? 'flex' : 'none'
             }}

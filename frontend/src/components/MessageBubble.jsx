@@ -96,7 +96,7 @@ const MessageText = styled(Paper)(({ messagetype }) => ({
     : '0 4px 12px rgba(114, 96, 80, 0.2)',
   [mediaQueries.mobile]: {
     padding: '8px 12px',
-    fontSize: 13,
+    fontSize: 16,
     borderRadius: 10,
     borderBottomRightRadius: messagetype === 'user' ? 3 : 10,
     borderBottomLeftRadius: messagetype === 'assistant' ? 3 : 10,
@@ -108,7 +108,7 @@ const MessageText = styled(Paper)(({ messagetype }) => ({
     margin: '4px auto',
     maxWidth: '200px',
     [mediaQueries.mobile]: {
-      fontSize: 11,
+      fontSize: 14,
       maxWidth: '180px',
       margin: '3px auto',
     },
@@ -120,7 +120,7 @@ const FormattedText = styled(Box)({
   lineHeight: 1.6,
   fontFamily,
   [mediaQueries.mobile]: {
-    fontSize: 13,
+    fontSize: 16,
     lineHeight: 1.5,
   },
 });

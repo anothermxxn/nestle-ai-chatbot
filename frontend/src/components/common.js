@@ -32,6 +32,18 @@ export const mediaQueries = {
 
 export const fontFamily = "'Helvetica Neue', Helvetica, Arial, sans-serif";
 
+// Add global styles for animations
+export const globalStyles = `
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
 export const StyledIconButton = styled(IconButton)(({ variant = 'default' }) => ({
   padding: 4,
   borderRadius: 6,
