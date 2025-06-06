@@ -11,8 +11,9 @@ info:
     - **Context-aware conversations** with session management
     - **GraphRAG-enhanced search** with entity relationships
     - **Multi-modal content search** across recipes, brands, and topics
-    - **Real-time WebSocket communication**
     - **Entity and relationship management** via graph database
+    - **Purchase assistance** with store locator and Amazon product integration
+    - **Count statistics** for data analysis
     
   version: 1.0.0
   license:
@@ -26,12 +27,12 @@ tags:
     description: Conversational AI chat endpoints
   - name: Sessions
     description: Chat session management
-  - name: WebSocket
-    description: Real-time WebSocket communication
   - name: Graph
     description: Entity and relationship management
-  - name: Search
-    description: Content search and discovery
+  - name: Validation
+    description: Entity and relationship validation
+  - name: Statistics
+    description: Count statistics and analytics
 
 paths:
   # Health Endpoints
@@ -86,6 +87,7 @@ paths:
       description: |
         Perform context-aware search and generate conversational response.
         This is the main chat endpoint that combines search with conversation context.
+        Supports purchase assistance with store locator and Amazon product integration.
       requestBody:
         required: true
         content:
@@ -112,82 +114,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /chat/recipes:
-    post:
-      tags: [Chat]
-      summary: Get recipe suggestions
-      description: Get recipe suggestions for a specific ingredient with conversation context
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RecipeRequest'
-      responses:
-        '200':
-          description: Recipe suggestions response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ChatResponse'
-
-  /chat/products:
-    post:
-      tags: [Chat]
-      summary: Get product information
-      description: Get information about a specific Nestle product with conversation context
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProductRequest'
-      responses:
-        '200':
-          description: Product information response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ChatResponse'
-
-  /chat/cooking-tips:
-    post:
-      tags: [Chat]
-      summary: Get cooking tips
-      description: Get cooking tips and advice with conversation context
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CookingTipsRequest'
-      responses:
-        '200':
-          description: Cooking tips response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ChatResponse'
-
-  /chat/nutrition:
-    post:
-      tags: [Chat]
-      summary: Get nutrition information
-      description: Get nutritional information about a food item or Nestle product
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/NutritionRequest'
-      responses:
-        '200':
-          description: Nutrition information response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ChatResponse'
-
   /chat/health:
     get:
       tags: [Chat]
@@ -204,21 +130,32 @@ paths:
                   status:
                     type: string
                     example: "healthy"
-                  components:
+                  service:
+                    type: string
+                    example: "Nestle Chat API"
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  timestamp:
+                    type: string
+                    format: date-time
+                  dependencies:
                     type: object
                     properties:
-                      search_client:
+                      azure_openai:
                         type: string
                         example: "connected"
-                      graph_client:
+                      azure_search:
                         type: string
                         example: "connected"
                       session_manager:
                         type: string
                         example: "active"
+                  session_stats:
+                    type: object
 
   # Session Management Endpoints
-  /chat/session:
+  /chat/sessions:
     post:
       tags: [Sessions]
       summary: Create chat session
@@ -237,7 +174,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SessionResponse'
 
-  /chat/session/{session_id}:
+  /chat/sessions/{session_id}/history:
     get:
       tags: [Sessions]
       summary: Get session history
@@ -249,14 +186,22 @@ paths:
           description: Session identifier
           schema:
             type: string
-            format: uuid
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of recent messages
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
       responses:
         '200':
           description: Session history retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionHistoryResponse'
+                $ref: '#/components/schemas/ConversationHistoryResponse'
         '404':
           description: Session not found
           content:
@@ -264,8 +209,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /chat/session/{session_id}/delete:
-    post:
+  /chat/sessions/{session_id}:
+    delete:
       tags: [Sessions]
       summary: Delete chat session
       description: Delete a conversation session and its history
@@ -276,21 +221,13 @@ paths:
           description: Session identifier
           schema:
             type: string
-            format: uuid
       responses:
         '200':
           description: Session deleted successfully
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Session deleted successfully"
-                  session_id:
-                    type: string
-                    example: "550e8400-e29b-41d4-a716-446655440000"
+                $ref: '#/components/schemas/SessionResponse'
 
   /chat/sessions/stats:
     get:
@@ -303,10 +240,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionStatsResponse'
+                type: object
+                properties:
+                  session_statistics:
+                    type: object
+                  timestamp:
+                    type: string
+                    format: date-time
 
   # Graph Endpoints
-  /graph/health:
+  /api/graph/health:
     get:
       tags: [Graph]
       summary: Graph service health
@@ -322,18 +265,18 @@ paths:
                   status:
                     type: string
                     example: "healthy"
-                  database:
+                  service:
                     type: string
-                    example: "connected"
+                    example: "graph"
 
-  /graph/entity-types:
+  /api/graph/schema/entity-types:
     get:
       tags: [Graph]
-      summary: Get entity types
-      description: Get list of all supported entity types
+      summary: Get entity types and schemas
+      description: Get list of all supported entity types with their schemas
       responses:
         '200':
-          description: List of entity types
+          description: Entity types and schemas
           content:
             application/json:
               schema:
@@ -342,23 +285,26 @@ paths:
                   entity_types:
                     type: array
                     items:
+                      type: string
+                    example: ["Brand", "Topic", "Product", "Recipe"]
+                  schemas:
+                    type: object
+                    additionalProperties:
                       type: object
                       properties:
-                        type:
-                          type: string
-                          example: "Brand"
-                        description:
-                          type: string
-                          example: "Nestle brand entities"
+                        system_created:
+                          type: object
+                        user_created:
+                          type: object
 
-  /graph/relationship-types:
+  /api/graph/schema/relationship-types:
     get:
       tags: [Graph]
-      summary: Get relationship types
-      description: Get list of all supported relationship types
+      summary: Get relationship types and schemas
+      description: Get list of all supported relationship types with schema information
       responses:
         '200':
-          description: List of relationship types
+          description: Relationship types and schema
           content:
             application/json:
               schema:
@@ -367,16 +313,78 @@ paths:
                   relationship_types:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        type:
-                          type: string
-                          example: "BELONGS_TO"
-                        description:
-                          type: string
-                          example: "Product belongs to brand"
+                      type: string
+                  schema:
+                    type: object
 
-  /graph/entities:
+  # Validation Endpoints
+  /api/graph/validate/entity:
+    post:
+      tags: [Validation]
+      summary: Validate entity
+      description: Validate entity properties before creation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidationRequest'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  errors:
+                    type: array
+                    items:
+                      type: string
+
+  /api/graph/validate/relationship:
+    post:
+      tags: [Validation]
+      summary: Validate relationship
+      description: Validate relationship before creation
+      parameters:
+        - name: from_entity_type
+          in: query
+          required: true
+          description: Source entity type
+          schema:
+            type: string
+        - name: to_entity_type
+          in: query
+          required: true
+          description: Target entity type
+          schema:
+            type: string
+        - name: relationship_type
+          in: query
+          required: true
+          description: Relationship type
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  errors:
+                    type: array
+                    items:
+                      type: string
+
+  # Entity Management Endpoints
+  /api/graph/entities:
     post:
       tags: [Graph]
       summary: Create entity
@@ -386,7 +394,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateEntityRequest'
+              $ref: '#/components/schemas/EntityRequest'
       responses:
         '201':
           description: Entity created successfully
@@ -412,7 +420,6 @@ paths:
           description: Filter by entity type
           schema:
             type: string
-            enum: [Brand, Topic, Product, Recipe]
         - name: limit
           in: query
           required: false
@@ -421,24 +428,18 @@ paths:
             type: integer
             minimum: 1
             maximum: 100
-            default: 20
-        - name: offset
-          in: query
-          required: false
-          description: Number of entities to skip
-          schema:
-            type: integer
-            minimum: 0
-            default: 0
+            default: 100
       responses:
         '200':
           description: List of entities
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EntityListResponse'
+                type: array
+                items:
+                  $ref: '#/components/schemas/EntityResponse'
 
-  /graph/entities/{entity_id}:
+  /api/graph/entities/{entity_id}:
     get:
       tags: [Graph]
       summary: Get entity
@@ -448,6 +449,12 @@ paths:
           in: path
           required: true
           description: Entity identifier
+          schema:
+            type: string
+        - name: entity_type
+          in: query
+          required: true
+          description: Entity type
           schema:
             type: string
       responses:
@@ -475,19 +482,34 @@ paths:
           description: Entity identifier
           schema:
             type: string
+        - name: entity_type
+          in: query
+          required: true
+          description: Entity type
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateEntityRequest'
+              type: object
+              properties:
+                properties:
+                  type: object
+                  description: Properties to update
       responses:
         '200':
           description: Entity updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EntityResponse'
+                type: object
+                properties:
+                  message:
+                    type: string
+                  entity_id:
+                    type: string
 
     delete:
       tags: [Graph]
@@ -500,6 +522,12 @@ paths:
           description: Entity identifier
           schema:
             type: string
+        - name: entity_type
+          in: query
+          required: true
+          description: Entity type
+          schema:
+            type: string
       responses:
         '200':
           description: Entity deleted successfully
@@ -510,9 +538,8 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Entity deleted successfully"
 
-  /graph/entities/{entity_id}/relationships:
+  /api/graph/entities/{entity_id}/relationships:
     get:
       tags: [Graph]
       summary: Get entity relationships
@@ -538,9 +565,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RelationshipListResponse'
+                type: array
+                items:
+                  $ref: '#/components/schemas/RelationshipResponse'
 
-  /graph/relationships:
+  # Relationship Management Endpoints
+  /api/graph/relationships:
     post:
       tags: [Graph]
       summary: Create relationship
@@ -550,7 +580,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateRelationshipRequest'
+              $ref: '#/components/schemas/RelationshipRequest'
       responses:
         '201':
           description: Relationship created successfully
@@ -564,24 +594,6 @@ paths:
       summary: List relationships
       description: List relationships with optional filtering
       parameters:
-        - name: relationship_type
-          in: query
-          required: false
-          description: Filter by relationship type
-          schema:
-            type: string
-        - name: from_entity_id
-          in: query
-          required: false
-          description: Filter by source entity
-          schema:
-            type: string
-        - name: to_entity_id
-          in: query
-          required: false
-          description: Filter by target entity
-          schema:
-            type: string
         - name: limit
           in: query
           required: false
@@ -590,16 +602,17 @@ paths:
             type: integer
             minimum: 1
             maximum: 100
-            default: 20
       responses:
         '200':
           description: List of relationships
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RelationshipListResponse'
+                type: array
+                items:
+                  $ref: '#/components/schemas/RelationshipResponse'
 
-  /graph/relationships/{relationship_id}:
+  /api/graph/relationships/{relationship_id}:
     get:
       tags: [Graph]
       summary: Get relationship
@@ -631,18 +644,26 @@ paths:
           schema:
             type: string
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateRelationshipRequest'
+              type: object
+              properties:
+                properties:
+                  type: object
+                weight:
+                  type: number
       responses:
         '200':
           description: Relationship updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RelationshipResponse'
+                type: object
+                properties:
+                  message:
+                    type: string
 
     delete:
       tags: [Graph]
@@ -665,14 +686,67 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Relationship deleted successfully"
 
-# WebSocket endpoints are documented separately as they don't fit standard OpenAPI patterns
-# See websocket-documentation.md for WebSocket API details
+  # Statistics Endpoints
+  /api/graph/stats:
+    get:
+      tags: [Statistics]
+      summary: Get count statistics
+      description: Get general count statistics for entities
+      responses:
+        '200':
+          description: Count statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountStatsResponse'
+
+  /api/graph/stats/products:
+    get:
+      tags: [Statistics]
+      summary: Get product count statistics
+      description: Get product-specific count statistics
+      responses:
+        '200':
+          description: Product count statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductCountStatsResponse'
+
+  /api/graph/stats/categories:
+    get:
+      tags: [Statistics]
+      summary: Get category count statistics
+      description: Get category-based count statistics
+      responses:
+        '200':
+          description: Category count statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryCountStatsResponse'
 
 components:
   schemas:
     # Chat Request/Response Schemas
+    UserLocation:
+      type: object
+      required:
+        - lat
+        - lon
+      properties:
+        lat:
+          type: number
+          description: Latitude
+          minimum: -90
+          maximum: 90
+        lon:
+          type: number
+          description: Longitude
+          minimum: -180
+          maximum: 180
+
     ChatRequest:
       type: object
       required:
@@ -681,21 +755,20 @@ components:
         query:
           type: string
           description: User's question or search query
+          minLength: 1
           example: "What are some easy chocolate chip cookie recipes?"
         session_id:
           type: string
-          format: uuid
           description: Optional session ID for conversation context
           example: "550e8400-e29b-41d4-a716-446655440000"
         content_type:
           type: string
           description: Filter by content type
-          enum: [recipe, brand, topic, general]
           example: "recipe"
         brand:
           type: string
           description: Filter by brand
-          example: "NESTLE"
+          example: "NESTEA"
         keywords:
           type: array
           items:
@@ -708,6 +781,22 @@ components:
           minimum: 1
           maximum: 20
           default: 5
+        user_location:
+          $ref: '#/components/schemas/UserLocation'
+
+    PurchaseAssistance:
+      type: object
+      properties:
+        stores:
+          type: array
+          items:
+            type: object
+          description: Nearby stores that carry Nestlé products
+        amazon_products:
+          type: array
+          items:
+            type: object
+          description: Amazon products matching the query
 
     ChatResponse:
       type: object
@@ -719,13 +808,8 @@ components:
         sources:
           type: array
           items:
-            $ref: '#/components/schemas/SearchResult'
+            type: object
           description: Source documents used to generate the response
-        source_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/SourceLink'
-          description: Formatted source links for frontend display
         search_results_count:
           type: integer
           description: Number of search results found
@@ -736,277 +820,84 @@ components:
           example: "chocolate chip cookie recipes"
         session_id:
           type: string
-          format: uuid
           description: Session ID for this conversation
-        conversation_context:
-          type: string
-          description: Summary of conversation context
         filters_applied:
           type: object
-          properties:
-            content_type:
-              type: string
-            brand:
-              type: string
-            keywords:
-              type: array
-              items:
-                type: string
+          description: Filters that were applied to the search
         graphrag_enhanced:
           type: boolean
           description: Whether GraphRAG was used for enhanced context
         combined_relevance_score:
           type: number
           description: Combined relevance score for the response
-        session_stats:
+        retrieval_metadata:
           type: object
-          properties:
-            total_messages:
-              type: integer
-            total_queries:
-              type: integer
-            total_responses:
-              type: integer
-
-    SearchResult:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Unique identifier for the content chunk
-        content:
-          type: string
-          description: Text content of the result
-        page_title:
-          type: string
-          description: Title of the source page
-        section_title:
-          type: string
-          description: Section title within the page
-        url:
-          type: string
-          format: uri
-          description: Source URL
-        brand:
-          type: string
-          description: Associated brand
-        content_type:
-          type: string
-          description: Type of content
-        keywords:
-          type: array
-          items:
-            type: string
-          description: Keywords associated with this content
-        score:
-          type: number
-          description: Relevance score
-
-    SourceLink:
-      type: object
-      properties:
-        id:
-          type: integer
-          description: Reference number for the source
-        title:
-          type: string
-          description: Display title for the source
-        url:
-          type: string
-          format: uri
-          description: Source URL
-        snippet:
-          type: string
-          description: Brief snippet of the content
-        domain:
-          type: string
-          description: Domain of the source
-
-    RecipeRequest:
-      type: object
-      required:
-        - ingredient
-      properties:
-        ingredient:
-          type: string
-          description: Ingredient to search recipes for
-          example: "chocolate chips"
-        session_id:
-          type: string
-          format: uuid
-          description: Optional session ID
-
-    ProductRequest:
-      type: object
-      required:
-        - product_name
-      properties:
-        product_name:
-          type: string
-          description: Name of the product to get information about
-          example: "KitKat"
-        session_id:
-          type: string
-          format: uuid
-          description: Optional session ID
-
-    CookingTipsRequest:
-      type: object
-      required:
-        - topic
-      properties:
-        topic:
-          type: string
-          description: Cooking topic or technique
-          example: "baking cookies"
-        session_id:
-          type: string
-          format: uuid
-          description: Optional session ID
-
-    NutritionRequest:
-      type: object
-      required:
-        - food_item
-      properties:
-        food_item:
-          type: string
-          description: Food item or product to get nutrition info for
-          example: "dark chocolate"
-        session_id:
-          type: string
-          format: uuid
-          description: Optional session ID
-
-    SearchResponse:
-      type: object
-      properties:
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/SearchResult'
-        total_count:
-          type: integer
-          description: Total number of results found
-        query:
-          type: string
-          description: Original search query
-        filters_applied:
+          description: Metadata about the retrieval process
+        is_purchase_query:
+          type: boolean
+          description: Whether this query was classified as a purchase query
+        is_count_query:
+          type: boolean
+          description: Whether this query was classified as a count query
+          default: false
+        purchase_assistance:
+          $ref: '#/components/schemas/PurchaseAssistance'
+        count_data:
           type: object
-          description: Filters that were applied to the search
+          description: Count statistics data for count queries
 
     # Session Management Schemas
     SessionRequest:
       type: object
       properties:
-        session_id:
-          type: string
-          format: uuid
-          description: Optional custom session ID
+        metadata:
+          type: object
+          description: Optional session metadata
 
     SessionResponse:
       type: object
       properties:
         session_id:
           type: string
-          format: uuid
-          description: Created session ID
-        created_at:
+          description: Session ID
+        message:
           type: string
-          format: date-time
-          description: Session creation timestamp
+          description: Operation result message
 
-    SessionHistoryResponse:
+    ConversationHistoryResponse:
       type: object
       properties:
         session_id:
           type: string
-          format: uuid
-        created_at:
-          type: string
-          format: date-time
-        last_activity:
-          type: string
-          format: date-time
-        message_count:
-          type: integer
+          description: Session ID
         messages:
           type: array
           items:
-            $ref: '#/components/schemas/ChatMessage'
-        conversation_summary:
-          type: string
-        search_context:
-          $ref: '#/components/schemas/SearchContext'
-        metadata:
-          type: object
-
-    ChatMessage:
-      type: object
-      properties:
-        role:
-          type: string
-          enum: [user, assistant]
-        content:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-        metadata:
-          type: object
-
-    SearchContext:
-      type: object
-      properties:
-        recent_topics:
-          type: array
-          items:
-            type: string
-        preferred_content_types:
-          type: array
-          items:
-            type: string
-        mentioned_brands:
-          type: array
-          items:
-            type: string
-        mentioned_products:
-          type: array
-          items:
-            type: string
-        conversation_themes:
-          type: array
-          items:
-            type: string
-
-    SessionStatsResponse:
-      type: object
-      properties:
-        total_sessions:
-          type: integer
+            type: object
+          description: Conversation messages
         total_messages:
           type: integer
-        avg_messages_per_session:
-          type: number
-        oldest_session:
-          type: object
-          properties:
-            id:
-              type: string
-            created_at:
-              type: string
-              format: date-time
-        newest_session:
-          type: object
-          properties:
-            id:
-              type: string
-            created_at:
-              type: string
-              format: date-time
+          description: Total number of messages in conversation
 
     # Graph Database Schemas
-    CreateEntityRequest:
+    ValidationRequest:
+      type: object
+      required:
+        - entity_type
+        - properties
+      properties:
+        entity_type:
+          type: string
+          description: Type of entity to validate
+        properties:
+          type: object
+          description: Entity properties to validate
+        is_user_created:
+          type: boolean
+          default: true
+          description: Whether this is a user-created entity
+
+    EntityRequest:
       type: object
       required:
         - entity_type
@@ -1015,19 +906,14 @@ components:
         entity_type:
           type: string
           enum: [Brand, Topic, Product, Recipe]
+          description: Type of entity
         properties:
           type: object
           description: Entity-specific properties
         is_user_created:
           type: boolean
-          default: false
-
-    UpdateEntityRequest:
-      type: object
-      properties:
-        properties:
-          type: object
-          description: Properties to update
+          default: true
+          description: Whether this is a user-created entity
 
     EntityResponse:
       type: object
@@ -1047,21 +933,7 @@ components:
           type: string
           format: date-time
 
-    EntityListResponse:
-      type: object
-      properties:
-        entities:
-          type: array
-          items:
-            $ref: '#/components/schemas/EntityResponse'
-        total_count:
-          type: integer
-        limit:
-          type: integer
-        offset:
-          type: integer
-
-    CreateRelationshipRequest:
+    RelationshipRequest:
       type: object
       required:
         - from_entity_id
@@ -1070,38 +942,38 @@ components:
       properties:
         from_entity_id:
           type: string
+          description: Source entity ID
         to_entity_id:
           type: string
+          description: Target entity ID
         relationship_type:
           type: string
-          enum: [BELONGS_TO, MENTIONS, CONTAINS, RELATED_TO, FEATURED_IN]
+          description: Type of relationship
         properties:
           type: object
+          description: Relationship properties
+          default: {}
         weight:
           type: number
+          description: Relationship weight
+          minimum: 0.0
+          maximum: 1.0
           default: 1.0
         is_user_created:
           type: boolean
-          default: false
-
-    UpdateRelationshipRequest:
-      type: object
-      properties:
-        properties:
-          type: object
-        weight:
-          type: number
+          default: true
+          description: Whether this is a user-created relationship
 
     RelationshipResponse:
       type: object
       properties:
         id:
           type: string
-        relationship_type:
-          type: string
         from_entity_id:
           type: string
         to_entity_id:
+          type: string
+        relationship_type:
           type: string
         properties:
           type: object
@@ -1116,19 +988,34 @@ components:
           type: string
           format: date-time
 
-    RelationshipListResponse:
+    # Statistics Schemas
+    CountStatsResponse:
       type: object
       properties:
-        relationships:
-          type: array
-          items:
-            $ref: '#/components/schemas/RelationshipResponse'
-        total_count:
+        entity_counts:
+          type: object
+          additionalProperties:
+            type: integer
+
+    ProductCountStatsResponse:
+      type: object
+      properties:
+        total_products:
           type: integer
-        limit:
-          type: integer
-        offset:
-          type: integer
+        by_brand:
+          type: object
+          additionalProperties:
+            type: integer
+
+    CategoryCountStatsResponse:
+      type: object
+      properties:
+        by_category:
+          type: object
+          additionalProperties:
+            type: integer
+        recipe_stats:
+          type: object
 
     # Common Error Response
     ErrorResponse:
