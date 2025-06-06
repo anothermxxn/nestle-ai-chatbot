@@ -1,6 +1,6 @@
 # Nestle AI Chatbot
 
-An AI-powered chatbot that provides intelligent search capabilities over Nestle content, including recipes, product information, cooking tips, and nutrition guidance.
+An AI-powered chatbot that provides intelligent search capabilities over Nestle content, including recipes, product information, cooking tips, and nutrition guidance. The chatbot also features enhanced purchase assistance with store locators, Amazon integration, and intelligent product counting capabilities.
 
 ## Live Demo
 
@@ -20,7 +20,6 @@ Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-fronte
 - **Node.js 18**: JavaScript runtime
 - **React 19**: Frontend framework
 - **Vite**: Build tool
-- **WebSocket**: Real-time communication
 - **Material-UI v7**: UI library
 
 ### Cloud Infrastructure
@@ -31,19 +30,43 @@ Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-fronte
 - **Python Virtual Environments**: Local development dependency isolation
 
 ## Features
-- **AI-Powered Chat**: Natural language conversations powered by GPT-4o
-- **Nestle Content**: Access to recipes, products, brands, and cooking tips
-- **Knowledge Graph**: Customizable connected relationships for comprehensive answers
-- **Context Memory**: Remembers conversation history for better responses
-- **Real-Time Responses**: Instant messaging with WebSocket support
+
+### Core Chat Functionality
+- Natural language conversations powered by GPT-4o
+- Access to Nestlé recipes, products, brands, and cooking tips
+- Customizable GraphRAG architechture for comprehensive answers
+- Keep conversation context for better responses
+
+### Purchase Assistance
+- **Store Locator with Geolocation**: 
+  - Automatic location detection via browser geolocation API with IP-based location fallback
+  - Manual location entry with postal code validation
+  - Real-time store search using OpenStreetMap and OSRM routing
+  - Displays nearby stores with distance, address, hours, contact, and Google Maps integration
+
+- **Amazon Purchase Integration**: 
+  - Intelligent product search on Amazon.ca
+  - Real-time web scraping for accurate product information
+  - Product cards showing images, prices, ratings, and direct purchase links
+
+### Structured Query Handling
+- Handle general counting, category-specific counting, and brand-specific counting queries
+- Real-time data from graph database entities
+
+### Mobile-Optimized UI
+- Responsive Design optimized for mobile devices
+- Latest messages automatically scroll into view
+- Consistent visual design following Nestlé's brand guidelines
 
 ## Known Limitations
-- **UI Design**: The frontend currently displays as a floating chat button at the bottom right corner of a blank page
-- **Response Time**: Takes a few seconds to get responses due to compute resource limitations
-- **Content Updates**: Manual process required to update content index
+
+- **Response Time**: Takes up to 10 seconds to get responses due to compute resource limitations
+- **Data Coverage**: Missing around 15% of website data due to database storage limiations
+- **Store Data**: Limited to Canadian retail chains and OpenStreetMap data availability
+- **Amazon Scraping**: Subject to rate limiting and potential blocking by Amazon
 - **Test Coverage**: No unit tests or end-to-end tests implemented due to time constraints
+- **Content Updates**: Manual process required to update content index
 - **Language Support**: Currently optimized for English content only
-- **Concurrent Users**: Performance may degrade with high concurrent usage without proper scaling
 
 ## Local Setup Steps
 
@@ -174,3 +197,4 @@ Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-fronte
 For more detailed information:
 - **[GraphRAG Integration](./docs/graphrag-integration.md)** - Advanced GraphRAG features
 - **[API Specification](./docs/api-specification.yaml)** - Complete OpenAPI documentation
+- **[Counting Queries POC](./docs/counting-queries-poc.md)** - Technical details on intelligent product counting
