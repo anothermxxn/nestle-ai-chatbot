@@ -348,3 +348,31 @@ class StoreLocatorService:
         
         logger.info(f"Found {len(final_results)} stores with accurate routing distances")
         return final_results
+    
+    def format_stores_for_response(self, stores: List[StoreLocation]) -> List[Dict]:
+        """
+        Format store locations for response display.
+        
+        Args:
+            stores (List[StoreLocation]): List of StoreLocation objects
+            
+        Returns:
+            List[Dict]: Formatted store information for response
+        """
+        if not stores:
+            return []
+        
+        formatted_stores = []
+        for store in stores:
+            formatted_store = {
+                "name": store.name,
+                "address": store.address,
+                "distance": f"{store.distance/1000:.1f} km",
+                "duration": f"{int(store.duration/60)} min",
+                "phone": store.phone,
+                "hours": store.hours,
+                "google_maps_url": store.google_maps_url
+            }
+            formatted_stores.append(formatted_store)
+        
+        return formatted_stores

@@ -31,17 +31,28 @@ def handle_chat_error(error: Exception, context: str):
     raise HTTPException(status_code=500, detail=f"Internal server error: {str(error)}")
 
 # Request/Response Models
+class UserLocation(BaseModel):
+    """Model for user location data."""
+    lat: float = Field(..., description="Latitude", ge=-90, le=90)
+    lon: float = Field(..., description="Longitude", ge=-180, le=180)
+
 class ChatRequest(BaseModel):
-    """Request model for chat queries with session management."""
+    """Request model for chat queries with session management and location support."""
     query: str = Field(..., description="User's question or search query", min_length=1)
     session_id: Optional[str] = Field(None, description="Session ID for conversation history (if None, new session created)")
     content_type: Optional[str] = Field(None, description="Filter by content type (e.g., 'recipe', 'brand')")
     brand: Optional[str] = Field(None, description="Filter by brand (e.g., 'NESTEA')")
     keywords: Optional[List[str]] = Field(None, description="Filter by keywords")
     top_search_results: int = Field(5, description="Number of search results to use", ge=1, le=20)
+    user_location: Optional[UserLocation] = Field(None, description="User's location for store locator features")
+
+class PurchaseAssistance(BaseModel):
+    """Model for purchase assistance data."""
+    stores: List[Dict] = Field(..., description="Nearby stores that carry Nestlé products")
+    amazon_products: List[Dict] = Field(..., description="Amazon products matching the query")
 
 class ChatResponse(BaseModel):
-    """Response model for chat queries."""
+    """Response model for chat queries with purchase assistance support."""
     answer: str = Field(..., description="Generated answer from the AI assistant")
     sources: List[Dict] = Field(..., description="Source documents used for the answer")
     search_results_count: int = Field(..., description="Number of search results used")
@@ -51,6 +62,8 @@ class ChatResponse(BaseModel):
     graphrag_enhanced: bool = Field(..., description="Whether GraphRAG was successfully used for enhanced context")
     combined_relevance_score: Optional[float] = Field(0.0, description="Combined relevance score from GraphRAG")
     retrieval_metadata: Optional[Dict] = Field({}, description="Metadata about the retrieval process")
+    is_purchase_query: bool = Field(..., description="Whether this query was classified as a purchase query")
+    purchase_assistance: Optional[PurchaseAssistance] = Field(None, description="Purchase assistance data (stores and Amazon products)")
 
 class SessionRequest(BaseModel):
     """Request model for creating a new session."""
@@ -151,15 +164,6 @@ async def get_session_stats():
 async def chat_search(request: ChatRequest):
     """
     Perform a conversational search and get an AI-generated answer.
-    
-    This endpoint uses session-based conversation management:
-    1. If no session_id provided, creates a new session
-    2. Adds user message to session history
-    3. Retrieves conversation context from session
-    4. Performs RAG search and generates response
-    5. Adds assistant response to session history
-    
-    The session ID should be used for subsequent requests to maintain context.
     """
     try:
         client = get_chat_client()
@@ -179,6 +183,14 @@ async def chat_search(request: ChatRequest):
         # Get conversation context from session
         conversation_context = session_manager.get_conversation_context(session_id)
         
+        # Convert user location
+        user_location_dict = None
+        if request.user_location:
+            user_location_dict = {
+                "lat": request.user_location.lat,
+                "lon": request.user_location.lon
+            }
+        
         # Perform search and chat
         response = await client.search_and_chat(
             query=request.query,
@@ -186,7 +198,8 @@ async def chat_search(request: ChatRequest):
             content_type=request.content_type,
             brand=request.brand,
             keywords=request.keywords,
-            top_search_results=request.top_search_results
+            top_search_results=request.top_search_results,
+            user_location=user_location_dict
         )
         
         if "error" in response:

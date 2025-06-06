@@ -21,7 +21,11 @@ try:
         NO_RESULTS_MESSAGE,
         ERROR_MESSAGE,
         GENERATION_ERROR_MESSAGE,
+        PURCHASE_CHECK_PROMPT,
+        PURCHASE_ASSISTANCE_PROMPT
     )
+    from backend.src.chat.services.amazon_search import AmazonSearchService
+    from backend.src.chat.services.store_locator import StoreLocatorService
 except ImportError:
     from src.search.services.azure_search import AzureSearchClient
     from src.search.services.graphrag import GraphRAGClient
@@ -37,7 +41,11 @@ except ImportError:
         NO_RESULTS_MESSAGE,
         ERROR_MESSAGE,
         GENERATION_ERROR_MESSAGE,
+        PURCHASE_CHECK_PROMPT,
+        PURCHASE_ASSISTANCE_PROMPT
     )
+    from src.chat.services.amazon_search import AmazonSearchService
+    from src.chat.services.store_locator import StoreLocatorService
     
 
 logger = logging.getLogger(__name__)
@@ -45,11 +53,12 @@ logger = logging.getLogger(__name__)
 class NestleChatClient:
     """
     Chat client that combines Azure AI Search, Azure Cosmos DB with Azure OpenAI for 
-    conversational search over Nestle content.
+    conversational search over Nestle content. 
+    Enhanced with integrated purchase assistance features.
     """
     
     def __init__(self):
-        """Initialize the Nestle Chat Client."""
+        """Initialize chat client with all required services."""
         # Initialize Azure AI Search client
         self.search_client = AzureSearchClient()
         
@@ -69,6 +78,10 @@ class NestleChatClient:
         
         # Store deployment name for LLM calls
         self.deployment_name = AZURE_OPENAI_CONFIG["deployment"]
+        
+        # Initialize services for purchase assistance
+        self.amazon_search = AmazonSearchService()
+        self.store_locator = StoreLocatorService()
         
         logger.info("NestleChatClient initialized successfully")
 
@@ -342,6 +355,139 @@ class NestleChatClient:
         answer = response.choices[0].message.content
         return answer if answer else GENERATION_ERROR_MESSAGE
 
+    async def _check_purchase_intent(self, query: str) -> bool:
+        """
+        Check if the user query expresses purchase intent using LLM classification.
+        
+        Args:
+            query (str): User query to analyze
+            
+        Returns:
+            bool: True if purchase intent is detected
+        """
+        try:
+            prompt = PURCHASE_CHECK_PROMPT.format(query=query)
+            
+            response = self.openai_client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model=self.deployment_name,
+                temperature=0.1,
+                max_tokens=10
+            )
+            
+            if response.choices and len(response.choices) > 0:
+                result = response.choices[0].message.content.strip().upper()
+                return result == "YES"
+            
+        except Exception as e:
+            logger.error(f"Error in purchase intent detection: {str(e)}")
+            
+        return False
+
+    async def _get_purchase_assistance_data(self, query: str, user_location: Optional[Dict] = None) -> Dict:
+        """
+        Get store locations and Amazon products for purchase assistance.
+        
+        Args:
+            query (str): User query
+            user_location (Optional[Dict]): User's location {lat, lon}
+            
+        Returns:
+            Dict: Purchase assistance data with stores and Amazon products
+        """
+        stores = []
+        amazon_products = []
+        
+        try:
+            # Get store locations if user location is provided
+            if user_location and user_location.get('lat') and user_location.get('lon'):
+                try:
+                    store_results = await self.store_locator.find_nearby_stores(
+                        lat=user_location['lat'],
+                        lon=user_location['lon']
+                    )
+                    stores = self.store_locator.format_stores_for_response(store_results[:3])
+                except Exception as e:
+                    logger.error(f"Error fetching store locations: {str(e)}")
+            
+            # Get Amazon products
+            try:
+                amazon_results = await self.amazon_search.search_products(query)
+                amazon_products = self.amazon_search.format_products_for_response(amazon_results[:3])
+            except Exception as e:
+                logger.error(f"Error fetching Amazon products: {str(e)}")
+            
+        except Exception as e:
+            logger.warning(f"Error in purchase assistance data retrieval: {str(e)}")
+        
+        return {
+            "stores": stores,
+            "amazon_products": amazon_products
+        }
+
+    async def _handle_purchase_query(self, query: str, search_results: List[Dict], user_location: Optional[Dict] = None) -> Dict:
+        """
+        Handle purchase-specific queries with simplified response and purchase assistance data.
+        
+        Args:
+            query (str): User purchase query
+            search_results (List[Dict]): Limited search results for product identification
+            user_location (Optional[Dict]): User's location for store locator
+            
+        Returns:
+            Dict: Purchase response with brief answer and purchase assistance data
+        """
+        try:
+            sources_formatted = self._format_search_results(search_results[:2])  # Limit to top 2 sources
+            
+            # Add location context to the sources for the prompt
+            has_location = user_location and user_location.get('lat') and user_location.get('lon')
+            location_context = "\n\nLOCATION STATUS:\n"
+            if has_location:
+                location_context += "User location is available - can provide nearby store recommendations."
+            else:
+                location_context += "User location is not available - cannot provide specific store locations."
+            
+            sources_with_context = sources_formatted + location_context
+            
+            purchase_prompt = PURCHASE_ASSISTANCE_PROMPT.format(
+                query=query,
+                sources=sources_with_context
+            )
+            
+            # Generate response
+            answer = await self._generate_llm_response(purchase_prompt)
+            purchase_data = await self._get_purchase_assistance_data(query, user_location)
+            source_links = self._format_links(search_results)
+            
+            return {
+                "answer": answer,
+                "sources": source_links,
+                "search_results_count": len(search_results),
+                "query": query,
+                "filters_applied": {},
+                "graphrag_enhanced": False,
+                "combined_relevance_score": 0.0,
+                "retrieval_metadata": {"response_type": "purchase_assistance"},
+                "is_purchase_query": True,
+                "purchase_assistance": purchase_data
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in purchase query handling: {str(e)}")
+            return {
+                "answer": "I'd be happy to help you find Nestlé products! Let me get some information for you.",
+                "sources": [],
+                "search_results_count": 0,
+                "query": query,
+                "filters_applied": {},
+                "graphrag_enhanced": False,
+                "combined_relevance_score": 0.0,
+                "retrieval_metadata": {"response_type": "purchase_assistance", "error": str(e)},
+                "is_purchase_query": True,
+                "purchase_assistance": {"stores": [], "amazon_products": []}
+            }
+
     async def search_and_chat(
         self,
         query: str,
@@ -349,10 +495,12 @@ class NestleChatClient:
         content_type: Optional[str] = None,
         brand: Optional[str] = None,
         keywords: Optional[List[str]] = None,
-        top_search_results: int = 5
+        top_search_results: int = 5,
+        user_location: Optional[Dict] = None
     ) -> Dict:
         """
         Perform context-aware search and generate a conversational response.
+        Enhanced with purchase assistance features.
         
         Args:
             query (str): User's question or search query
@@ -361,9 +509,10 @@ class NestleChatClient:
             brand (Optional[str]): Filter by brand (e.g., "Nestle")
             keywords (Optional[List[str]]): Filter by keywords
             top_search_results (int): Number of search results to use as context
+            user_location (Optional[Dict]): User's location for store locator {lat, lon}
             
         Returns:
-            Dict: Response containing answer, sources, metadata
+            Dict: Response containing answer, sources, metadata, and purchase assistance data
         """
         try:
             logger.info(f"Processing chat query: {query}")
@@ -371,35 +520,50 @@ class NestleChatClient:
             # Extract search context from conversation history
             search_context = self._extract_search_context_from_history(conversation_history)
             
-            # Check if this is within the chatbot's knowledge domain
+            # Prepare search parameters
             search_params = self._prepare_search_params(
                 query, search_context, content_type, brand, keywords, top_search_results
             )
             
+            # Domain check
             domain_response = await self._check_domain_and_respond(query, search_params)
             if domain_response:
                 return domain_response
             
-            # Convert conversation history to ChatMessage format for prompt creation
-            formatted_conversation_history = self._format_conversation_history(conversation_history)
+            # Purchase intent check
+            is_purchase_query = await self._check_purchase_intent(query)
             
-            # Perform search
-            search_results, graphrag_result = await self._perform_search(
-                search_params, top_search_results
-            )
+            if is_purchase_query:
+                # Get minimal search results for product identification
+                search_results, _ = await self._perform_search(search_params, min(3, top_search_results))
+                
+                if not search_results:
+                    search_results = []
+                
+                return await self._handle_purchase_query(query, search_results, user_location)
             
-            # Handle results
-            if not search_results:
-                return self._create_no_results_response(query, search_params)
-            
-            prompt = self._create_prompt(query, search_results, graphrag_result, formatted_conversation_history)
-            source_links = self._format_links(search_results)
-            
-            # Create final response
-            answer = await self._generate_llm_response(prompt)
-            return self._create_final_response(
-                answer, search_results, source_links, query, search_params, graphrag_result
-            )
+            else:
+                # Handle regular query
+                formatted_conversation_history = self._format_conversation_history(conversation_history)
+                
+                search_results, graphrag_result = await self._perform_search(
+                    search_params, top_search_results
+                )
+                
+                if not search_results:
+                    return self._create_no_results_response(query, search_params)
+                
+                # Generate response
+                prompt = self._create_prompt(query, search_results, graphrag_result, formatted_conversation_history)
+                source_links = self._format_links(search_results)
+                answer = await self._generate_llm_response(prompt)
+                
+                response = self._create_final_response(
+                    answer, search_results, source_links, query, search_params, graphrag_result
+                )
+                response['is_purchase_query'] = False
+                
+                return response
             
         except Exception as e:
             logger.error(f"Error in context-aware search_and_chat: {str(e)}")
@@ -417,7 +581,8 @@ class NestleChatClient:
                 "graphrag_enhanced": False,
                 "combined_relevance_score": 0.0,
                 "retrieval_metadata": {},
-                "error": str(e)
+                "error": str(e),
+                "is_purchase_query": False
             }
     
     def _extract_search_context_from_history(self, conversation_history: Optional[List['ConversationMessage']]) -> 'SearchContext':
