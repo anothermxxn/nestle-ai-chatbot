@@ -140,6 +140,18 @@ from .azure_ai import (
     get_chat_client_config,
 )
 
+from .store_locator import (
+    # Store locator configuration
+    OSRM_API_CONFIG,
+    OSRM_ENDPOINTS,
+    OVERPASS_API_CONFIG,
+    CANADIAN_RETAILERS,
+    EXCLUDE_KEYWORDS,
+    VALID_SHOP_TYPES,
+    VALID_AMENITY_TYPES,
+    GOOGLE_MAPS_CONFIG,
+)
+
 __all__ = [
     # Content Types
     "CONTENT_TYPES",
@@ -239,4 +251,14 @@ __all__ = [
     "validate_azure_openai_config",
     "validate_azure_embedding_config",
     "get_chat_client_config",
+    
+    # Store locator configuration
+    "OSRM_API_CONFIG",
+    "OSRM_ENDPOINTS",
+    "OVERPASS_API_CONFIG",
+    "CANADIAN_RETAILERS",
+    "EXCLUDE_KEYWORDS",
+    "VALID_SHOP_TYPES",
+    "VALID_AMENITY_TYPES",
+    "GOOGLE_MAPS_CONFIG",
 ] 
