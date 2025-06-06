@@ -122,7 +122,7 @@ const useChatSession = () => {
   /**
    * Sends a chat message using session management
    */
-  const sendMessage = useCallback(async (message) => {
+  const sendMessage = useCallback(async (message, location = null) => {
     setIsLoading(true);
     setError(null);
     
@@ -142,7 +142,16 @@ const useChatSession = () => {
       
       setConversationHistory(prev => [...prev, userMessage]);
       
-      const response = await apiClient.sendChatMessage(message, currentSessionId);
+      // Prepare location data for backend
+      let userLocationData = null;
+      if (location && location.coords && location.coords.latitude && location.coords.longitude) {
+        userLocationData = {
+          lat: location.coords.latitude,
+          lon: location.coords.longitude
+        };
+      }
+      
+      const response = await apiClient.sendChatMessage(message, currentSessionId, {}, userLocationData);
       
       // Update session ID if it was created by the backend
       if (response.session_id && response.session_id !== currentSessionId) {
@@ -159,9 +168,15 @@ const useChatSession = () => {
           sources: response.sources,
           search_results_count: response.search_results_count,
           filters_applied: response.filters_applied,
-          graphrag_enhanced: response.graphrag_enhanced
+          graphrag_enhanced: response.graphrag_enhanced,
+          is_purchase_query: response.is_purchase_query,
+          purchase_assistance: response.purchase_assistance
         }
       };
+
+      if (response.purchase_assistance) {
+        assistantMessage.purchase_assistance = response.purchase_assistance;
+      }
       
       setConversationHistory(prev => [...prev, assistantMessage]);
       
@@ -232,10 +247,7 @@ const useChatSession = () => {
     isLoading,
     error,
     sendMessage,
-    resetConversation,
-    createSession,
-    hasActiveConversation: conversationHistory.length > 0,
-    messageCount: conversationHistory.length
+    resetConversation
   };
 };
 

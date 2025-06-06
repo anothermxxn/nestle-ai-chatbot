@@ -1,9 +1,10 @@
 import aiohttp
-import asyncio
 import logging
 import math
+import re
 from typing import List, Dict, Optional
 from dataclasses import dataclass
+from urllib.parse import quote_plus
 
 try:
     from backend.config.store_locator import (
@@ -14,7 +15,6 @@ try:
         EXCLUDE_KEYWORDS,
         VALID_SHOP_TYPES,
         VALID_AMENITY_TYPES,
-        GOOGLE_MAPS_CONFIG
     )
 except ImportError:
     from config.store_locator import (
@@ -25,7 +25,6 @@ except ImportError:
         EXCLUDE_KEYWORDS,
         VALID_SHOP_TYPES,
         VALID_AMENITY_TYPES,
-        GOOGLE_MAPS_CONFIG
     )
 
 logger = logging.getLogger(__name__)
@@ -247,7 +246,77 @@ class StoreLocatorService:
             logger.error(f"Error querying Overpass API: {e}")
             return []
 
-    def _format_store_data(self, element: Dict, distance: float, duration: float) -> StoreLocation:
+    async def _reverse_geocode_address(self, lat: float, lon: float) -> str:
+        """
+        Get address from coordinates using reverse geocoding.
+        
+        Args:
+            lat: Latitude coordinate
+            lon: Longitude coordinate
+            
+        Returns:
+            Address string or None if reverse geocoding fails
+        """
+        try:
+            url = "https://nominatim.openstreetmap.org/reverse"
+            params = {
+                "format": "json",
+                "lat": lat,
+                "lon": lon,
+                "zoom": 18,
+                "addressdetails": 1
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    url,
+                    params=params,
+                    headers={"User-Agent": "Nestle-Chatbot/1.0"},
+                    timeout=aiohttp.ClientTimeout(total=5)
+                ) as response:
+                    
+                    if response.status == 200:
+                        data = await response.json()
+                        
+                        # Try to build a compact address from the response
+                        address_parts = []
+                        address = data.get("address", {})
+                        
+                        # Extract city
+                        city = (address.get("city") or 
+                               address.get("town") or 
+                               address.get("village") or 
+                               address.get("municipality"))
+                        
+                        # Extract postal code
+                        postal_code = address.get("postcode")
+                        
+                        # Create compact format: "City, Postal Code"
+                        if city and postal_code:
+                            return f"{city}, {postal_code}"
+                        elif city:
+                            return city
+                        else:
+                            # Fallback to street + city if available
+                            if address.get("road"):
+                                address_parts.append(address["road"])
+                            
+                            if city:
+                                address_parts.append(city)
+                            elif postal_code:
+                                address_parts.append(postal_code)
+                            
+                            if address_parts:
+                                return ", ".join(address_parts)
+                        
+                            # Final fallback to display_name if available
+                            return data.get("display_name")
+            
+        except Exception as e:
+            logger.debug(f"Reverse geocoding failed for {lat}, {lon}: {e}")
+            return None
+
+    async def _format_store_data(self, element: Dict, distance: float, duration: float) -> StoreLocation:
         """Format raw Overpass data into StoreLocation object."""
         lat, lon = self._extract_coordinates(element)
         
@@ -255,19 +324,39 @@ class StoreLocatorService:
         
         name = tags.get("name", "Unknown Store")
         
-        address_parts = []
-        if tags.get("addr:housenumber"):
-            address_parts.append(tags["addr:housenumber"])
-        if tags.get("addr:street"):
-            address_parts.append(tags["addr:street"])
-        if tags.get("addr:city"):
-            address_parts.append(tags["addr:city"])
-        if tags.get("addr:postcode"):
-            address_parts.append(tags["addr:postcode"])
-        address = ", ".join(address_parts) if address_parts else f"Near {lat:.4f}, {lon:.4f}"
+        # Try to enhance store data with Google Maps first (for phone and hours)
+        google_enhanced = await self._enhance_store_with_google_maps(name, lat, lon)
         
-        phone = tags.get("phone", tags.get("contact:phone"))
-        hours = tags.get("opening_hours")
+        # For address, prioritize compact format from reverse geocoding
+        address = None
+        
+        # Try reverse geocoding first for compact city + postal code format
+        reverse_address = await self._reverse_geocode_address(lat, lon)
+        if reverse_address:
+            address = reverse_address
+        else:
+            # Fallback: Try Google Maps address if available
+            if google_enhanced["address"]:
+                address = google_enhanced["address"]
+            else:
+                # Fallback: Try to build from structured OSM data
+                address_parts = []
+                if tags.get("addr:city"):
+                    address_parts.append(tags["addr:city"])
+                if tags.get("addr:postcode"):
+                    address_parts.append(tags["addr:postcode"])
+                
+                if address_parts:
+                    address = ", ".join(address_parts)
+                else:
+                    # Last resort: use a more user-friendly coordinate display
+                    address = f"{name} (Location: {lat:.3f}, {lon:.3f})"
+        
+        # Prioritize Google Maps phone, then OSM data
+        phone = google_enhanced["phone"] or tags.get("phone") or tags.get("contact:phone")
+        
+        # Prioritize Google Maps hours, then OSM data
+        hours = google_enhanced["hours"] or tags.get("opening_hours")
         
         brand = None
         name_lower = name.lower()
@@ -276,7 +365,21 @@ class StoreLocatorService:
                 brand = retailer
                 break
         
-        google_maps_url = self._generate_google_maps_url(lat, lon, name)
+        # Ensure we always have a valid Google Maps URL
+        google_maps_url = google_enhanced.get("url")
+        
+        # If Google Maps scraping failed or returned empty/invalid URL, use fallback generation
+        if not google_maps_url or google_maps_url == "":
+            # Create a more specific search query with store name and location
+            if address:
+                search_query = f"{name}, {address}"
+            else:
+                search_query = f"{name} near {lat},{lon}"
+            
+            google_maps_url = f"https://www.google.com/maps/search/?api=1&query={quote_plus(search_query)}"
+            logger.debug(f"Using enhanced search URL for store '{name}': {google_maps_url}")
+        else:
+            logger.debug(f"Using scraped Google Maps URL for store '{name}': {google_maps_url}")
         
         return StoreLocation(
             name=name,
@@ -290,11 +393,6 @@ class StoreLocatorService:
             brand=brand,
             google_maps_url=google_maps_url
         )
-
-    def _generate_google_maps_url(self, lat: float, lon: float, name: str) -> str:
-        """Generate Google Maps URL for the store location."""
-        base_url = GOOGLE_MAPS_CONFIG["base_url"]
-        return f"{base_url}?q={lat},{lon}+({name.replace(' ', '+')})&z={GOOGLE_MAPS_CONFIG['default_zoom']}"
 
     async def find_nearby_stores(self, lat: float, lon: float, radius_km: Optional[float] = None, 
                                transport_mode: str = "driving") -> List[StoreLocation]:
@@ -335,7 +433,7 @@ class StoreLocatorService:
                 distance, duration = await self._calculate_routing_distance(
                     lat, lon, store_lat, store_lon, transport_mode
                 )
-                store = self._format_store_data(element, distance, duration)
+                store = await self._format_store_data(element, distance, duration)
                 stores_with_routing.append(store)
                 
             except Exception as e:
@@ -371,8 +469,255 @@ class StoreLocatorService:
                 "duration": f"{int(store.duration/60)} min",
                 "phone": store.phone,
                 "hours": store.hours,
-                "google_maps_url": store.google_maps_url
+                "url": store.google_maps_url,
+                "lat": store.lat,
+                "lon": store.lon  # Use consistent "lon" naming
             }
             formatted_stores.append(formatted_store)
         
         return formatted_stores
+
+    async def _enhance_store_with_google_maps(self, store_name: str, lat: float, lon: float) -> Dict[str, Optional[str]]:
+        """
+        Enhance store information by scraping Google Maps search results.
+        
+        Args:
+            store_name: Name of the store
+            lat: Store latitude
+            lon: Store longitude
+            
+        Returns:
+            Dictionary with enhanced store information (address, phone, hours)
+        """
+        enhanced_data = {
+            "address": None,
+            "phone": None,
+            "hours": None,
+            "city": None,
+            "postal_code": None,
+            "url": None
+        }
+        
+        try:
+            # Construct Google Maps search URL with specific location information
+            search_query = f"{store_name} near {lat},{lon}"
+            # Use search URL format that reliably finds the specific location
+            search_url = f"https://www.google.com/maps/search/?api=1&query={quote_plus(search_query)}"
+            
+            # Always include the search URL as primary choice
+            enhanced_data["url"] = search_url
+            
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    search_url,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=8)
+                ) as response:
+                    
+                    if response.status == 200:
+                        content = await response.text()
+                        
+                        # Parse the content for store details and URL
+                        parsed_data = self._parse_google_maps_content(content, store_name)
+                        enhanced_data.update(parsed_data)
+                        
+                        # If no specific store URL was found, keep search URL as fallback
+                        if not enhanced_data.get("url"):
+                            enhanced_data["url"] = search_url
+                    else:
+                        logger.debug(f"Google Maps search failed with status {response.status} for {store_name}")
+            
+        except Exception as e:
+            logger.debug(f"Error enhancing store data from Google Maps for {store_name}: {e}")
+            
+        # Final safety check - ensure we always have a URL
+        if not enhanced_data.get("url"):
+            # Last resort: create a search URL with store name and coordinates
+            search_query = f"{store_name} near {lat},{lon}"
+            enhanced_data["url"] = f"https://www.google.com/maps/search/?api=1&query={quote_plus(search_query)}"
+            logger.debug(f"Applied final safety URL for {store_name}")
+            
+        return enhanced_data
+
+    def _parse_google_maps_content(self, content: str, store_name: str) -> Dict[str, Optional[str]]:
+        """
+        Parse Google Maps HTML content to extract store information.
+        
+        Args:
+            content: HTML content from Google Maps search
+            store_name: Store name for validation
+            
+        Returns:
+            Dictionary with parsed store information
+        """
+        enhanced_data = {
+            "address": None,
+            "phone": None,
+            "hours": None,
+            "city": None,
+            "postal_code": None,
+            "url": None
+        }
+        
+        try:
+            # Extract full address first
+            full_address = None
+            address_patterns = [
+                r'"address":"([^"]+)"',
+                r'data-value="([^"]*\d+[^"]*(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Place|Pl)[^"]*)"',
+                r'"formattedAddress":"([^"]+)"',
+            ]
+            
+            for pattern in address_patterns:
+                match = re.search(pattern, content, re.IGNORECASE)
+                if match:
+                    address = match.group(1).strip()
+                    # Clean up common escape sequences
+                    address = address.replace("\\u003c", "<").replace("\\u003e", ">")
+                    address = address.replace("\\u0026", "&").replace("\\n", " ")
+                    if len(address) > 10 and any(word in address.lower() for word in ["street", "st", "avenue", "ave", "road", "rd", "boulevard", "blvd"]):
+                        full_address = address
+                        break
+            
+            # Extract city and postal code from full address or specific patterns
+            if full_address:
+                # Try to extract city and postal code from full address
+                # Canadian postal code pattern: Letter-Number-Letter Number-Letter-Number
+                postal_match = re.search(r'([A-Z]\d[A-Z]\s*\d[A-Z]\d)', full_address, re.IGNORECASE)
+                if postal_match:
+                    enhanced_data["postal_code"] = postal_match.group(1).upper()
+                
+                # Extract city - typically before postal code or province
+                city_patterns = [
+                    r',\s*([^,]+?)\s*(?:ON|BC|AB|SK|MB|QC|NB|NS|PE|NL|NT|YT|NU)[\s,]',  # Before province
+                    r',\s*([^,]+?)\s*[A-Z]\d[A-Z]',  # Before postal code
+                    r',\s*([^,]+?)(?:\s*,\s*Canada)?$',  # Last part before country
+                ]
+                
+                for pattern in city_patterns:
+                    city_match = re.search(pattern, full_address, re.IGNORECASE)
+                    if city_match:
+                        city = city_match.group(1).strip()
+                        if len(city) > 2 and not re.match(r'^[A-Z]\d[A-Z]', city):  # Not a postal code
+                            enhanced_data["city"] = city
+                            break
+            
+            # Look for specific city and postal code patterns if not found in address
+            if not enhanced_data["city"]:
+                city_patterns = [
+                    r'"city":"([^"]+)"',
+                    r'"locality":"([^"]+)"',
+                    r'"address_components":[^}]*"long_name":"([^"]+)"[^}]*"types":\["locality"',
+                ]
+                
+                for pattern in city_patterns:
+                    match = re.search(pattern, content, re.IGNORECASE)
+                    if match:
+                        enhanced_data["city"] = match.group(1).strip()
+                        break
+            
+            if not enhanced_data["postal_code"]:
+                postal_patterns = [
+                    r'"postal_code":"([^"]+)"',
+                    r'"postalCode":"([^"]+)"',
+                    r'([A-Z]\d[A-Z]\s*\d[A-Z]\d)',  # Canadian postal code pattern
+                ]
+                
+                for pattern in postal_patterns:
+                    match = re.search(pattern, content, re.IGNORECASE)
+                    if match:
+                        postal = match.group(1).strip().upper()
+                        if re.match(r'^[A-Z]\d[A-Z]\s*\d[A-Z]\d$', postal):
+                            enhanced_data["postal_code"] = postal
+                            break
+            
+            # Create compact address from city and postal code
+            if enhanced_data["city"] and enhanced_data["postal_code"]:
+                enhanced_data["address"] = f"{enhanced_data['city']}, {enhanced_data['postal_code']}"
+            elif enhanced_data["city"]:
+                enhanced_data["address"] = enhanced_data["city"]
+            elif full_address:
+                # Fallback to shortened version of full address
+                # Take city part if we can identify it
+                parts = full_address.split(",")
+                if len(parts) >= 2:
+                    # Take last 2 parts which usually contain city and province/postal
+                    enhanced_data["address"] = ", ".join(parts[-2:]).strip()
+                else:
+                    enhanced_data["address"] = full_address
+            
+            # Extract phone number
+            phone_patterns = [
+                r'"phoneNumber":"([^"]+)"',
+                r'"telephone":"([^"]+)"',
+                r'(\(\d{3}\)\s*\d{3}-\d{4})',
+                r'(\d{3}-\d{3}-\d{4})',
+                r'(\+1\s*\d{3}\s*\d{3}\s*\d{4})',
+            ]
+            
+            for pattern in phone_patterns:
+                match = re.search(pattern, content)
+                if match:
+                    phone = match.group(1).strip()
+                    # Validate phone number format
+                    if re.match(r"^[\+\(\)\d\s-]+$", phone) and len(phone) >= 10:
+                        enhanced_data["phone"] = phone
+                        break
+            
+            # Extract hours information
+            hours_patterns = [
+                r'"hours":"([^"]+)"',
+                r'"openingHours":"([^"]+)"',
+                r'"operatingHours":"([^"]+)"',
+                r'((?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)[^"]*\d+:\d+[^"]*(?:AM|PM))',
+            ]
+            
+            for pattern in hours_patterns:
+                match = re.search(pattern, content, re.IGNORECASE)
+                if match:
+                    hours = match.group(1).strip()
+                    # Clean up and validate hours
+                    hours = hours.replace("\\n", " ").replace("\\u003c", "<").replace("\\u003e", ">")
+                    if any(day in hours.lower() for day in ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]):
+                        enhanced_data["hours"] = hours
+                        break
+            
+            # Extract actual store URL from search results
+            url_patterns = [
+                # Store page URLs in search results - most common pattern
+                r'href="(/maps/place/[^"]*/@[^"]*)"',
+                r'"(/maps/place/[^"]*/@[^"]*)"',
+                # Complete URLs with coordinates
+                r'"(https://www\.google\.com/maps/place/[^"]*/@[^"]*)"',
+                # Place data URLs with real coordinates
+                r'href="([^"]*maps/place/[^"]*/@[\d\.-]+,[\d\.-]+[^"]*)"',
+            ]
+            
+            store_url = None
+            for i, pattern in enumerate(url_patterns):
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                if matches:
+                    url = matches[0]
+                    if i <= 1:  # Relative URLs
+                        store_url = f"https://www.google.com{url}"
+                    elif i >= 2:  # Complete URLs
+                        store_url = url
+                    
+                    # Validate the URL has real coordinates (not 0,0)
+                    if store_url and ("maps/place/" in store_url) and ("@0,0" not in store_url):
+                        enhanced_data["url"] = store_url
+                        break
+            
+        except Exception as e:
+            logger.debug(f"Error parsing Google Maps content: {e}")
+            
+        return enhanced_data

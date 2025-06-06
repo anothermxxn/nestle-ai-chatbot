@@ -1,8 +1,11 @@
-import { Box, Typography, Paper, Chip, Tooltip, Link } from '@mui/material';
+import { Box, Typography, Paper, Chip, Tooltip, Link, IconButton, Divider } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { forwardRef } from 'react';
+import { forwardRef, useRef, useState, useEffect } from 'react';
+import { ChevronRight, ChevronLeft } from '@mui/icons-material';
 import { colors, fontFamily, mediaQueries, rgba } from '../common';
 import { parseMessageContent, formatReferenceTooltip } from '../../lib/utils/messageFormatter';
+import StoreCard from './StoreCard';
+import AmazonCard from './AmazonCard';
 
 // Styled components
 const MessageContainer = styled(Box)(({ messagetype }) => ({
@@ -324,6 +327,92 @@ const MessageTime = styled(Typography)(({ messagetype }) => ({
   textAlign: messagetype === 'user' ? 'right' : 'left',
   fontWeight: 500,
 }));
+
+const PurchaseResponseSection = styled(Box)({
+  marginTop: 5,
+  [mediaQueries.mobile]: {
+    marginTop: 10,
+  },
+});
+
+const SectionTitle = styled(Typography)({
+  fontSize: 14,
+  fontWeight: 700,
+  color: colors.nestleCream,
+  marginBottom: 8,
+  fontFamily,
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px',
+  [mediaQueries.mobile]: {
+    fontSize: 16,
+    marginBottom: 6,
+    letterSpacing: '0.4px',
+  },
+});
+
+const StoreCardsContainer = styled(Box)({
+  position: 'relative',
+});
+
+
+const StoreCardsScrollArea = styled(Box)({
+  display: 'flex',
+  gap: 12,
+  overflowX: 'auto',
+  scrollbarWidth: 'none',
+  msOverflowStyle: 'none',
+  '&::-webkit-scrollbar': {
+    display: 'none',
+  },
+  [mediaQueries.mobile]: {
+    gap: 10,
+  },
+});
+
+
+const ScrollButton = styled(IconButton)(({ variant = 'right' }) => ({
+  position: 'absolute',
+  right: variant === 'right' ? -20 : 'auto',
+  left: variant === 'left' ? -20 : 'auto',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  zIndex: 1,
+  width: 40,
+  height: 40,
+  color: colors.white,
+  fontWeight: 700,
+  background: 'transparent',
+  '&:hover': {
+    background: 'transparent',
+    transform: 'translateY(-50%) scale(1.1)',
+  },
+  [mediaQueries.mobile]: {
+    right: variant === 'right' ? -8 : 'auto',
+    left: variant === 'left' ? -8 : 'auto',
+    width: 44,
+    height: 44,
+  },
+  [mediaQueries.touchDevice]: {
+    '&:active': {
+      transform: 'translateY(-50%) scale(0.95)',
+    },
+  },
+  '& .MuiSvgIcon-root': {
+    filter: `drop-shadow(0 4px 4px ${rgba(colors.primary, 0.8)})`,
+    transition: 'filter 0.2s ease',
+    stroke: colors.nestleCream,
+    strokeWidth: '0.5px',
+  },
+}));
+
+const PurchaseDivider = styled(Divider)({
+  margin: '10px 0',
+  backgroundColor: colors.nestleCream,
+  opacity: 0.5,
+  [mediaQueries.mobile]: {
+    margin: '12px 0',
+  },
+});
 
 /**
  * Renders a single text segment with appropriate formatting
@@ -651,14 +740,98 @@ const deduplicateReferences = (references) => {
  * @param {string} message.type       - Type of message ('user' or 'assistant')
  * @param {string} message.content    - The text content of the message
  * @param {Array} message.references  - Optional array of reference objects for assistant messages
+ * @param {Object} message.purchase_assistance - Optional object containing purchase assistance data
+ * @param {Array} message.purchase_assistance.stores - Optional array of store objects for purchase responses
+ * @param {Array} message.purchase_assistance.amazon_products - Optional array of Amazon product objects for purchase responses
  * @param {Date} message.timestamp    - When the message was created
  * @returns {JSX.Element} The styled message bubble component
  */
 const MessageBubble = forwardRef(({ message }, ref) => {
-  const { type, content, references, timestamp } = message;
-
-  // Deduplicate references on the frontend as a backup
+  const { type, content, references, purchase_assistance, timestamp } = message;
   const uniqueReferences = deduplicateReferences(references);
+
+  // Extract stores and amazon_products from purchase_assistance
+  const stores = purchase_assistance?.stores;
+  const amazon_products = purchase_assistance?.amazon_products;
+
+  // Ref for cards scroll container
+  const storeScrollRef = useRef(null);
+  const amazonScrollRef = useRef(null);
+
+  // State for scroll button visibility
+  const [storeScrollState, setStoreScrollState] = useState({
+    canScrollLeft: false,
+    canScrollRight: true
+  });
+  const [amazonScrollState, setAmazonScrollState] = useState({
+    canScrollLeft: false,
+    canScrollRight: true
+  });
+
+  // Set up scroll event listeners
+  useEffect(() => {
+    const storeContainer = storeScrollRef.current;
+    const amazonContainer = amazonScrollRef.current;
+
+    const handleStoreScrollEvent = () => {
+      updateScrollButtons(storeContainer, setStoreScrollState);
+    };
+
+    const handleAmazonScrollEvent = () => {
+      updateScrollButtons(amazonContainer, setAmazonScrollState);
+    };
+
+    // Initial check and event listeners for store container
+    if (storeContainer) {
+      updateScrollButtons(storeContainer, setStoreScrollState);
+      storeContainer.addEventListener('scroll', handleStoreScrollEvent);
+    }
+
+    // Initial check and event listeners for Amazon container
+    if (amazonContainer) {
+      updateScrollButtons(amazonContainer, setAmazonScrollState);
+      amazonContainer.addEventListener('scroll', handleAmazonScrollEvent);
+    }
+
+    // Cleanup
+    return () => {
+      if (storeContainer) {
+        storeContainer.removeEventListener('scroll', handleStoreScrollEvent);
+      }
+      if (amazonContainer) {
+        amazonContainer.removeEventListener('scroll', handleAmazonScrollEvent);
+      }
+    };
+  }, [stores, amazon_products]);
+  
+  /**
+   * Updates scroll button visibility based on scroll position
+   * @param {HTMLElement} container - The scroll container
+   * @param {Function} setState - State setter function
+   */
+  const updateScrollButtons = (container, setState) => {
+    if (!container) return;
+    
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    const canScrollLeft = scrollLeft > 0;
+    const canScrollRight = scrollLeft < scrollWidth - clientWidth - 1;
+    
+    setState({ canScrollLeft, canScrollRight });
+  };
+
+  /**
+   * Handles scrolling the store cards container
+   */
+  const handleStoreScroll = (direction = 'right') => {
+    if (storeScrollRef.current) {
+      const scrollAmount = direction === 'right' ? 150 : -150;
+      storeScrollRef.current.scrollBy({
+        left: scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
 
   /**
    * Formats a Date object into a readable time string
@@ -717,7 +890,7 @@ const MessageBubble = forwardRef(({ message }, ref) => {
         <MessageText messagetype={type} elevation={0}>
           <FormattedMessageContent segments={contentSegments} references={uniqueReferences} />
         </MessageText>
-        
+
         {/* References section - small buttons */}
         {uniqueReferences && uniqueReferences.length > 0 && (
           <ReferencesContainer>
@@ -745,6 +918,42 @@ const MessageBubble = forwardRef(({ message }, ref) => {
             ))}
           </ReferencesContainer>
         )}
+
+        {/* Divider between sections when both exist */}
+        {((stores && stores.length > 0) || (amazon_products && amazon_products.length > 0)) && (
+          <PurchaseDivider />
+        )}
+        
+        {/* Purchase Response Sections - Store Cards */}
+        {stores && stores.length > 0 && (
+          <PurchaseResponseSection>
+            <SectionTitle>Nearby Stores</SectionTitle>
+            <StoreCardsContainer>
+              <StoreCardsScrollArea ref={storeScrollRef}>
+                {stores.map((store, index) => (
+                  <StoreCard key={index} store={store} />
+                ))}
+              </StoreCardsScrollArea>
+              {storeScrollState.canScrollLeft && (
+                <ScrollButton 
+                  variant="left" 
+                  onClick={() => handleStoreScroll('left')}
+                >
+                  <ChevronLeft sx={{ fontSize: 40 }} />
+                </ScrollButton>
+              )}
+              {storeScrollState.canScrollRight && (
+                <ScrollButton 
+                  variant="right" 
+                  onClick={() => handleStoreScroll('right')}
+                >
+                  <ChevronRight sx={{ fontSize: 40 }} />
+                </ScrollButton>
+              )}
+            </StoreCardsContainer>
+          </PurchaseResponseSection>
+        )}
+
         
         {/* Message timestamp */}
         <MessageTime messagetype={type}>

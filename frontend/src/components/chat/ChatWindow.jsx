@@ -405,6 +405,7 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger, location, onLocationRef
       type: msg.role,
       content: msg.content,
       references: msg.metadata?.sources || [],
+      purchase_assistance: msg.purchase_assistance,
       timestamp: new Date(msg.timestamp),
     }));
 
@@ -479,7 +480,7 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger, location, onLocationRef
     setError(null);
 
     try {
-      await sendMessage(messageText);
+      await sendMessage(messageText, location);
     } catch (err) {
       handleError(err);
     } finally {

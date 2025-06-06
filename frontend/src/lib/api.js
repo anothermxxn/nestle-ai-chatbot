@@ -42,14 +42,6 @@ export const ENDPOINTS = {
   GRAPH_VALIDATE_RELATIONSHIP: '/graph/validate/relationship',
 };
 
-// Request configuration
-export const REQUEST_CONFIG = {
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  credentials: 'include',
-};
-
 /**
  * HTTP API client class for REST endpoints with session management
  */
@@ -112,9 +104,10 @@ class ApiClient {
    * @param {string} message - User message
    * @param {string} sessionId - Session ID (if null, new session will be created)
    * @param {Object} filters - Optional filters (content_type, brand, keywords, top_search_results)
+   * @param {Object} userLocation - Optional user location {lat, lon}
    * @returns {Promise<Object>} Chat response with session_id
    */
-  async sendChatMessage(message, sessionId = null, filters = {}) {
+  async sendChatMessage(message, sessionId = null, filters = {}, userLocation = null) {
     const requestBody = {
       query: message,
       ...filters,
@@ -122,6 +115,10 @@ class ApiClient {
     
     if (sessionId) {
       requestBody.session_id = sessionId;
+    }
+    
+    if (userLocation && userLocation.lat && userLocation.lon) {
+      requestBody.user_location = userLocation;
     }
     
     return this.request('/chat/search', {
@@ -149,24 +146,6 @@ class ApiClient {
     return this.request(`/chat/sessions/${sessionId}`, {
       method: 'DELETE',
     });
-  }
-
-  /**
-   * Gets session statistics
-   * @returns {Promise<Object>} Session statistics
-   */
-  async getSessionStats() {
-    return this.request('/chat/sessions/stats');
-  }
-
-  /**
-   * Performs a search query with optional filters (legacy method for backward compatibility)
-   * @param {string} query - Search query
-   * @param {Object} filters - Optional filters (content_type, brand, keywords, top_search_results)
-   * @returns {Promise<Object>} Search response
-   */
-  async searchChat(query, filters = {}) {
-    return this.sendChatMessage(query, null, filters);
   }
 
   /**

@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, Typography } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
 import ChatWindow from './ChatWindow';
 import { colors, fontFamily, FlexCenter, shadows, mediaQueries, rgba } from '../common';
 import { validateFSA } from '../../lib/utils/validation';
+import { ipToCoordinates, fsaToCoordinates } from '../../lib/utils/geocoding';
 
 // Nestlé Logo for floating button
 const FloatingNestleLogo = styled('img')({
@@ -469,7 +470,9 @@ const ChatBot = () => {
     error: null,
     loading: false,
     permission: null, // 'granted', 'denied', 'prompt'
-    source: null // 'auto', 'manual'
+    source: null, // 'auto', 'manual', 'ip'
+    city: null,
+    region: null
   });
 
   const geolocationAttempted = useRef(false);
@@ -490,12 +493,12 @@ const ChatBot = () => {
   /**
    * Gets the FSA (first 3 characters of postal code) from coordinates using reverse geocoding
    * @param {number} lat - Latitude
-   * @param {number} lng - Longitude
+   * @param {number} lon - Longitude
    * @returns {Promise<string>} FSA (Forward Sortation Area)
    */
-  const getFSAFromCoords = async (lat, lng) => {
+  const getFSAFromCoords = async (lat, lon) => {
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`
     ).catch(() => null);
     
     if (!response?.ok) return 'LOC';
@@ -516,21 +519,44 @@ const ChatBot = () => {
   };
 
   /**
-   * Get approximate location from IP address
-   * @returns {Promise<string|null>} FSA from IP-based location
+   * Get location (both coordinates and FSA) from IP address
+   * @returns {Promise<{coords: {latitude: number, longitude: number}, fsa: string, city?: string, region?: string} | null>} Location data or null
    */
   const getLocationFromIP = async () => {
-    const response = await fetch('https://ipapi.co/json/').catch(() => null);
-    if (!response?.ok) return null;
-    
-    const data = await response.json().catch(() => ({}));
-    
-    if (data.country_code === 'CA' && data.postal) {
-      const fsa = data.postal.substring(0, 3).toUpperCase();
-      return validateFSA(fsa) ? fsa : null;
+    try {
+      // Get coordinates directly from IP
+      const ipLocation = await ipToCoordinates();
+      
+      if (!ipLocation) {
+        return null;
+      }
+      
+      // Get FSA from reverse geocoding using the coordinates
+      let fsa = 'LOC'; // Default fallback
+      
+      try {
+        const reverseFsa = await getFSAFromCoords(ipLocation.lat, ipLocation.lon);
+        if (reverseFsa && reverseFsa !== 'LOC') {
+          fsa = reverseFsa;
+        }
+      } catch {
+        // Silent fallback if reverse geocoding fails
+      }
+      
+      return {
+        coords: {
+          latitude: ipLocation.lat,
+          longitude: ipLocation.lon
+        },
+        fsa: fsa,
+        city: ipLocation.city,
+        region: ipLocation.region
+      };
+      
+    } catch (error) {
+      console.error('Error getting location from IP:', error);
+      return null;
     }
-    
-    return null;
   };
 
   /**
@@ -610,15 +636,17 @@ const ChatBot = () => {
     }
 
     // Fallback to IP-based location
-    const ipFSA = await getLocationFromIP();
-    if (ipFSA) {
+    const ipLocation = await getLocationFromIP();
+    if (ipLocation) {
       const locationData = {
-        coords: null,
-        fsa: ipFSA,
+        coords: ipLocation.coords,
+        fsa: ipLocation.fsa,
         error: null,
         loading: false,
         permission: 'granted',
-        source: 'ip'
+        source: 'ip',
+        city: ipLocation.city,
+        region: ipLocation.region
       };
       
       setLocation(locationData);
@@ -642,9 +670,24 @@ const ChatBot = () => {
    * Handles manual location entry
    * @param {string} fsaCode - Manual FSA input (3 character postal code)
    */
-  const setManualLocation = (fsaCode) => {
+  const setManualLocation = async (fsaCode) => {
+    // Try to get coordinates for the manual FSA entry for better store lookup
+    let coords = null;
+    
+    try {
+      const fsaCoords = await fsaToCoordinates(fsaCode);
+      if (fsaCoords) {
+        coords = {
+          latitude: fsaCoords.lat,
+          longitude: fsaCoords.lon
+        };
+      }
+    } catch (error) {
+      console.warn(`Could not get coordinates for FSA ${fsaCode}:`, error);
+    }
+    
     const locationData = {
-      coords: null,
+      coords: coords,
       fsa: fsaCode,
       error: null,
       loading: false,
@@ -678,7 +721,9 @@ const ChatBot = () => {
           error: null,
           loading: false,
           permission: locationData.permission || null,
-          source: locationData.source || 'auto'
+          source: locationData.source || 'auto',
+          city: locationData.city || null,
+          region: locationData.region || null
         });
         return true;
       }
