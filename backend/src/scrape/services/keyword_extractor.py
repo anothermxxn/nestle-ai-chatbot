@@ -6,10 +6,10 @@ from typing import List, Optional
 from openai import AsyncAzureOpenAI
 
 try:
-    from backend.config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
+    from backend.config.azure_ai import AZURE_OPENAI_CONFIG
     from backend.src.scrape.utils.keyword_utils import is_meaningful_keyword
 except ImportError:
-    from config.azure_ai import AZURE_OPENAI_CONFIG, validate_azure_openai_config
+    from config.azure_ai import AZURE_OPENAI_CONFIG
     from src.scrape.utils.keyword_utils import is_meaningful_keyword
 
 logger = logging.getLogger(__name__)
@@ -23,10 +23,6 @@ class LLMKeywordExtractor:
     
     def _initialize_client(self) -> None:
         """Initialize Azure OpenAI client"""
-        if not validate_azure_openai_config():
-            logger.warning("Azure OpenAI configuration invalid. LLM keyword extraction will be disabled.")
-            return
-        
         try:
             self.client = AsyncAzureOpenAI(
                 api_key=AZURE_OPENAI_CONFIG["api_key"],

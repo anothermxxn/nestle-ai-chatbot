@@ -149,11 +149,6 @@ from .azure_ai import (
     CHAT_CONFIG,
     CHAT_PROMPTS,
     DOMAIN_CHECK_CONFIG,
-    
-    # Validation functions
-    validate_azure_openai_config,
-    validate_azure_embedding_config,
-    get_chat_client_config,
 )
 
 from .store_locator import (
@@ -281,9 +276,6 @@ __all__ = [
     "CHAT_CONFIG",
     "CHAT_PROMPTS",
     "DOMAIN_CHECK_CONFIG",
-    "validate_azure_openai_config",
-    "validate_azure_embedding_config",
-    "get_chat_client_config",
     
     # Store locator configuration
     "OSRM_API_CONFIG",
