@@ -1,7 +1,6 @@
-from .services.chat_service import NestleChatClient
+from .services import NestleChatClient, SearchContext, ContextExtractor
 from .api.routes import router
 from .formatters.graphrag_formatter import GraphRAGFormatter
-from .services.context_service import ChatMessage, SearchContext, ContextExtractor
+from .services.context_service import ChatMessage
 
-__version__ = "1.0.0"
 __all__ = ["NestleChatClient", "router", "ChatMessage", "SearchContext", "ContextExtractor", "GraphRAGFormatter"] 

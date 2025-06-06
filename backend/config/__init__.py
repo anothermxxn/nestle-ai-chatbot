@@ -168,6 +168,20 @@ from .store_locator import (
     GOOGLE_MAPS_CONFIG,
 )
 
+from .amazon_search import (
+    # Amazon search configuration
+    AMAZON_SEARCH_CONFIG,
+    AMAZON_URL_PATTERNS,
+    AMAZON_SELECTORS,
+    CATEGORY_SEARCH_PARAMS,
+    CATEGORY_DETECTION_KEYWORDS,
+    ERROR_HANDLING,
+    VALID_PRODUCT_INDICATORS,
+    EXCLUDE_PRODUCT_KEYWORDS,
+    RATE_LIMIT_CONFIG,
+    get_amazon_category_for_brand,
+)
+
 __all__ = [
     # Logging configuration
     "setup_logging",
@@ -280,4 +294,16 @@ __all__ = [
     "VALID_SHOP_TYPES",
     "VALID_AMENITY_TYPES",
     "GOOGLE_MAPS_CONFIG",
+    
+    # Amazon search configuration
+    "AMAZON_SEARCH_CONFIG",
+    "AMAZON_URL_PATTERNS",
+    "AMAZON_SELECTORS",
+    "CATEGORY_SEARCH_PARAMS",
+    "CATEGORY_DETECTION_KEYWORDS",
+    "ERROR_HANDLING",
+    "VALID_PRODUCT_INDICATORS",
+    "EXCLUDE_PRODUCT_KEYWORDS",
+    "RATE_LIMIT_CONFIG",
+    "get_amazon_category_for_brand",
 ] 

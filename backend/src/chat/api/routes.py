@@ -5,11 +5,9 @@ import logging
 from datetime import datetime
 
 try:
-    from backend.src.chat.services.chat_service import NestleChatClient
-    from backend.src.chat.services.session_service import session_manager
+    from backend.src.chat.services import NestleChatClient, session_manager
 except ImportError:
-    from src.chat.services.chat_service import NestleChatClient
-    from src.chat.services.session_service import session_manager
+    from src.chat.services import NestleChatClient, session_manager
 
 # Configure logging
 logger = logging.getLogger(__name__)
