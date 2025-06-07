@@ -100,7 +100,7 @@ const expandToWindowMobile = keyframes`
   }
   to {
     width: calc(100vw - 20px);
-    height: calc(100vh - 40px);
+    height: calc(var(--viewport-height, 100vh) - 40px);
     border-radius: 12px;
   }
 `;
@@ -127,7 +127,7 @@ const collapseToRectangle = keyframes`
 const collapseToRectangleMobile = keyframes`
   from {
     width: calc(100vw - 20px);
-    height: calc(100vh - 40px);
+    height: calc(var(--viewport-height, 100vh) - 40px);
     border-radius: 12px;
     left: 10px;
     right: 10px;
@@ -173,7 +173,7 @@ const expandFromRectangleMobile = keyframes`
   }
   to {
     width: calc(100vw - 20px);
-    height: calc(100vh - 40px);
+    height: calc(var(--viewport-height, 100vh) - 40px);
     border-radius: 12px;
     left: 10px;
     right: 10px;
@@ -197,7 +197,7 @@ const collapseToCircle = keyframes`
 const collapseToCircleMobile = keyframes`
   from {
     width: calc(100vw - 20px);
-    height: calc(100vh - 40px);
+    height: calc(var(--viewport-height, 100vh) - 40px);
     border-radius: 12px;
   }
   to {
@@ -307,7 +307,7 @@ const AnimatedContainer = styled(Box, {
         borderRadius: '12px',
         [mediaQueries.mobile]: {
           width: 'calc(100vw - 20px)',
-          height: 'calc(100vh - 40px)',
+          height: 'calc(var(--viewport-height, 100vh) - 40px)',
           top: '10px',
           bottom: '10px',
           left: '10px',
@@ -324,7 +324,7 @@ const AnimatedContainer = styled(Box, {
         animation: `${collapseToRectangle} 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
         [mediaQueries.mobile]: {
           width: 'calc(100vw - 20px)',
-          height: 'calc(100vh - 40px)',
+          height: 'calc(var(--viewport-height, 100vh) - 40px)',
           animation: `${collapseToRectangleMobile} 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
         },
       };
@@ -387,7 +387,7 @@ const AnimatedContainer = styled(Box, {
         animation: `${collapseToCircle} 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
         [mediaQueries.mobile]: {
           width: 'calc(100vw - 20px)',
-          height: 'calc(100vh - 40px)',
+          height: 'calc(var(--viewport-height, 100vh) - 40px)',
           animation: `${collapseToCircleMobile} 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
         },
       };

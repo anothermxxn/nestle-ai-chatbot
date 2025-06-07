@@ -9,12 +9,20 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  --viewport-height: 100vh;
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --viewport-height: 100dvh;
+  }
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  min-height: var(--viewport-height);
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   background: linear-gradient(135deg, #F5F2E8 0%, #ffffff 50%, #F5F2E8 100%);
   overflow-x: hidden;
@@ -34,7 +42,7 @@ body {
   body {
     min-width: 100vw;
     min-height: 100vh;
-    min-height: calc(var(--vh, 1vh) * 100);
+    min-height: var(--viewport-height);
     position: relative;
   }
 }

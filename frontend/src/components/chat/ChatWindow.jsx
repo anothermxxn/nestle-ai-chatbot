@@ -230,8 +230,11 @@ const MessagesContainer = styled(Box)({
   background: colors.nestleGray,
   display: 'flex',
   flexDirection: 'column',
+  minHeight: 0,
   [mediaQueries.mobile]: {
     padding: 10,
+    // Account for Safari's dynamic viewport
+    paddingBottom: 8,
   },
   '&::-webkit-scrollbar': {
     width: 6,
@@ -290,8 +293,14 @@ const LoadingDot = styled(Box)(({ delay = 0 }) => ({
 const InputArea = styled(Box)({
   padding: '12px',
   background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.nestleGray} 100%)`,
+  // Prevent input area from shrinking
+  flexShrink: 0,
   [mediaQueries.mobile]: {
     padding: '10px',
+    paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
+    // Ensure input area stays visible on Safari mobile
+    position: 'relative',
+    zIndex: 10,
   },
 });
 
