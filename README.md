@@ -61,7 +61,7 @@ Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-fronte
 ## Known Limitations
 
 - **Response Performance**: Response times may extend up to 10 seconds for purchase assistance queries due to additional processing requirements
-- **Data Coverage**: Approximately 10% of website content is unavailable due to database storage capacity limitations
+- **Data Coverage**: Approximately 10% of Made With Nestlé content is unavailable due to database storage capacity limitations
 - **Mapping Integration**: Store location cards open Google Maps search results rather than direct place pages due to API tier limitations
 - **Search Result Precision**: Amazon product searches may include non-Nestlé items in the returned results
 - **External Service Dependencies**: Amazon web scraping functionality is subject to rate limiting and potential service restrictions
