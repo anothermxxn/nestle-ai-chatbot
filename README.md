@@ -66,6 +66,7 @@ Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-fronte
 - **Search Result Precision**: Amazon product searches may include non-Nestlé items in the returned results
 - **External Service Dependencies**: Amazon web scraping functionality is subject to rate limiting and potential service restrictions
 - **Mobile Display Constraints**: Device orientation is locked to portrait mode; landscape rotation is not currently supported
+- **Location Services on Mobile Safari**: Automatic location detection is not supported on mobile Safari as location permissions are automatically disabled by default.
 - **Testing Framework**: Comprehensive unit and end-to-end testing suites have not been implemented due to development timeline constraints
 - **Content Synchronization**: Content index updates require manual intervention and are not automated
 - **Localization Support**: Application is currently optimized exclusively for English language content
