@@ -68,8 +68,8 @@ export const ipToCoordinates = async () => {
 };
 
 /**
- * Convert Canadian FSA (Forward Sortation Area) to coordinates using OpenStreetMap Nominatim
- * @param {string} fsa - Canadian FSA code (e.g., "L4S", "M5V") 
+ * Convert Canadian FSA (Forward Sortation Area) to coordinates
+ * @param {string} fsa - Canadian FSA code
  * @returns {Promise<{lat: number, lon: number} | null>} Coordinates or null if not found
  */
 export const fsaToCoordinates = async (fsa) => {
@@ -79,38 +79,78 @@ export const fsaToCoordinates = async (fsa) => {
 
   const cleanFsa = fsa.trim().toUpperCase();
 
-  try {
-    const query = `${cleanFsa}, Canada`;
-    const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=ca&addressdetails=1&limit=1&q=${encodeURIComponent(query)}`;
-    
-    const response = await fetch(nominatimUrl, {
-      headers: {
-        "User-Agent": "Nestle-Chatbot" 
+  const geocodingServices = [
+    {
+      name: 'Photon-Canada',
+      url: `https://photon.komoot.io/api/?q=${encodeURIComponent(`${cleanFsa} Canada`)}&limit=5&bbox=-141,41.7,-52.6,83.1`,
+      headers: {},
+      parseData: (data) => {
+        if (data && data.features && data.features.length > 0) {
+          const canadianFeatures = data.features.filter(feature => 
+            feature.properties && 
+            (feature.properties.country === 'Canada' || 
+             feature.properties.countrycode === 'CA' ||
+             feature.properties.country_code === 'CA')
+          );
+          
+          const featuresToCheck = canadianFeatures.length > 0 ? canadianFeatures : data.features;
+          
+          for (const feature of featuresToCheck) {
+            if (feature.geometry && feature.geometry.coordinates) {
+              const coordinates = feature.geometry.coordinates;
+              return {
+                lat: coordinates[1],
+                lon: coordinates[0]
+              };
+            }
+          }
+        }
+        return null;
       }
-    });
-
-    if (!response.ok) {
-      console.error(`Nominatim API error: ${response.status}`);
-      return null;
+    },
+    {
+      name: 'Photon-Simple',
+      url: `https://photon.komoot.io/api/?q=${encodeURIComponent(cleanFsa)}&limit=3&bbox=-141,41.7,-52.6,83.1`,
+      headers: {},
+      parseData: (data) => {
+        if (data && data.features && data.features.length > 0) {
+          for (const feature of data.features) {
+            if (feature.geometry && feature.geometry.coordinates) {
+              const coordinates = feature.geometry.coordinates;
+              return {
+                lat: coordinates[1],
+                lon: coordinates[0]
+              };
+            }
+          }
+        }
+        return null;
+      }
     }
+  ];
 
-    const data = await response.json();
-    
-    if (data && data.length > 0) {
-      const result = data[0];
-      const coordinates = {
-        lat: parseFloat(result.lat),
-        lon: parseFloat(result.lon)
-      };
+  for (const service of geocodingServices) {
+    try {
+      const response = await fetch(service.url, {
+        headers: service.headers,
+        timeout: 8000
+      });
+
+      if (!response.ok) {
+        continue;
+      }
+
+      const data = await response.json();      
+      const coordinates = service.parseData(data);
       
-      return coordinates;
-    } else {
-      console.warn(`No coordinates found for FSA: ${cleanFsa}`);
-      return null;
+      if (coordinates && coordinates.lat && coordinates.lon && 
+          !isNaN(coordinates.lat) && !isNaN(coordinates.lon)) {
+        return coordinates;
+      }
+    } catch {
+      continue;
     }
-    
-  } catch (error) {
-    console.error(`Error geocoding FSA ${cleanFsa}:`, error);
-    return null;
   }
-}; 
+  console.warn(`All geocoding services failed for FSA ${cleanFsa}.`);
+  return null;
+};
