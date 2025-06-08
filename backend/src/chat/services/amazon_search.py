@@ -48,6 +48,10 @@ class AmazonProduct:
     asin: Optional[str] = None
     is_sponsored: bool = False
 
+class AmazonServiceUnavailableError(Exception):
+    """Raised when Amazon returns 503 Service Unavailable errors."""
+    pass
+
 class AmazonSearchService:
     """Service for finding products on Amazon using web scraping."""
     
@@ -434,6 +438,9 @@ class AmazonSearchService:
             
         Returns:
             HTML content or None on error
+        
+        Raises:
+            AmazonServiceUnavailableError: When Amazon returns 503 errors
         """
         for attempt in range(self.error_config["max_retries"]):
             try:
@@ -461,10 +468,8 @@ class AmazonSearchService:
                             continue
                             
                         elif response.status == 503:
-                            wait_time = self.error_config["retry_delay"] * (self.error_config["backoff_factor"] ** attempt)
-                            logger.warning(f"Service unavailable (503), waiting {wait_time}s before retry {attempt + 1}")
-                            await asyncio.sleep(wait_time)
-                            continue
+                            logger.warning(f"Service unavailable, Amazon is blocking requests")
+                            raise AmazonServiceUnavailableError(f"Amazon service unavailable (503)")
                             
                         else:
                             logger.warning(f"HTTP {response.status} on attempt {attempt + 1}: {search_url}")
@@ -478,6 +483,9 @@ class AmazonSearchService:
                 if attempt < self.error_config["max_retries"] - 1:
                     await asyncio.sleep(wait_time)
                 
+            except AmazonServiceUnavailableError:
+                # Don't retry on 503 errors, let them propagate immediately
+                raise
             except Exception as e:
                 wait_time = self.error_config["retry_delay"] * (self.error_config["backoff_factor"] ** attempt)
                 logger.warning(f"Error on attempt {attempt + 1}: {str(e)}, waiting {wait_time}s")
@@ -642,6 +650,9 @@ class AmazonSearchService:
             
         Returns:
             List of AmazonProduct objects
+            
+        Raises:
+            AmazonServiceUnavailableError: When Amazon returns 503 errors consistently
         """
         if not query or not query.strip():
             logger.warning("Empty search query provided")
@@ -665,6 +676,9 @@ class AmazonSearchService:
             return products
             
         except Exception as e:
+            # Let AmazonServiceUnavailableError propagate naturally, only catch other exceptions
+            if isinstance(e, AmazonServiceUnavailableError):
+                raise
             logger.error(f"Error searching Amazon for '{query}': {str(e)}")
             return []
 

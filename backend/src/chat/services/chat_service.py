@@ -33,7 +33,7 @@ try:
         PURCHASE_FALLBACK_NEITHER_AVAILABLE,
         PURCHASE_FALLBACK_AMAZON_BLOCKED,
     )
-    from backend.src.chat.services.amazon_search import AmazonSearchService
+    from backend.src.chat.services.amazon_search import AmazonSearchService, AmazonServiceUnavailableError
     from backend.src.chat.services.store_locator import StoreLocatorService
     from backend.src.graph.services.count_service import CountStatisticsService
 except ImportError:
@@ -63,7 +63,7 @@ except ImportError:
         PURCHASE_FALLBACK_NEITHER_AVAILABLE,
         PURCHASE_FALLBACK_AMAZON_BLOCKED,
     )
-    from src.chat.services.amazon_search import AmazonSearchService
+    from src.chat.services.amazon_search import AmazonSearchService, AmazonServiceUnavailableError
     from src.chat.services.store_locator import StoreLocatorService
     from src.graph.services.count_service import CountStatisticsService
     
@@ -508,41 +508,40 @@ class NestleChatClient:
             amazon_products = self.amazon_search.format_products_for_response(amazon_results[:3])
             amazon_link_available = len(amazon_products) > 0
             logger.info(f"Amazon search for '{search_term}' returned {len(amazon_products)} products")
+        except AmazonServiceUnavailableError as e:
+            amazon_blocked = True
+            amazon_link_available = False
+            amazon_products = []
+            logger.warning(f"Amazon service unavailable (503 errors): {str(e)}")
         except Exception as e:
-            error_msg = str(e).lower()
             logger.warning(f"Amazon search failed: {str(e)}")
-            
-            if "503" in error_msg:
-                # Amazon is blocking (503 error)
-                amazon_blocked = True
-                amazon_link_available = False
-                logger.warning("Amazon appears to be blocking bot requests (503 error)")
-            else:
-                amazon_blocked = False
-                fallback_query = f"{query} nestle"
-                fallback_url = self.amazon_search._build_search_url(search_term)
-                amazon_products = [{
-                    "id": 1,
-                    "title": f"Search for '{fallback_query}' on Amazon",
-                    "price": "Click to see prices",
-                    "rating": None,
-                    "image_url": None,
-                    "product_url": fallback_url,
-                    "asin": None,
-                    "is_sponsored": False,
-                    "platform": "Amazon"
-                }]
-                amazon_link_available = True
-                logger.info(f"Generated fallback Amazon search link for '{search_term}'")
+
+            amazon_blocked = False
+            fallback_query = f"{query} nestle"
+            fallback_url = self.amazon_search._build_search_url(search_term)
+            amazon_products = [{
+                "id": 1,
+                "title": f"Search for '{fallback_query}' on Amazon",
+                "price": "Click to see prices",
+                "rating": None,
+                "image_url": None,
+                "product_url": fallback_url,
+                "asin": None,
+                "is_sponsored": False,
+                "platform": "Amazon"
+            }]
+            amazon_link_available = True
+            logger.info(f"Generated fallback Amazon search link for '{search_term}'")
         
+        purchase_info = {
+            "nearby_stores_available": nearby_stores_available,
+            "amazon_link_available": amazon_link_available,
+            "amazon_blocked": amazon_blocked
+        }
         return {
             "stores": stores,
             "amazon_products": amazon_products,
-            "purchase_info": {
-                "nearby_stores_available": nearby_stores_available,
-                "amazon_link_available": amazon_link_available,
-                "amazon_blocked": amazon_blocked
-            }
+            "purchase_info": purchase_info
         }
 
     async def _handle_purchase_query(self, query: str, search_results: List[Dict], user_location: Optional[Dict] = None, extracted_product: Optional[str] = None) -> Dict:
