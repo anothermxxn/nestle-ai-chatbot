@@ -67,14 +67,19 @@ export const ipToCoordinates = async () => {
   }
 };
 
+
+
 /**
  * Convert Canadian FSA (Forward Sortation Area) to coordinates
  * @param {string} fsa - Canadian FSA code
- * @returns {Promise<{lat: number, lon: number} | null>} Coordinates or null if not found
+ * @returns {Promise<{success: boolean, coordinates?: {lat: number, lon: number}, error?: string}>} Result with success status and coordinates or error
  */
 export const fsaToCoordinates = async (fsa) => {
   if (!fsa || typeof fsa !== "string") {
-    return null;
+    return {
+      success: false,
+      error: "Invalid FSA format"
+    };
   }
 
   const cleanFsa = fsa.trim().toUpperCase();
@@ -129,28 +134,44 @@ export const fsaToCoordinates = async (fsa) => {
     }
   ];
 
-  for (const service of geocodingServices) {
-    try {
-      const response = await fetch(service.url, {
-        headers: service.headers,
-        timeout: 8000
-      });
+  try {
+    for (const service of geocodingServices) {
+      try {
+        const response = await fetch(service.url, {
+          headers: service.headers,
+          timeout: 8000
+        });
 
-      if (!response.ok) {
+        if (!response.ok) {
+          continue;
+        }
+
+        const data = await response.json();      
+        const coordinates = service.parseData(data);
+        
+        if (coordinates && coordinates.lat && coordinates.lon && 
+            !isNaN(coordinates.lat) && !isNaN(coordinates.lon)) {
+          return {
+            success: true,
+            coordinates: coordinates
+          };
+        }
+      } catch {
         continue;
       }
-
-      const data = await response.json();      
-      const coordinates = service.parseData(data);
-      
-      if (coordinates && coordinates.lat && coordinates.lon && 
-          !isNaN(coordinates.lat) && !isNaN(coordinates.lon)) {
-        return coordinates;
-      }
-    } catch {
-      continue;
     }
+    
+    // All services failed
+    console.warn(`All geocoding services failed for FSA ${cleanFsa}.`);
+    return {
+      success: false,
+      error: `Unable to locate coordinates for postal code ${cleanFsa}. Please try a different postal code.`
+    };
+  } catch (error) {
+    console.error('Error in geocoding:', error);
+    return {
+      success: false,
+      error: `Failed to validate location for postal code ${cleanFsa}. Please try again.`
+    };
   }
-  console.warn(`All geocoding services failed for FSA ${cleanFsa}.`);
-  return null;
 };

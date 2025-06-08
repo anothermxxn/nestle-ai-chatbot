@@ -389,6 +389,7 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger, location, onLocationRef
   const [isInitializing, setIsInitializing] = useState(true);
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [locationInputValue, setLocationInputValue] = useState("");
+  const [isValidatingLocation, setIsValidatingLocation] = useState(false);
 
   // Conversation management
   const {
@@ -538,50 +539,56 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger, location, onLocationRef
   };
 
   /**
-   * Handles saving location edit with validation
+   * Logic for updating location with validation
    */
-  const handleLocationSave = () => {
-    const trimmedInput = locationInputValue.trim().toUpperCase();
-    
+  const updateLocationWithValidation = async (trimmedInput, onInvalid) => {
     if (!trimmedInput) {
       setIsEditingLocation(false);
       return;
     }
     
     if (!validateFSA(trimmedInput)) {
-      return; // Keep editing mode, validation shown via tooltip
+      onInvalid();
+      return;
     }
     
     if (onLocationUpdate) {
-      onLocationUpdate(trimmedInput);
+      setIsValidatingLocation(true);
+      try {
+        const result = await onLocationUpdate(trimmedInput);
+        if (result?.success) {
+          setIsEditingLocation(false);
+        }
+      } catch (error) {
+        console.error('Error updating location:', error);
+      } finally {
+        setIsValidatingLocation(false);
+      }
+    } else {
+      setIsEditingLocation(false);
     }
-    setIsEditingLocation(false);
+  };
+
+  /**
+   * Handles saving location edit with validation
+   */
+  const handleLocationSave = async () => {
+    const trimmedInput = locationInputValue.trim().toUpperCase();
+    await updateLocationWithValidation(trimmedInput, () => {
+      // Keep editing mode open for tooltip validation
+    });
   };
 
   /**
    * Handles blur event with validation
    */
-  const handleLocationBlur = () => {
+  const handleLocationBlur = async () => {
     const trimmedInput = locationInputValue.trim().toUpperCase();
-    
-    // If empty input, close editing mode
-    if (!trimmedInput) {
-      setIsEditingLocation(false);
-      return;
-    }
-    
-    // If invalid input, revert to original value and close editing
-    if (!validateFSA(trimmedInput)) {
+    await updateLocationWithValidation(trimmedInput, () => {
+      // Close editing mode and clear input on invalid FSA
       setIsEditingLocation(false);
       setLocationInputValue("");
-      return;
-    }
-    
-    // If valid input, save it
-    if (onLocationUpdate) {
-      onLocationUpdate(trimmedInput);
-    }
-    setIsEditingLocation(false);
+    });
   };
 
   /**
@@ -607,30 +614,48 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger, location, onLocationRef
   const renderLocationIndicator = () => {
     if (!location) return "Location";
 
+    if (isValidatingLocation) {
+      return (
+        <LocationTextInline 
+          isEditing={false} 
+          hasError={false}
+        >
+          Processing...
+        </LocationTextInline>
+      );
+    }
+
     if (isEditingLocation) {
       const inputValue = locationInputValue.trim();
       const isValid = inputValue.length === 0 ? null : validateFSA(inputValue);
       const validationMessage = getFSAValidationMessage(inputValue);
-      const showTooltip = validationMessage !== '';
+      
+      // Show location error if it exists and input is valid FSA format
+      const hasLocationError = location.error && 
+        (location.error.includes('Unable to locate coordinates') || 
+         location.error.includes('Failed to validate location'));
+      
+      const tooltipMessage = validationMessage || (hasLocationError ? location.error : '');
+      const showTooltip = tooltipMessage !== '';
       
       return (
         <Tooltip
-          title={validationMessage}
+          title={tooltipMessage}
           open={showTooltip}
           placement="top"
           arrow
           sx={{
             '& .MuiTooltip-tooltip': {
-              backgroundColor: colors.warning,
+              backgroundColor: hasLocationError ? colors.error : colors.warning,
               color: 'white',
               fontSize: 12,
               fontWeight: 500,
               padding: '6px 12px',
               borderRadius: 6,
-              maxWidth: 200,
+              maxWidth: 250,
             },
             '& .MuiTooltip-arrow': {
-              color: colors.warning,
+              color: hasLocationError ? colors.error : colors.warning,
             },
           }}
         >
@@ -639,7 +664,7 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger, location, onLocationRef
             onChange={handleLocationInputChange}
             onKeyDown={handleLocationKeyDown}
             onBlur={handleLocationBlur}
-            placeholder="E.g. K1A"
+            placeholder="E.g. L3T"
             isValid={isValid}
             autoFocus
             maxLength={3}
@@ -661,12 +686,20 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger, location, onLocationRef
     }
 
     if (location.error) {
+      // Show more specific error message for manual location failures
+      const isLocationNotFound = location.error.includes('Unable to locate coordinates') || 
+                                 location.error.includes('Failed to validate location');
+      
+      const title = isLocationNotFound 
+        ? location.error
+        : "Location detection failed. Click to enter manually or try enabling location services in your browser.";
+      
       return (
         <LocationTextInline 
           isEditing={false} 
           hasError={true}
           onClick={handleLocationEdit}
-          title="Location detection failed. Click to enter manually or try: System Preferences > Security & Privacy > Location Services > Enable Safari"
+          title={title}
         >
           Location
         </LocationTextInline>

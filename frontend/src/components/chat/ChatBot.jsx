@@ -667,39 +667,66 @@ const ChatBot = () => {
   };
 
   /**
-   * Handles manual location entry
+   * Handles manual location entry with coordinate validation
    * @param {string} fsaCode - Manual FSA input (3 character postal code)
+   * @returns {Promise<{success: boolean, error?: string}>} Success status and optional error message
    */
   const setManualLocation = async (fsaCode) => {
-    // Try to get coordinates for the manual FSA entry for better store lookup
-    let coords = null;
-    
     try {
-      const fsaCoords = await fsaToCoordinates(fsaCode);
-      if (fsaCoords) {
-        coords = {
-          latitude: fsaCoords.lat,
-          longitude: fsaCoords.lon
+      // Try to get coordinates for the manual FSA entry
+      const validationResult = await fsaToCoordinates(fsaCode);
+      
+      if (!validationResult.success) {
+        setLocation(prev => ({
+          ...prev,
+          error: `Unable to locate coordinates for ${fsaCode}. Please try a different postal code.`,
+          loading: false
+        }));
+        
+        return {
+          success: false,
+          error: `Unable to locate coordinates for ${fsaCode}. Please try a different postal code.`
         };
       }
+      
+      const coords = {
+        latitude: validationResult.coordinates.lat,
+        longitude: validationResult.coordinates.lon
+      };
+      
+      const locationData = {
+        coords: coords,
+        fsa: fsaCode,
+        error: null,
+        loading: false,
+        permission: location.permission,
+        source: 'manual'
+      };
+      
+      setLocation(locationData);
+      localStorage.setItem('location', JSON.stringify({
+        ...locationData,
+        timestamp: Date.now()
+      }));
+      
+      return {
+        success: true
+      };
     } catch (error) {
-      console.warn(`Could not get coordinates for FSA ${fsaCode}:`, error);
+      console.error(`Error setting manual location for FSA ${fsaCode}:`, error);
+      const errorMessage = `Failed to set location for postal code ${fsaCode}. Please try again.`;
+      
+      setLocation(prev => ({
+        ...prev,
+        error: errorMessage,
+        loading: false
+      }));
+      
+      return {
+        success: false,
+        error: errorMessage
+      };
     }
-    
-    const locationData = {
-      coords: coords,
-      fsa: fsaCode,
-      error: null,
-      loading: false,
-      permission: location.permission,
-      source: 'manual'
-    };
-    
-    setLocation(locationData);
-    localStorage.setItem('location', JSON.stringify({
-      ...locationData,
-      timestamp: Date.now()
-    }));
   };
 
   /**
