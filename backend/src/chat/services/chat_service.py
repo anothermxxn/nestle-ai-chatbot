@@ -24,7 +24,14 @@ try:
         PURCHASE_CHECK_PROMPT,
         PURCHASE_ASSISTANCE_PROMPT,
         COUNT_CHECK_PROMPT,
-        COUNT_RESPONSE_PROMPT
+        COUNT_RESPONSE_PROMPT,
+        PURCHASE_FALLBACK_BASE,
+        PURCHASE_FALLBACK_BOTH_AVAILABLE,
+        PURCHASE_FALLBACK_STORES_ONLY,
+        PURCHASE_FALLBACK_AMAZON_ONLY,
+        PURCHASE_FALLBACK_LOCATION_NEEDED,
+        PURCHASE_FALLBACK_NEITHER_AVAILABLE,
+        PURCHASE_FALLBACK_AMAZON_BLOCKED,
     )
     from backend.src.chat.services.amazon_search import AmazonSearchService
     from backend.src.chat.services.store_locator import StoreLocatorService
@@ -47,7 +54,14 @@ except ImportError:
         PURCHASE_CHECK_PROMPT,
         PURCHASE_ASSISTANCE_PROMPT,
         COUNT_CHECK_PROMPT,
-        COUNT_RESPONSE_PROMPT
+        COUNT_RESPONSE_PROMPT,
+        PURCHASE_FALLBACK_BASE,
+        PURCHASE_FALLBACK_BOTH_AVAILABLE,
+        PURCHASE_FALLBACK_STORES_ONLY,
+        PURCHASE_FALLBACK_AMAZON_ONLY,
+        PURCHASE_FALLBACK_LOCATION_NEEDED,
+        PURCHASE_FALLBACK_NEITHER_AVAILABLE,
+        PURCHASE_FALLBACK_AMAZON_BLOCKED,
     )
     from src.chat.services.amazon_search import AmazonSearchService
     from src.chat.services.store_locator import StoreLocatorService
@@ -449,7 +463,7 @@ class NestleChatClient:
 
     async def _get_purchase_assistance_data(self, query: str, user_location: Optional[Dict] = None, extracted_product: Optional[str] = None) -> Dict:
         """
-        Get purchase assistance data (stores and Amazon products).
+        Get purchase assistance data (stores and Amazon products) with status tracking.
         
         Args:
             query: Search query
@@ -457,10 +471,15 @@ class NestleChatClient:
             extracted_product: Extracted product name for targeted search
             
         Returns:
-            Dictionary with stores and amazon_products
+            Dictionary with stores, amazon_products, and status information
         """
         stores = []
         amazon_products = []
+        
+        # Track status of each service
+        nearby_stores_available = False
+        amazon_link_available = False
+        amazon_blocked = False
         
         # Use extracted product if available, otherwise use query
         search_term = extracted_product if extracted_product else query
@@ -473,36 +492,57 @@ class NestleChatClient:
                     lon=user_location['lon']
                 )
                 stores = self.store_locator.format_stores_for_response(store_results[:3])
+                nearby_stores_available = len(stores) > 0
                 logger.info(f"Found {len(stores)} nearby stores for location")
             except Exception as e:
                 logger.warning(f"Store locator failed: {str(e)}")
                 stores = []
+                nearby_stores_available = False
+        else:
+            logger.info("No user location provided for nearby store suggestions")
+            nearby_stores_available = False
         
         # Get Amazon products
         try:
             amazon_results = await self.amazon_search.search_products(search_term)
             amazon_products = self.amazon_search.format_products_for_response(amazon_results[:3])
+            amazon_link_available = len(amazon_products) > 0
             logger.info(f"Amazon search for '{search_term}' returned {len(amazon_products)} products")
         except Exception as e:
+            error_msg = str(e).lower()
             logger.warning(f"Amazon search failed: {str(e)}")
-            fallback_query = f"{query} nestle"
-            fallback_url = self.amazon_search._build_search_url(search_term)
-            amazon_products = [{
-                "id": 1,
-                "title": f"Search for '{fallback_query}' on Amazon",
-                "price": "Click to see prices",
-                "rating": None,
-                "image_url": None,
-                "product_url": fallback_url,
-                "asin": None,
-                "is_sponsored": False,
-                "platform": "Amazon"
-            }]
-            logger.info(f"Generated fallback Amazon search link for '{search_term}'")
+            
+            if "503" in error_msg:
+                # Amazon is blocking (503 error)
+                amazon_blocked = True
+                amazon_link_available = False
+                logger.warning("Amazon appears to be blocking bot requests (503 error)")
+            else:
+                amazon_blocked = False
+                fallback_query = f"{query} nestle"
+                fallback_url = self.amazon_search._build_search_url(search_term)
+                amazon_products = [{
+                    "id": 1,
+                    "title": f"Search for '{fallback_query}' on Amazon",
+                    "price": "Click to see prices",
+                    "rating": None,
+                    "image_url": None,
+                    "product_url": fallback_url,
+                    "asin": None,
+                    "is_sponsored": False,
+                    "platform": "Amazon"
+                }]
+                amazon_link_available = True
+                logger.info(f"Generated fallback Amazon search link for '{search_term}'")
         
         return {
             "stores": stores,
-            "amazon_products": amazon_products
+            "amazon_products": amazon_products,
+            "purchase_info": {
+                "nearby_stores_available": nearby_stores_available,
+                "amazon_link_available": amazon_link_available,
+                "amazon_blocked": amazon_blocked
+            }
         }
 
     async def _handle_purchase_query(self, query: str, search_results: List[Dict], user_location: Optional[Dict] = None, extracted_product: Optional[str] = None) -> Dict:
@@ -519,8 +559,11 @@ class NestleChatClient:
             Dictionary with purchase assistance response
         """
         try:
-            # Get purchase assistance dat
+            # Get purchase assistance data
             purchase_data = await self._get_purchase_assistance_data(query, user_location, extracted_product)
+            
+            # Extract purchase info for the prompt
+            purchase_info = purchase_data.get("purchase_info", {})
             
             # Format sources for the prompt
             sources_text = ""
@@ -535,7 +578,8 @@ class NestleChatClient:
             # Create prompt
             purchase_prompt = PURCHASE_ASSISTANCE_PROMPT.format(
                 query=query,
-                sources=sources_text
+                sources=sources_text,
+                purchase_info=purchase_info
             )
             
             # Generate LLM response
@@ -550,10 +594,35 @@ class NestleChatClient:
             except Exception as llm_error:
                 logger.error(f"LLM failed for purchase query, using fallback: {str(llm_error)}")
                 product_name = extracted_product or "Nestlé products"
-                answer = f"I'd be happy to help you find {product_name}! I've found some options for you below, including nearby stores and Amazon listings where you can purchase them."
+                
+                # Create tailored fallback message based on available purchase options
+                answer = PURCHASE_FALLBACK_BASE.format(product_name=product_name)
+                if purchase_info.get("nearby_stores_available") and purchase_info.get("amazon_link_available"):
+                    answer += PURCHASE_FALLBACK_BOTH_AVAILABLE
+                elif purchase_info.get("nearby_stores_available"):
+                    answer += PURCHASE_FALLBACK_STORES_ONLY
+                    if purchase_info.get("amazon_blocked"):
+                        answer += PURCHASE_FALLBACK_AMAZON_BLOCKED
+                elif purchase_info.get("amazon_link_available"):
+                    answer += PURCHASE_FALLBACK_AMAZON_ONLY
+                    if not purchase_info.get("nearby_stores_available"):
+                        answer += PURCHASE_FALLBACK_LOCATION_NEEDED
+                else:
+                    # Neither service worked
+                    answer += PURCHASE_FALLBACK_NEITHER_AVAILABLE
+                    if purchase_info.get("amazon_blocked"):
+                        answer += PURCHASE_FALLBACK_AMAZON_BLOCKED
+                    if not purchase_info.get("nearby_stores_available"):
+                        answer += PURCHASE_FALLBACK_LOCATION_NEEDED
             
             # Format source links from search results
             source_links = self._format_links(search_results) if search_results else []
+            
+            # Prepare purchase assistance data for response (excluding internal purchase_info)
+            purchase_assistance_data = {
+                "stores": purchase_data.get("stores", []),
+                "amazon_products": purchase_data.get("amazon_products", [])
+            }
             
             return {
                 "answer": answer,
@@ -563,9 +632,9 @@ class NestleChatClient:
                 "filters_applied": {},
                 "graphrag_enhanced": False,
                 "combined_relevance_score": 0.0,
-                "retrieval_metadata": {"response_type": "purchase_assistance"},
+                "retrieval_metadata": {"response_type": "purchase_assistance", "purchase_info": purchase_info},
                 "is_purchase_query": True,
-                "purchase_assistance": purchase_data
+                "purchase_assistance": purchase_assistance_data
             }
             
         except Exception as e:
