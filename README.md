@@ -2,6 +2,8 @@
 
 An AI-powered chatbot that provides intelligent search capabilities over Nestle content, including recipes, product information, cooking tips, and nutrition guidance. The chatbot also features enhanced purchase assistance with store locators, Amazon integration, and intelligent product counting capabilities.
 
+This is a submissiont to Nestlé's tech assessment.
+
 ## Live Demo
 
 Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-frontend.whitewater-4228c4bc.canadaeast.azurecontainerapps.io/)**
