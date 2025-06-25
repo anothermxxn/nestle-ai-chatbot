@@ -8,7 +8,7 @@ import {
   Tooltip
 } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
-import { Send, ExpandMore, Close, LocationOn, Refresh } from '@mui/icons-material';
+import { Send, ExpandMore, Close, LocationOn, Refresh, SmartToy as SmartToyIcon } from '@mui/icons-material';
 import MessageBubble from './MessageBubble';
 import { 
   colors, 
@@ -25,14 +25,14 @@ import { useChatSession } from '../../lib/hooks';
 import { createErrorHandler } from '../../lib/utils/errorHandler';
 import { validateFSA, getFSAValidationMessage, formatFSA } from '../../lib/utils/validation';
 
-// Nestlé Logo for header avatar
-const HeaderNestleLogo = styled('img')({
+// SmartToy Icon for header avatar
+const HeaderSmartToyIcon = styled(SmartToyIcon)({
   width: 32,
   height: 32,
   borderRadius: '50%',
-  objectFit: 'cover',
-  border: `1px solid ${colors.primary}`,
+  color: colors.primary,
   background: colors.white,
+  border: `1px solid ${colors.primary}`,
   padding: 2,
   boxShadow: `0 2px 8px ${rgba(colors.primary, 0.2)}`,
   [mediaQueries.mobile]: {
@@ -724,11 +724,7 @@ const ChatWindow = ({ onClose, onCollapse, resetTrigger, location, onLocationRef
       <ChatHeader>
         <FlexBetween sx={{ width: '100%' }}>
           <SmartieHeader>
-            <HeaderNestleLogo 
-              src="/logoCircle.jpg" 
-              alt="Nestlé Logo"
-              loading="lazy"
-            />
+            <HeaderSmartToyIcon />
             <SmartieTitle variant="h6">SMARTIE</SmartieTitle>
             
             {/* Inline Location Indicator */}

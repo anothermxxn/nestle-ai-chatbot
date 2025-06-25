@@ -1,28 +1,31 @@
 import { useState, useEffect, useRef } from 'react';
 import { Box, Typography } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
+import { SmartToy as SmartToyIcon } from '@mui/icons-material';
 import ChatWindow from './ChatWindow';
 import { colors, fontFamily, FlexCenter, shadows, mediaQueries, rgba } from '../common';
 import { validateFSA } from '../../lib/utils/validation';
 import { ipToCoordinates, fsaToCoordinates } from '../../lib/utils/geocoding';
 
-// Nestlé Logo for floating button
-const FloatingNestleLogo = styled('img')({
+// SmartToy Icon for floating button
+const FloatingSmartToyIcon = styled(SmartToyIcon)({
   width: '100%',
   height: '100%',
   borderRadius: '50%',
-  objectFit: 'cover',
+  color: colors.primary,
+  background: colors.white,
   border: `2px solid ${colors.primary}`,
+  padding: 8,
 });
 
-// Nestlé Logo for collapsed state
-const CollapsedNestleLogo = styled('img')({
+// SmartToy Icon for collapsed state
+const CollapsedSmartToyIcon = styled(SmartToyIcon)({
   width: 32,
   height: 32,
   borderRadius: '50%',
-  objectFit: 'cover',
-  border: `1px solid ${colors.primary}`,
+  color: colors.primary,
   background: colors.white,
+  border: `1px solid ${colors.primary}`,
   padding: 2,
   boxShadow: `0 2px 8px ${rgba(colors.primary, 0.3)}`,
   [mediaQueries.mobile]: {
@@ -31,14 +34,15 @@ const CollapsedNestleLogo = styled('img')({
   },
 });
 
-// Nestlé Logo for closing animation
-const ClosingNestleLogo = styled('img')({
+// SmartToy Icon for closing animation
+const ClosingSmartToyIcon = styled(SmartToyIcon)({
   width: 60,
   height: 60,
   borderRadius: '50%',
-  objectFit: 'cover',
-  border: `2px solid ${colors.primary}`,
+  color: colors.primary,
   background: colors.white,
+  border: `2px solid ${colors.primary}`,
+  padding: 8,
   boxShadow: `0 2px 8px ${rgba(colors.primary, 0.3)}`,
   [mediaQueries.mobile]: {
     width: 50,
@@ -46,14 +50,14 @@ const ClosingNestleLogo = styled('img')({
   },
 });
 
-// Nestlé Logo for loading/expanding animation
-const ExpandingNestleLogo = styled('img')({
+// SmartToy Icon for loading/expanding animation
+const ExpandingSmartToyIcon = styled(SmartToyIcon)({
   width: 120,
   height: 120,
   borderRadius: '50%',
-  objectFit: 'cover',
-  border: `3px solid ${colors.primary}`,
+  color: colors.primary,
   background: colors.white,
+  border: `3px solid ${colors.primary}`,
   padding: 8,
   boxShadow: `0 8px 32px rgba(${colors.primary}, 0.3)`,
   animation: 'pulse 1.5s ease-in-out infinite',
@@ -826,10 +830,8 @@ const ChatBot = () => {
           {/* Show collapsed UI overlay when needed */}
           {(state === 'collapsing' || state === 'collapsed') && (
             <CollapsedContent>
-              <CollapsedNestleLogo 
-                src="/logoCircle.jpg" 
-                alt="Nestlé Logo"
-                loading="lazy"
+              <CollapsedSmartToyIcon 
+                fontSize="large"
               />
               <SmartieText size="small">SMARTIE - CLICK TO EXPAND</SmartieText>
             </CollapsedContent>
@@ -837,10 +839,8 @@ const ChatBot = () => {
           {/* Show expanding UI overlay when needed */}
           {state === 'expanding-from-rectangle' && (
             <ExpandingContent>
-              <ExpandingNestleLogo 
-                src="/logo.jpg" 
-                alt="Nestlé Logo"
-                loading="lazy"
+              <ExpandingSmartToyIcon 
+                fontSize="large"
               />
             </ExpandingContent>
           )}
@@ -849,30 +849,24 @@ const ChatBot = () => {
     } else if (state === 'expanding') {
       return (
         <ExpandingContent>
-          <ExpandingNestleLogo 
-            src="/logo.jpg" 
-            alt="Nestlé Logo"
-            loading="lazy"
+          <ExpandingSmartToyIcon 
+            fontSize="large"
           />
         </ExpandingContent>
       );
     } else if (state === 'closing') {
       return (
         <CircleContent>
-          <ClosingNestleLogo 
-            src="/logoCircle.jpg" 
-            alt="Nestlé Logo"
-            loading="lazy"
+          <ClosingSmartToyIcon 
+            fontSize="large"
           />
         </CircleContent>
       );
     } else {
       return (
         <CircleContent>
-          <FloatingNestleLogo 
-            src="/logoCircle.jpg" 
-            alt="Nestlé Logo"
-            loading="lazy"
+          <FloatingSmartToyIcon 
+            fontSize="large"
           />
         </CircleContent>
       );

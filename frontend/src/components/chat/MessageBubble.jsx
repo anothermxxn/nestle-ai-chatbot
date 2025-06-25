@@ -1,7 +1,7 @@
 import { Box, Typography, Paper, Chip, Tooltip, Link, IconButton, Divider } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { forwardRef, useRef, useState, useEffect } from 'react';
-import { ChevronRight, ChevronLeft } from '@mui/icons-material';
+import { ChevronRight, ChevronLeft, SmartToy as SmartToyIcon } from '@mui/icons-material';
 import { colors, fontFamily, mediaQueries, rgba } from '../common';
 import { parseMessageContent, formatReferenceTooltip } from '../../lib/utils/messageFormatter';
 import StoreCard from './StoreCard';
@@ -45,11 +45,11 @@ const AssistantAvatar = styled(Box)({
   },
 });
 
-const NestleAvatarLogo = styled('img')({
+const SmartToyAvatarIcon = styled(SmartToyIcon)({
   width: 30,
   height: 30,
   borderRadius: '50%',
-  objectFit: 'cover',
+  color: colors.primary,
   [mediaQueries.mobile]: {
     width: 26,
     height: 26,
@@ -927,7 +927,7 @@ const MessageBubble = forwardRef(({ message }, ref) => {
       {/* Show avatar for assistant messages */}
       {type === 'assistant' && (
         <AssistantAvatar>
-          <NestleAvatarLogo src="/logoCircle.jpg" alt="Nestlé Logo" />
+          <SmartToyAvatarIcon />
         </AssistantAvatar>
       )}
       
