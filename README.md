@@ -4,10 +4,6 @@ An AI-powered chatbot that provides intelligent search capabilities over Nestle 
 
 This is a submissiont to Nestlé's tech assessment.
 
-## Live Demo
-
-Try the live application: **[nestle-ai-chatbot](https://nestle-ai-chatbot-frontend.whitewater-4228c4bc.canadaeast.azurecontainerapps.io/)**
-
 ## Technologies and Frameworks
 
 ### Backend Technologies
